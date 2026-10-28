@@ -45,6 +45,7 @@ import ma.chouitv.installer.cleanup.CleanupData;
 import ma.chouitv.installer.cleanup.Executor;
 import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
+import ma.chouitv.installer.cleanup.Reactivation;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
 
@@ -115,11 +116,11 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (busy) return;
-        if (step == 7 || step == 10) show(5);
-        else if (step == 8) show(7);
-        else if (step == 9) show(5);
-        else if (step == 11) show(0);
-        else if (step > 0 && step < 3) show(step - 1);
+        if (step == 12) show(0);
+        else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(12); }
+        else if (step == 11 || step == 13) show(12);
+        else if (step == 1) show(12);
+        else if (step == 2) show(1);
         else super.onBackPressed();
     }
 
@@ -159,11 +160,12 @@ public class MainActivity extends Activity {
             case 2: connect(body, button); break;
             case 3: install(body, button); break;
             case 4: personalise(body, button); break;
-            case 7: cleanupOffer(body, button); break;
+            case 12: hub(body, button); break;
             case 8: cleanupPlan(body, button); break;
             case 9: cleanupRun(body, button); break;
             case 10: cleanupResult(body, button); break;
-            case 11: restoreScreen(body, button); break;
+            case 11: reactivate(body, button); break;
+            case 13: reactivated(body, button); break;
             default: done(body, button); break;
         }
     }
@@ -218,13 +220,8 @@ public class MainActivity extends Activity {
             });
             body.addView(c, lp(0, 0, 0, 10));
         }
-        if (restoreFile().exists()) {
-            TextView rl = ghostButton("↩  " + t("cl_restore_link"), MUTED);
-            rl.setOnClickListener(v -> { restoreMode = true; show(2); });
-            body.addView(rl, new LinearLayout.LayoutParams(-1, dp(48)));
-        }
         button.setText(t("continue"));
-        button.setOnClickListener(v -> { restoreMode = false; show(1); });
+        button.setOnClickListener(v -> show(12));
     }
 
     private void prepare(LinearLayout body, TextView button) {
@@ -328,7 +325,9 @@ public class MainActivity extends Activity {
                 tv = a;
                 flow = new Flow(a, getCacheDir());
                 model = flow.model();
-                runOnUiThread(() -> { busy = false; if (restoreMode) show(11); else show(3); });
+                tvModel = model;
+                try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
+                runOnUiThread(() -> afterConnect(button, status));
             } catch (final Exception e) {
                 runOnUiThread(() -> {
                     busy = false;
@@ -535,7 +534,7 @@ public class MainActivity extends Activity {
                         flow.adhan(adhanOn);
                     }
                     flow.rescheduleAdhan();
-                    runOnUiThread(() -> { busy = false; show(7); });
+                    runOnUiThread(() -> { busy = false; show(5); });
                 } catch (final Exception e) {
                     runOnUiThread(() -> {
                         busy = false;
@@ -603,6 +602,7 @@ public class MainActivity extends Activity {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/EMCHOUIT/ChouiTV"))); } catch (Exception ignored) { }
         });
         body.addView(star, new LinearLayout.LayoutParams(-1, dp(52)));
+        cleanNowCard(body);
         if (homeResult != null && homeResult != Flow.Home.OURS) {
             LinearLayout hw = card(false);
             hw.setBackground(cardBg(false, 0x33E8896B, 0xFFE8896B));
@@ -628,7 +628,6 @@ public class MainActivity extends Activity {
     private final java.util.Set<String> cleanSel = new java.util.LinkedHashSet<>();
     private boolean cleanConfirmed;
     private Executor.Result cleanResult;
-    private boolean restoreMode;
 
     private static final String CLEANUP_URL = "https://raw.githubusercontent.com/EMCHOUIT/ChouiTV/main/optimize/lists/cleanup.json";
 
@@ -676,51 +675,6 @@ public class MainActivity extends Activity {
         return g;
     }
 
-    private void cleanupOffer(LinearLayout body, TextView button) {
-        titleBlock(body, t("cl_title"), t("cl_sub"));
-        String[][] items = {{"cl_b1_t", "cl_b1_d"}, {"cl_b2_t", "cl_b2_d"}, {"cl_b3_t", "cl_b3_d"}, {"cl_b4_t", "cl_b4_d"}};
-        for (String[] it : items) {
-            LinearLayout c = card(false);
-            c.setOrientation(LinearLayout.HORIZONTAL);
-            c.setGravity(Gravity.CENTER_VERTICAL);
-            c.addView(new Orn.StarNum(this, "✓", medium), new LinearLayout.LayoutParams(dp(38), dp(38)));
-            LinearLayout tt = new LinearLayout(this);
-            tt.setOrientation(LinearLayout.VERTICAL);
-            tt.addView(text(t(it[0]), medium, 17, SAND));
-            tt.addView(text(t(it[1]), regular, 13, MUTED));
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
-            tp.setMarginStart(dp(14));
-            c.addView(tt, tp);
-            body.addView(c, lp(0, 10, 0, 0));
-        }
-        final TextView status = text("", regular, 14, GOLD);
-        body.addView(status, lp(0, 12, 0, 6));
-        TextView skip = ghostButton(t("cl_skip"), MUTED);
-        skip.setOnClickListener(v -> { if (!busy) show(5); });
-        body.addView(skip, new LinearLayout.LayoutParams(-1, dp(52)));
-        button.setText(t("cl_show"));
-        button.setOnClickListener(v -> {
-            if (busy) return;
-            busy = true;
-            button.setAlpha(0.6f);
-            status.setTextColor(GOLD);
-            status.setText(t("cl_loading"));
-            bg.execute(() -> {
-                try {
-                    cleanupData = loadCleanupData();
-                    Planner.Tv info = flow.tvInfo();
-                    cleanPlan = Planner.plan(cleanupData, info);
-                    cleanSel.clear();
-                    cleanSel.addAll(cleanPlan.defaultSelection());
-                    cleanConfirmed = false;
-                    runOnUiThread(() -> { busy = false; show(8); });
-                } catch (final Exception e) {
-                    runOnUiThread(() -> { busy = false; button.setAlpha(1f); status.setTextColor(0xFFE8896B); status.setText(t("cl_err", friendly(e, "", false))); });
-                }
-            });
-        });
-    }
-
     private void cleanupPlan(LinearLayout body, final TextView button) {
         titleBlock(body, t("cl_plan_title"), t("cl_plan_sub"));
         final Planner.Plan p = cleanPlan;
@@ -735,8 +689,7 @@ public class MainActivity extends Activity {
             LinearLayout none = card(false);
             none.addView(text(t("cl_none"), medium, 17, GOLD));
             body.addView(none, lp(0, 8, 0, 0));
-            button.setText(t("cl_continue"));
-            button.setOnClickListener(v -> show(5));
+            afterCleanup(button);
             return;
         }
         final java.util.List<Planner.Item> noise = new java.util.ArrayList<>(p.groups.get(CleanupData.Group.TRACKING));
@@ -932,9 +885,8 @@ public class MainActivity extends Activity {
     private void updateRunButton(TextView button) {
         int n = selectedCount();
         if (n == 0) {
-            button.setText(t("cl_continue"));
+            afterCleanup(button);
             button.setAlpha(1f);
-            button.setOnClickListener(v -> show(5));
             return;
         }
         button.setText(t("cl_run", n));
@@ -1029,8 +981,7 @@ public class MainActivity extends Activity {
                     getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                     TextView err = text(t("cl_net_lost"), regular, 14, 0xFFE8896B);
                     body.addView(err, lp(0, 12, 0, 0));
-                    button.setText(t("cl_continue")); button.setAlpha(1f);
-                    button.setOnClickListener(v -> show(5));
+                    afterCleanup(button); button.setAlpha(1f);
                 });
             }
         });
@@ -1097,46 +1048,253 @@ public class MainActivity extends Activity {
             });
         });
         body.addView(undoAll, new LinearLayout.LayoutParams(-1, dp(52)));
-        button.setText(t("cl_continue"));
-        button.setOnClickListener(v -> show(5));
+        if (!cleanFromDone) {
+            TextView home = ghostButton(t("cl_home"), MUTED);
+            home.setOnClickListener(v -> show(12));
+            body.addView(home, lp(0, 8, 0, 0));
+        }
+        afterCleanup(button);
     }
 
-    private void restoreScreen(final LinearLayout body, TextView button) {
-        titleBlock(body, t("cl_restore_title"), t("cl_restore_sub"));
-        final Restore r = loadRestore();
-        if (r == null || r.packages.isEmpty()) {
-            LinearLayout none = card(false);
-            none.addView(text(t("cl_restore_none"), medium, 17, GOLD));
-            body.addView(none, lp(0, 10, 0, 0));
+    // ---------- the three spaces: clean, install, turn back on ----------
+
+    private static final int SPACE_CLEAN = 0, SPACE_INSTALL = 1, SPACE_REACT = 2;
+    private int space = SPACE_INSTALL;
+    private boolean cleanedHere, cleanFromDone;
+    private Reactivation.Plan reactPlan;
+    private final java.util.Set<String> reactSel = new java.util.LinkedHashSet<>();
+    private java.util.List<String> reactBack = new ArrayList<>();
+    private int reactAsked;
+
+    private void hub(LinearLayout body, TextView button) {
+        cleanedHere = false;
+        cleanFromDone = false;
+        titleBlock(body, t("hub_title"), t("hub_sub"));
+        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_react_t", "hub_react_d", "hub_react_tag"}};
+        for (int i = 0; i < cards.length; i++) {
+            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : SPACE_REACT;
+            LinearLayout c = card(i == 0);
+            c.setOrientation(LinearLayout.HORIZONTAL);
+            c.setGravity(Gravity.CENTER_VERTICAL);
+            c.addView(new Orn.StarNum(this, cards[i][0], medium), new LinearLayout.LayoutParams(dp(42), dp(42)));
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.addView(chip(t(cards[i][3]), i == 0 ? GOLD : 0, i == 0 ? DARK : SAND, i == 0 ? 0 : 0xFF96A098));
+            col.addView(text(t(cards[i][1]), display, 21, SAND), lp(0, 4, 0, 0));
+            col.addView(text(t(cards[i][2]), regular, 13, MUTED), lp(0, 2, 0, 0));
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+            cp.setMarginStart(dp(14));
+            c.addView(col, cp);
+            c.setOnClickListener(v -> { if (!busy) { space = sp; show(1); } });
+            body.addView(c, lp(0, 12, 0, 0));
+        }
+        button.setText(t("hub_lang"));
+        button.setAlpha(0.9f);
+        button.setOnClickListener(v -> show(0));
+    }
+
+    /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
+    private void afterConnect(final TextView button, final TextView status) {
+        if (space == SPACE_INSTALL) { busy = false; show(3); return; }
+        stopTicker();
+        status.setTextColor(GOLD);
+        status.setText(t(space == SPACE_CLEAN ? "cl_loading" : "re_loading"));
+        bg.execute(() -> {
+            try {
+                if (space == SPACE_CLEAN) loadCleanupPlan(); else loadReactivation();
+                runOnUiThread(() -> { busy = false; show(space == SPACE_CLEAN ? 8 : 11); });
+            } catch (final Exception e) {
+                runOnUiThread(() -> { busy = false; button.setAlpha(1f); status.setTextColor(0xFFE8896B); status.setText(t("cl_err", friendly(e, "", false))); });
+            }
+        });
+    }
+
+    private void loadCleanupPlan() throws Exception {
+        cleanupData = loadCleanupData();
+        cleanPlan = Planner.plan(cleanupData, flow.tvInfo());
+        cleanSel.clear();
+        cleanSel.addAll(cleanPlan.defaultSelection());
+        cleanConfirmed = false;
+    }
+
+    /** What is off on the TV right now, and which of it a ChouiTV cleanup turned off (read from this phone's restore point and from the copy kept on the TV). */
+    private void loadReactivation() throws Exception {
+        cleanupData = loadCleanupData();
+        java.util.Set<String> ours = new java.util.HashSet<>();
+        Restore r = loadRestore();
+        if (r != null) ours.addAll(r.packages);
+        try { ours.addAll(Reactivation.parseRestoreText(flow.shell().run("cat /data/local/tmp/chouitv-restore.txt 2> /dev/null"))); } catch (IOException ignored) { }
+        reactPlan = Reactivation.plan(Reactivation.disabledNow(flow.shell()), ours, cleanupData);
+        reactSel.clear();
+    }
+
+    /** What follows a cleanup: from the home it leads to the install (step 2); from the end of an install it goes back to the end. */
+    private void afterCleanup(TextView button) {
+        cleanedHere = true;
+        if (cleanFromDone) {
             button.setText(t("cl_continue"));
-            button.setOnClickListener(v -> show(0));
+            button.setOnClickListener(v -> show(5));
+        } else {
+            button.setText(t("cl_next_install"));
+            button.setOnClickListener(v -> { space = SPACE_INSTALL; show(3); });
+        }
+    }
+
+    private void reactivate(LinearLayout body, final TextView button) {
+        titleBlock(body, t("re_title"), t("re_sub"));
+        final Reactivation.Plan p = reactPlan;
+        if (p.total() == 0) {
+            LinearLayout none = card(false);
+            none.addView(text(t("re_none"), medium, 17, GOLD));
+            body.addView(none, lp(0, 10, 0, 0));
+            button.setText(t("cl_home"));
+            button.setOnClickListener(v -> show(12));
             return;
         }
-        body.addView(text(r.date + " · " + r.tvModel, regular, 13, MUTED), lp(4, 10, 4, 6));
-        for (final String pkg : r.packages) {
+        reactSection(body, button, p.ours, "re_ours_h", "re_ours_d");
+        reactSection(body, button, p.others, "re_oth_h", "re_oth_d");
+        updateReactButton(button);
+    }
+
+    private void reactSection(LinearLayout body, final TextView button, final java.util.List<String> pkgs, String titleKey, String descKey) {
+        if (pkgs.isEmpty()) return;
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text(t(titleKey), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView count = text("", medium, 13, SAND);
+        head.addView(count);
+        body.addView(head, lp(4, 10, 4, 0));
+        body.addView(text(t(descKey), regular, 13, MUTED), lp(4, 2, 4, 6));
+        final Runnable recount = () -> {
+            int n = 0;
+            for (String s : pkgs) if (reactSel.contains(s)) n++;
+            count.setText(t("cl_ticked", n, pkgs.size()));
+        };
+        for (final String pkg : pkgs) {
+            final TextView box = checkBox(reactSel.contains(pkg));
             LinearLayout row = card(false);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView nm = text(niceName(pkg), regular, 14, SAND);
+            row.setPadding(dp(14), dp(10), dp(14), dp(10));
+            row.addView(box, new LinearLayout.LayoutParams(dp(30), dp(30)));
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            String name = cleanupData.label(pkg, Strings.lang);
+            TextView nm = text(name, medium, 16, SAND);
             nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
-            row.addView(nm, new LinearLayout.LayoutParams(0, -2, 1f));
-            final TextView one = ghostButton(t("cl_restore_one"), GOLD);
-            one.setPadding(dp(16), dp(6), dp(16), dp(6));
-            one.setOnClickListener(v -> bg.execute(() -> {
-                try { Restore.apply(flow.shell(), java.util.Arrays.asList(pkg)); runOnUiThread(() -> { one.setText(t("cl_restored")); one.setEnabled(false); }); } catch (Exception ignored) { }
-            }));
-            row.addView(one);
+            col.addView(nm);
+            if (!name.equals(pkg)) {
+                TextView pk = text(pkg, regular, 11, MUTED);
+                pk.setTextDirection(View.TEXT_DIRECTION_LTR);
+                col.addView(pk);
+            }
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+            cp.setMarginStart(dp(12));
+            row.addView(col, cp);
+            row.setOnClickListener(v -> {
+                boolean on = !reactSel.contains(pkg);
+                if (on) reactSel.add(pkg); else reactSel.remove(pkg);
+                styleCheck(box, on);
+                recount.run();
+                updateReactButton(button);
+            });
             body.addView(row, lp(0, 0, 0, 6));
         }
-        button.setText(t("cl_restore_all"));
+        recount.run();
+    }
+
+    private void updateReactButton(final TextView button) {
+        final int n = reactSel.size();
+        button.setText(n == 0 ? t("re_pick") : t("re_btn", n));
+        button.setAlpha(n == 0 ? 0.45f : 1f);
         button.setOnClickListener(v -> {
-            if (busy) return;
-            busy = true; button.setAlpha(0.6f);
+            if (busy || reactSel.isEmpty()) return;
+            busy = true;
+            button.setAlpha(0.6f);
+            button.setText(t("re_busy"));
+            final java.util.List<String> asked = new ArrayList<>(reactSel);
             bg.execute(() -> {
-                try { Restore.apply(flow.shell(), r.packages); } catch (Exception ignored) { }
-                runOnUiThread(() -> { busy = false; button.setAlpha(1f); button.setText(t("cl_restored")); button.setOnClickListener(x -> show(0)); });
+                try {
+                    java.util.List<String> back = Reactivation.apply(flow.shell(), asked);
+                    Restore r = loadRestore();
+                    if (r != null) {   // the restore point forgets what is on again
+                        java.util.List<String> left = new ArrayList<>(r.packages);
+                        left.removeAll(back);
+                        Restore now = new Restore(r.tvModel, r.date, left);
+                        saveRestore(now);
+                        pushRestoreToTv(now);
+                    }
+                    reactBack = back;
+                    reactAsked = asked.size();
+                    runOnUiThread(() -> { busy = false; show(13); });
+                } catch (final Exception e) {
+                    runOnUiThread(() -> { busy = false; button.setAlpha(1f); updateReactButton(button); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                }
             });
         });
+    }
+
+    private void reactivated(LinearLayout body, TextView button) {
+        body.setGravity(Gravity.CENTER_HORIZONTAL);
+        Orn.Arch arch = new Orn.Arch(this);
+        LinearLayout in = new LinearLayout(this);
+        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
+        TextView check = text("✓", medium, 40, GOLD);
+        check.setGravity(Gravity.CENTER);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
+        check.setBackground(ring);
+        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
+        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
+        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
+        body.addView(arch, ap);
+        TextView title = text(t("re_done_t"), display, 26, SAND);
+        title.setGravity(Gravity.CENTER);
+        body.addView(title, lp(0, 14, 0, 10));
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        StringBuilder names = new StringBuilder();
+        for (String p : reactBack) names.append("• ").append(cleanupData.label(p, Strings.lang)).append("\n");
+        c.addView(text(t("re_done_d", reactBack.size()), medium, 16, GOLD));
+        TextView list = text(names.toString().trim(), regular, 14, SAND);
+        list.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+        c.addView(list, lp(0, 6, 0, 0));
+        if (reactBack.size() < reactAsked) c.addView(text(t("re_fail", reactAsked - reactBack.size()), regular, 13, 0xFFE8896B), lp(0, 8, 0, 0));
+        body.addView(c, lp(0, 0, 0, 10));
+        final TextView more = ghostButton(t("re_more"), GOLD);
+        more.setOnClickListener(v -> {
+            if (busy) return;
+            busy = true; more.setAlpha(0.6f);
+            bg.execute(() -> {
+                try { loadReactivation(); runOnUiThread(() -> { busy = false; show(11); }); }
+                catch (final Exception e) { runOnUiThread(() -> { busy = false; more.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
+            });
+        });
+        body.addView(more, new LinearLayout.LayoutParams(-1, dp(52)));
+        button.setText(t("cl_home"));
+        button.setOnClickListener(v -> show(12));
+    }
+
+    /** At the end of an install, a person who did not clean first is offered to do it now. */
+    private void cleanNowCard(LinearLayout body) {
+        if (cleanedHere) return;
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
+        c.addView(text(t("cl_notyet_t"), medium, 17, GOLD));
+        c.addView(text(t("cl_notyet_d"), regular, 13, SAND), lp(0, 4, 0, 10));
+        final TextView go = ghostButton(t("cl_notyet_btn"), GOLD);
+        go.setOnClickListener(v -> {
+            if (busy) return;
+            busy = true; go.setAlpha(0.6f);
+            bg.execute(() -> {
+                try { loadCleanupPlan(); runOnUiThread(() -> { busy = false; cleanFromDone = true; space = SPACE_CLEAN; show(8); }); }
+                catch (final Exception e) { runOnUiThread(() -> { busy = false; go.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
+            });
+        });
+        c.addView(go, new LinearLayout.LayoutParams(-1, dp(48)));
+        body.addView(c, lp(0, 14, 0, 0));
     }
 
     // ---------- choosers ----------

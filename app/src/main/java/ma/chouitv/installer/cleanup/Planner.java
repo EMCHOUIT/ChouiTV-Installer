@@ -90,7 +90,7 @@ public final class Planner {
     /** Apps that are still listed but never recommended: the TV is likely to need them as they are. */
     private static final Pattern NEVER_RECOMMEND = Pattern.compile("(vpn|proxy|tunnel|privado|wireguard|shizuku|remap|keyboard|accessib|inputmethod|launcher|remote|tvhome)", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern NOT_FOR_US = Pattern.compile("(launcher|tvhome|setupwraith|setupwizard|provision|\\.home$|\\.setup$)", Pattern.CASE_INSENSITIVE);
+    static final Pattern NOT_FOR_US = Pattern.compile("(launcher|tvhome|setupwraith|setupwizard|provision|\\.home$|\\.setup$)", Pattern.CASE_INSENSITIVE);
 
     static String norm(String s) { return s == null ? "" : s.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", ""); }
 
