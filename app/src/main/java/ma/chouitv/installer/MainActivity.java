@@ -46,6 +46,7 @@ import ma.chouitv.installer.cleanup.Executor;
 import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Reactivation;
+import ma.chouitv.installer.guide.Guide;
 import ma.chouitv.installer.profiles.Preview;
 import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
@@ -102,6 +103,7 @@ public class MainActivity extends Activity {
             saved = l.equals("ar") || l.equals("fr") ? l : "en";
         }
         Strings.lang = saved;
+        guide = Guide.fromJson(sp.getString("guide", ""));
         root = new FrameLayout(this);
         root.setBackground(background());
         setContentView(root);
@@ -119,11 +121,14 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (busy) return;
-        if (step == 12) show(0);
-        else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(12); }
-        else if (step == 11 || step == 13 || step == 14 || step == 17) show(12);
+        if (step == 12) show(18);
+        else if (step == 18) show(0);
+        else if (step == 19) show(18);
+        else if (step == 20) show(19);
+        else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(guide != null ? 19 : 12); }
+        else if (step == 11 || step == 13 || step == 14 || step == 17) show(guide != null ? 19 : 12);
         else if (step == 15 || step == 16) show(17);
-        else if (step == 1) show(12);
+        else if (step == 1) show(guide != null ? 19 : 12);
         else if (step == 2) show(1);
         else super.onBackPressed();
     }
@@ -158,8 +163,16 @@ public class MainActivity extends Activity {
         col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
         TextView button = button("");
         col.addView(button, lp(0, 12, 0, 0));
+        if (guide != null && (n == 1 || n == 2 || n == 4 || n == 8 || n == 11 || n == 14 || n == 17)) {
+            if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
+            guideBar(body);
+        }
+        if (guide != null && ((n == 5 && guide.path == Guide.Path.EQUIP) || n == 13 || n == 16)) clearGuide();
         switch (n) {
             case 0: language(body, button); break;
+            case 18: modeScreen(body, button); break;
+            case 19: pathsScreen(body, button); break;
+            case 20: switchScreen(body, button); break;
             case 1: prepare(body, button); break;
             case 2: connect(body, button); break;
             case 3: install(body, button); break;
@@ -229,7 +242,7 @@ public class MainActivity extends Activity {
             body.addView(c, lp(0, 0, 0, 10));
         }
         button.setText(t("continue"));
-        button.setOnClickListener(v -> show(12));
+        button.setOnClickListener(v -> show(18));
     }
 
     private void prepare(LinearLayout body, TextView button) {
@@ -330,6 +343,7 @@ public class MainActivity extends Activity {
         bg.execute(() -> {
             try {
                 Adb a = Adb.connect(ip, 5555, new File(getFilesDir(), "keys"));
+                if (tv != null && tv != a) tv.close();
                 tv = a;
                 flow = new Flow(a, getCacheDir());
                 model = flow.model();
@@ -1104,9 +1118,10 @@ public class MainActivity extends Activity {
             c.setOnClickListener(v -> { if (!busy) { space = sp; show(1); } });
             body.addView(c, lp(0, 12, 0, 0));
         }
-        button.setText(t("hub_lang"));
+        resumeCard(body);
+        button.setText(t("hub_mode"));
         button.setAlpha(0.9f);
-        button.setOnClickListener(v -> show(0));
+        button.setOnClickListener(v -> show(18));
     }
 
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
@@ -1154,7 +1169,11 @@ public class MainActivity extends Activity {
             button.setOnClickListener(v -> show(5));
         } else {
             button.setText(t("cl_next_install"));
-            button.setOnClickListener(v -> { space = SPACE_INSTALL; show(3); });
+            button.setOnClickListener(v -> {
+                space = SPACE_INSTALL;
+                if (guide != null && guide.path == Guide.Path.EQUIP) { guide.step = 1; saveGuide(); }
+                show(3);
+            });
         }
     }
 
@@ -1346,7 +1365,13 @@ public class MainActivity extends Activity {
     private void profilesScreen(final LinearLayout body, TextView button, final boolean getMode) {
         titleBlock(body, t(getMode ? "g_title" : "s_title"), t(getMode ? "g_sub" : "s_sub"));
         if (getMode) addSaveCard(body); else addTarget(body);
-        final java.util.List<Profile> all = store().list();
+        java.util.List<Profile> every = store().list();
+        if (!getMode && guide != null && guide.path == Guide.Path.COPY && !guide.profile.isEmpty()) {
+            java.util.List<Profile> mine = new ArrayList<>();
+            for (Profile pr : every) if (pr.name.equals(guide.profile)) mine.add(pr);
+            if (!mine.isEmpty()) every = mine;
+        }
+        final java.util.List<Profile> all = every;
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.addView(text(t("st_list_h"), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
@@ -1408,8 +1433,13 @@ public class MainActivity extends Activity {
             bg.execute(() -> {
                 try {
                     String json = flow.exportSettings();
-                    store().save(typed, now(), tvModel, json);
-                    runOnUiThread(() -> { busy = false; Toast.makeText(this, t("st_saved"), Toast.LENGTH_SHORT).show(); show(14); });
+                    final Profile saved = store().save(typed, now(), tvModel, json);
+                    runOnUiThread(() -> {
+                        busy = false;
+                        Toast.makeText(this, t("st_saved"), Toast.LENGTH_SHORT).show();
+                        if (guide != null && guide.path == Guide.Path.COPY) { guide.step = 1; guide.profile = saved.name; saveGuide(); show(20); }
+                        else show(14);
+                    });
                 } catch (final Exception e) {
                     runOnUiThread(() -> { busy = false; saveBtn.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
                 }
@@ -1555,6 +1585,159 @@ public class MainActivity extends Activity {
         body.addView(undo, new LinearLayout.LayoutParams(-1, dp(52)));
         button.setText(t("st_back"));
         button.setOnClickListener(v -> show(17));
+    }
+
+    // ---------- the guide: choose a mode, choose a path, and know where you are ----------
+
+    private Guide guide;
+
+    private void saveGuide() {
+        getSharedPreferences("installer", MODE_PRIVATE).edit().putString("guide", guide == null ? "" : guide.toJson()).apply();
+    }
+
+    private void clearGuide() { guide = null; saveGuide(); }
+
+    /** The space a guided step lives in. */
+    private int spaceFor(Guide g) {
+        switch (g.path) {
+            case EQUIP: return g.step == 0 ? SPACE_CLEAN : SPACE_INSTALL;
+            case COPY: return g.step == 0 ? SPACE_GET : SPACE_SEND;
+            default: return SPACE_REACT;
+        }
+    }
+
+    /** Starts or resumes a guided path: each space begins with the connection to the TV, except the step that only asks to change TV. */
+    private void goGuided() {
+        if (guide.path == Guide.Path.COPY && guide.step == 1) { show(20); return; }
+        if (guide.path == Guide.Path.EQUIP && guide.step == 2) { guide.step = 1; saveGuide(); }   // the settings step needs the install's own state: redo from the install
+        space = spaceFor(guide);
+        show(1);
+    }
+
+    private void modeScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("md_title"), t("md_sub"));
+        resumeCard(body);
+        String[][] cards = {{"guided", "md_g_t", "md_g_d", "md_g_1", "md_g_2", "md_g_tag"}, {"free", "md_f_t", "md_f_d", "md_f_1", "md_f_2", ""}};
+        for (final String[] c : cards) {
+            boolean g = c[0].equals("guided");
+            LinearLayout card = card(g);
+            if (!c[5].isEmpty()) card.addView(chip(t(c[5]), GOLD, DARK, 0));
+            card.addView(text(t(c[1]), display, 24, SAND), lp(0, 4, 0, 0));
+            card.addView(text(t(c[2]), regular, 14, MUTED), lp(0, 2, 0, 8));
+            card.addView(text("◆  " + t(c[3]), regular, 14, SAND), lp(0, 2, 0, 0));
+            card.addView(text("◆  " + t(c[4]), regular, 14, SAND), lp(0, 2, 0, 0));
+            card.setOnClickListener(v -> { if (!busy) show(g ? 19 : 12); });
+            body.addView(card, lp(0, 12, 0, 0));
+        }
+        button.setText(t("hub_lang"));
+        button.setOnClickListener(v -> show(0));
+    }
+
+    private void pathsScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("pt_title"), t("pt_sub"));
+        resumeCard(body);
+        String[][] paths = {{"equip", "pt_equip_t", "pt_equip_d", "pt_equip_n"}, {"copy", "pt_copy_t", "pt_copy_d", "pt_copy_n"}, {"react", "pt_react_t", "pt_react_d", "pt_react_n"}};
+        for (final String[] p : paths) {
+            LinearLayout card = card(false);
+            card.addView(text(t(p[1]), display, 22, SAND));
+            card.addView(text(t(p[2]), regular, 14, MUTED), lp(0, 2, 0, 6));
+            card.addView(text(t(p[3]), medium, 13, GOLD));
+            card.setOnClickListener(v -> {
+                if (busy) return;
+                guide = new Guide(Guide.Path.valueOf(p[0].toUpperCase(java.util.Locale.ROOT)));
+                saveGuide();
+                goGuided();
+            });
+            body.addView(card, lp(0, 12, 0, 0));
+        }
+        button.setText(t("pt_back"));
+        button.setOnClickListener(v -> show(18));
+    }
+
+    /** A guided path that was left in the middle: one tap to go on, one to give up. */
+    private void resumeCard(LinearLayout body) {
+        if (guide == null) return;
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        c.addView(text(t("rs_h"), medium, 17, GOLD));
+        c.addView(text(t("pt_" + guide.path.key() + "_t"), medium, 16, SAND), lp(0, 2, 0, 0));
+        c.addView(text(t("rs_step", guide.step + 1, guide.path.steps), regular, 13, MUTED), lp(0, 2, 0, 8));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        TextView go = pill(t("rs_go"), true), drop = pill(t("rs_drop"), false);
+        LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, -2, 1f);
+        w.setMarginEnd(dp(8));
+        row.addView(go, w);
+        row.addView(drop, new LinearLayout.LayoutParams(0, -2, 1f));
+        go.setOnClickListener(v -> { if (!busy) goGuided(); });
+        drop.setOnClickListener(v -> { clearGuide(); show(step); });
+        c.addView(row);
+        body.addView(c, lp(0, 10, 0, 0));
+    }
+
+    /** The bar of steps and the «now» / «next» card, at the top of each screen of a guided path. */
+    private void guideBar(LinearLayout body) {
+        final Guide g = guide;
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        Guide probe = new Guide(g.path);
+        for (int i = 0; i < g.path.steps; i++) {
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            TextView dot = text(i < g.step ? "✓" : String.valueOf(i + 1), medium, 15, i == g.step ? DARK : SAND);
+            dot.setGravity(Gravity.CENTER);
+            GradientDrawable gd = new GradientDrawable();
+            gd.setShape(GradientDrawable.OVAL);
+            if (i == g.step) gd.setColor(GOLD);
+            else if (i < g.step) gd.setColor(0xFF3F7A5C);
+            else { gd.setColor(0); gd.setStroke(dp(2), 0xFF6E7C72); }
+            dot.setBackground(gd);
+            cell.addView(dot, new LinearLayout.LayoutParams(dp(34), dp(34)));
+            probe.step = i;
+            TextView lab = text(t(probe.key('l')), medium, 12, i == g.step ? GOLD : i < g.step ? SAND : 0xFF96A098);
+            lab.setGravity(Gravity.CENTER);
+            cell.addView(lab, lp(0, 4, 0, 0));
+            bar.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
+        body.addView(bar, lp(0, 4, 0, 8));
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
+        c.addView(chip(t("gl_now"), GOLD, DARK, 0));
+        c.addView(text(t(g.key('n')), medium, 18, GOLD), lp(0, 6, 0, 0));
+        c.addView(text(g.profile.isEmpty() ? t(g.key('d')) : t(g.key('d'), g.profile), regular, 14, SAND), lp(0, 4, 0, 8));
+        c.addView(text(t("gl_next") + "  " + t(g.key('x')), regular, 13, MUTED));
+        body.addView(c, lp(0, 0, 0, 10));
+    }
+
+    /** The step that only asks to change TV: it says what to do on the other TV, then connects to it. */
+    private void switchScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("sw_title"), t("sw_sub"));
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        c.addView(text(t("sw_saved"), regular, 13, MUTED));
+        c.addView(text(guide != null && !guide.profile.isEmpty() ? guide.profile : "—", medium, 19, SAND));
+        body.addView(c, lp(0, 10, 0, 10));
+        String[] items = {"prep2a", "prep3a", "prep3b"};
+        for (int i = 0; i < items.length; i++) {
+            LinearLayout row = card(false);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.addView(new Orn.StarNum(this, String.valueOf(i + 1), medium), new LinearLayout.LayoutParams(dp(36), dp(36)));
+            TextView tt = text(t(items[i]), regular, 15, SAND);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
+            p.setMarginStart(dp(12));
+            row.addView(tt, p);
+            body.addView(row, lp(0, 0, 0, 8));
+        }
+        button.setText(t("sw_btn"));
+        button.setOnClickListener(v -> {
+            if (busy) return;
+            if (guide != null) { guide.step = 2; saveGuide(); }
+            if (tv != null) { tv.close(); tv = null; }
+            space = SPACE_SEND;
+            show(2);
+        });
     }
 
     // ---------- choosers ----------
