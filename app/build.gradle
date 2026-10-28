@@ -11,8 +11,8 @@ android {
         minSdk 26
         targetSdk 34
         // the installer has its own version: 1.0, 1.1, ... (the ChouiTV version it installs is read from latest.json)
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
     }
 
     buildFeatures {
@@ -41,4 +41,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+}
+
+dependencies {
+    // the pure part (the plan, the guard, the run on a fake TV) is tested on the JVM
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20231013'
 }

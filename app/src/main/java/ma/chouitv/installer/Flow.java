@@ -3,7 +3,12 @@ package ma.chouitv.installer;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import ma.chouitv.installer.cleanup.Planner;
+import ma.chouitv.installer.cleanup.Shell;
 
 /** What the installer does to the TV, step by step. Every method blocks: call them from a worker thread. */
 final class Flow {
@@ -16,6 +21,34 @@ final class Flow {
     boolean playProtect;
 
     Flow(Adb tv, File cache) { this.tv = tv; this.cache = cache; }
+
+    // ---------- what the cleanup needs ----------
+
+    /** The TV's shell, as the cleanup's own small interface (it is tested on a fake TV). */
+    Shell shell() { return tv::shell; }
+
+    private Set<String> packages(String cmd) throws IOException {
+        Set<String> s = new HashSet<>();
+        for (String line : tv.shell(cmd).split("\n")) {
+            line = line.trim();
+            if (line.startsWith("package:")) s.add(line.substring(8));
+        }
+        return s;
+    }
+
+    /** What the TV says about itself and which apps it has, on and off. */
+    Planner.Tv tvInfo() throws IOException {
+        return new Planner.Tv(prop("ro.product.manufacturer"), prop("ro.product.brand"), prop("ro.product.model"), prop("ro.product.device"),
+            packages("pm list packages"), packages("pm list packages -d"));
+    }
+
+    /** Free memory in kB, 0 when the TV does not say. */
+    long freeRamKb() {
+        try {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("MemAvailable:\\s+(\\d+)").matcher(tv.shell("cat /proc/meminfo"));
+            return m.find() ? Long.parseLong(m.group(1)) : 0;
+        } catch (Exception e) { return 0; }
+    }
 
     // ---------- the steps of the installation ----------
 
