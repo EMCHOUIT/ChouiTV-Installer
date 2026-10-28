@@ -22,7 +22,7 @@ public class UserAppsTest {
     private static final String MEM =
         "Applications Memory Usage (in Kilobytes):\nUptime: 1\n\nTotal PSS by process:\n    137,872K: ma.chouitv.screensaver (pid 32439 / activities)\n"
         + "     47,673K: com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0 (pid 843)\n"
-        + "     31,155K: ver3.ycntivi.off (pid 7077)\n     10,240K: ver3.ycntivi.off:remote (pid 7100)\n\nTotal PSS by OOM adjustment:\n   999,999K: Native\n";
+        + "     31,155K: ver3.ycntivi.off (pid 7077)\n     52,000K: com.nova.tv (pid 8000)\n     10,240K: ver3.ycntivi.off:remote (pid 7100)\n\nTotal PSS by OOM adjustment:\n   999,999K: Native\n";
     private static final String USAGE =
         "      package=mitv.service totalTimeUsed=\"00:00\" lastTimeUsed=\"1970-01-01 00:00:00\" totalTimeVisible=\"00:00\" lastTimeVisible=\"1970-01-01 00:00:00\" totalTimeFS=\"00:00\" lastTimeFS=\"1970-01-01 00:00:00\" appLaunchCount=0 \n"
         + "      package=com.nova.tv totalTimeUsed=\"00:10\" lastTimeUsed=\"2026-09-01 20:00:00\" totalTimeVisible=\"00:10\" lastTimeVisible=\"2026-09-01 20:05:00\" totalTimeFS=\"00:00\" lastTimeFS=\"1970-01-01 00:00:00\" appLaunchCount=3 \n"
@@ -98,6 +98,35 @@ public class UserAppsTest {
         assertFalse("does not start with the TV", p.userApps.get("ver3.ycntivi.off").recommended);
         assertEquals("the recommended app comes first", "com.nova.tv", p.groups.get(Group.USER).get(0).pkg);
         assertEquals(57, p.userApps.get("com.nova.tv").daysSinceUse);
+    }
+
+    @Test public void anAppThatDoesNotHoldMemoryIsNotRecommendedEvenIfItStartsWithTheTvAndIsUnused() throws Exception {
+        Facts f = facts("com.nova.tv", "sleepy.app.z");
+        f.autostart.add("sleepy.app.z");
+        Plan p = Planner.plan(data(), tv(f));
+        assertTrue(p.userApps.get("com.nova.tv").recommended);
+        assertFalse("not running: no cost to save, only a guess", p.userApps.get("sleepy.app.z").recommended);
+        assertTrue(p.userApps.get("sleepy.app.z").autostart);
+    }
+
+    @Test public void aVpnAndOurChannelsAppAreNeverRecommendedOrOffered() throws Exception {
+        Facts f = facts("io.privado.android", "my.vpn.app", "com.majnioui.tv.channels");
+        for (String x : new String[] {"io.privado.android", "my.vpn.app"}) { f.autostart.add(x); f.ramMb.put(x, 80); }
+        Plan p = Planner.plan(data(), tv(f));
+        assertFalse(p.userApps.get("io.privado.android").recommended);
+        assertFalse(p.userApps.get("my.vpn.app").recommended);
+        assertFalse("our Channels app is not for the list", p.userApps.containsKey("com.majnioui.tv.channels"));
+    }
+
+    @Test public void streamingAppsAreOfferedWheneverInstalledEvenIfTheChosenListDoesNotNameThem() throws Exception {
+        CleanupData d = CleanupData.parse("{\"schema\":1,\"consensusMin\":20,\"keep\":[],\"homes\":[],\"genericModels\":[],\"genericDevices\":[],"
+            + "\"packages\":[\"com.tcl.bi\",\"com.netflix.ninja\",\"com.amazon.amazonvideo.livingroom\"],\"groups\":[\"tracking\",\"optional\",\"optional\"],"
+            + "\"lists\":[{\"id\":\"consensus\",\"source\":\"consensus\",\"brands\":[],\"models\":[],\"devices\":[],\"p\":[0]}]}");
+        Plan p = Planner.plan(d, tv(facts(), "com.tcl.bi", "com.netflix.ninja", "com.amazon.amazonvideo.livingroom"));
+        assertEquals(2, p.groups.get(Group.OPTIONAL).size());
+        assertFalse("never ticked for the person", p.defaultSelection().contains("com.netflix.ninja"));
+        Planner.Tv off = new Planner.Tv("X", "X", "M", "d", new HashSet<>(Arrays.asList("com.netflix.ninja")), new HashSet<>(Arrays.asList("com.netflix.ninja")), facts());
+        assertTrue("already off: not offered", Planner.plan(d, off).groups.get(Group.OPTIONAL).isEmpty());
     }
 
     @Test public void withoutUsageStatisticsNothingIsRecommended() throws Exception {

@@ -88,7 +88,7 @@ public final class Planner {
     }
 
     /** Apps that are still listed but never recommended: the TV is likely to need them as they are. */
-    private static final Pattern NEVER_RECOMMEND = Pattern.compile("(vpn|shizuku|remap|keyboard|accessib|inputmethod|launcher|remote|tvhome)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NEVER_RECOMMEND = Pattern.compile("(vpn|proxy|tunnel|privado|wireguard|shizuku|remap|keyboard|accessib|inputmethod|launcher|remote|tvhome)", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern NOT_FOR_US = Pattern.compile("(launcher|tvhome|setupwraith|setupwizard|provision|\\.home$|\\.setup$)", Pattern.CASE_INSENSITIVE);
 
@@ -124,6 +124,7 @@ public final class Planner {
         for (Group g : Group.values()) p.groups.put(g, new ArrayList<Item>());
         Set<String> seen = new LinkedHashSet<>();
         if (list != null) fromList(d, tv, list, p, seen);
+        streaming(d, tv, p, seen);
         if (tv.facts != null) userApps(d, tv, p, seen);
         return p;
     }
@@ -140,6 +141,18 @@ public final class Planner {
         }
     }
 
+    /** The streaming and entertainment apps are the person's to tick, so they are offered whenever installed, even if the chosen list does not name them. */
+    private static void streaming(CleanupData d, Tv tv, Plan p, Set<String> seen) {
+        List<String> found = new ArrayList<>();
+        for (String pkg : tv.installed) {
+            if (d.group.get(pkg) != Group.OPTIONAL || seen.contains(pkg) || tv.disabled.contains(pkg) || !Guard.validPackage(pkg)) continue;
+            if (d.keep.contains(pkg) || d.homes.contains(pkg) || NOT_FOR_US.matcher(pkg).find() || pkg.startsWith("com.android.")) continue;
+            found.add(pkg);
+        }
+        Collections.sort(found);
+        for (String pkg : found) { seen.add(pkg); p.groups.get(Group.OPTIONAL).add(new Item(pkg, Group.OPTIONAL)); }
+    }
+
     /** The apps the person installed that are worth a look: never ours, Google's, protected, home screens, keyboards or accessibility. */
     private static void userApps(CleanupData d, Tv tv, Plan p, Set<String> seen) {
         Facts f = tv.facts;
@@ -147,11 +160,12 @@ public final class Planner {
         for (String pkg : f.user) {
             if (seen.contains(pkg) || tv.disabled.contains(pkg) || !Guard.validPackage(pkg)) continue;
             if (d.keep.contains(pkg) || d.homes.contains(pkg) || NOT_FOR_US.matcher(pkg).find() || f.sensitive.contains(pkg)) continue;
-            if (pkg.startsWith("ma.chouitv.") || pkg.startsWith("com.google.") || pkg.startsWith("com.android.") || pkg.equals("android")) continue;
+            if (pkg.startsWith("ma.chouitv.") || pkg.startsWith("com.majnioui.") || pkg.startsWith("com.google.") || pkg.startsWith("com.android.") || pkg.equals("android")) continue;
             boolean boot = f.autostart.contains(pkg);
             int ram = f.ramMb.containsKey(pkg) ? f.ramMb.get(pkg) : -1;
             int days = !f.usageKnown ? -1 : (f.daysSinceUse.containsKey(pkg) ? f.daysSinceUse.get(pkg) : Integer.MAX_VALUE);
-            boolean rec = boot && days >= Facts.LONG_UNUSED_DAYS && !NEVER_RECOMMEND.matcher(pkg).find();
+            // recommended only when it wakes up with the TV, has not been used for a month AND holds memory right now: a real cost, not a guess
+            boolean rec = boot && ram > 0 && days >= Facts.LONG_UNUSED_DAYS && !NEVER_RECOMMEND.matcher(pkg).find();
             found.add(new UserApp(pkg, boot, ram, days == Integer.MAX_VALUE ? 9999 : days, rec));
         }
         Collections.sort(found, new Comparator<UserApp>() {
