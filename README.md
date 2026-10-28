@@ -11,62 +11,13 @@
 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/stargazers"><img src="https://img.shields.io/github/stars/EMCHOUIT/ChouiTV-Installer?style=flat&color=D6AF6B&labelColor=0A1D14" alt="stars"></a>
 </p>
 
-<p align="center"><a href="#download">⬇️ التحميل</a> · <a href="#why">✨ لماذا</a> · <a href="#journey">🚀 الرحلة</a> · <a href="#installs">📦 ما يثبّته</a> · <a href="#safety">🛡️ الأمان</a> · <a href="#cleanup">🧹 التنظيف</a> · <a href="#faq">❓ أسئلة</a> · <a href="#build">🛠️ البناء</a></p>
+<p align="center"><a href="#why">✨ لماذا</a> · <a href="#journey">🚀 الرحلة</a> · <a href="#installs">📦 ما يثبّته</a> · <a href="#safety">🛡️ الأمان</a> · <a href="#cleanup">🧹 التنظيف</a> · <a href="#faq">❓ أسئلة</a> · <a href="#build">🛠️ البناء</a> · <a href="#download">⬇️ التحميل</a></p>
 
 <div dir="rtl" align="right">
 
 تطبيق صغير على هاتفك يجد تلفزيونك، وينزّل **أحدث إصدار** من [ChouiTV](https://github.com/EMCHOUIT/ChouiTV)، ويثبّته ويضبطه. **بلا كمبيوتر، بلا أوامر، في نحو دقيقتين.**
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20نزّل%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>لهاتف أندرويد 8 أو أحدث · الملف نحو 1 ميغابايت</sub></p>
-
-<a id="download"></a>
-
-## ⬇️ التحميل المباشر
-
-<table dir="rtl">
-<tr>
-<td width="230" valign="top" align="center"><img src="docs/media/qr-download.png" alt="QR code" width="210"><br><sub>امسح الرمز من شاشة حاسوبك لفتح الرابط على هاتفك.</sub></td>
-<td valign="top">
-
-[**⬇ نزّل ملف APK**](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk) · `ChouiTV-Installer.apk` · نحو 1 ميغابايت
-
-[![version](https://img.shields.io/github/v/release/EMCHOUIT/ChouiTV-Installer?label=version&color=D6AF6B&labelColor=0A1D14)](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) [![downloads](https://img.shields.io/github/downloads/EMCHOUIT/ChouiTV-Installer/total?label=downloads&color=3F7A5C&labelColor=0A1D14)](https://github.com/EMCHOUIT/ChouiTV-Installer/releases)
-
-- 📱 أندرويد 8 أو أحدث
-- 🔒 موقَّع، بلا حساب ولا إعلانات
-- 📦 [كل الإصدارات](https://github.com/EMCHOUIT/ChouiTV-Installer/releases)
-
-</td>
-</tr>
-</table>
-
-### التثبيت في ثلاث خطوات
-
-1. **نزّل** الملف `ChouiTV-Installer.apk` على هاتفك (الزر أعلاه، أو امسح الرمز من شاشة أخرى).
-2. **افتحه.** إن طلب أندرويد إذنًا فاسمح مرة واحدة للمتصفح أو لمدير الملفات بتثبيت التطبيقات. وقد يظهر تحذير «تطبيق غير معروف»: الشيفرة مفتوحة وتستطيع بناءها بنفسك ([البناء](#build)).
-3. **افتح ChouiTV Installer** واتبع الخطوات.
-
-<details><summary><b>🔍 تحقّق من الملف</b></summary>
-
-تعرض [صفحة الإصدار](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) بصمة SHA-256 بجانب الملف. قارنها بنتيجة الأمر:
-
-```bash
-sha256sum ChouiTV-Installer.apk                       # Linux, macOS
-certutil -hashfile ChouiTV-Installer.apk SHA256       # Windows
-```
-
-وبصمة شهادة التوقيع (SHA-256) واحدة في كل الإصدارات:
-
-```text
-f29f993b7456170455dcc574a2bc5f1f74b97f7995a564f8a839175d068a79c1
-```
-
-للتحقق منها:
-
-```bash
-apksigner verify --print-certs ChouiTV-Installer.apk
-```
-</details>
 
 <a id="why"></a>
 
@@ -187,6 +138,50 @@ git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease
 ```
+
+<a id="download"></a>
+
+<h2 align="center">⬇️ التحميل المباشر</h2>
+
+<p align="center"><img src="docs/media/qr-download.png" alt="QR code" width="230"><br><sub>امسح الرمز من شاشة حاسوبك لفتح الرابط على هاتفك.</sub></p>
+
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20%D9%86%D8%B2%D9%91%D9%84%20%D9%85%D9%84%D9%81%20APK-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="⬇ نزّل ملف APK"></a><br><sub><code>ChouiTV-Installer.apk</code> · نحو 1 ميغابايت</sub></p>
+
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest"><img src="https://img.shields.io/github/v/release/EMCHOUIT/ChouiTV-Installer?label=version&color=D6AF6B&labelColor=0A1D14" alt="version"></a> <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases"><img src="https://img.shields.io/github/downloads/EMCHOUIT/ChouiTV-Installer/total?label=downloads&color=3F7A5C&labelColor=0A1D14" alt="downloads"></a></p>
+
+<p align="center">📱 أندرويد 8 أو أحدث &nbsp;·&nbsp; 🔒 موقَّع، بلا حساب ولا إعلانات &nbsp;·&nbsp; 📦 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases">كل الإصدارات</a></p>
+
+<h3 align="center">التثبيت في ثلاث خطوات</h3>
+
+<table align="center" dir="rtl">
+<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>نزّل</b> الملف <code>ChouiTV-Installer.apk</code> على هاتفك (الزر أعلاه، أو امسح الرمز من شاشة أخرى).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>افتحه.</b> إن طلب أندرويد إذنًا فاسمح مرة واحدة للمتصفح أو لمدير الملفات بتثبيت التطبيقات. وقد يظهر تحذير «تطبيق غير معروف»: الشيفرة مفتوحة وتستطيع بناءها بنفسك (<a href="#build">البناء</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>افتح ChouiTV Installer</b> واتبع الخطوات.</td></tr>
+</table>
+
+<div align="center">
+
+<details><summary><b>🔍 تحقّق من الملف</b></summary>
+
+تعرض [صفحة الإصدار](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) بصمة SHA-256 بجانب الملف. قارنها بنتيجة الأمر:
+
+```bash
+sha256sum ChouiTV-Installer.apk                       # Linux, macOS
+certutil -hashfile ChouiTV-Installer.apk SHA256       # Windows
+```
+
+وبصمة شهادة التوقيع (SHA-256) واحدة في كل الإصدارات:
+
+```text
+f29f993b7456170455dcc574a2bc5f1f74b97f7995a564f8a839175d068a79c1
+```
+
+للتحقق منها:
+
+```bash
+apksigner verify --print-certs ChouiTV-Installer.apk
+```
+</details>
+
+</div>
 
 ## 💚 الشكر والترخيص
 

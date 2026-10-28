@@ -11,60 +11,11 @@
 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/stargazers"><img src="https://img.shields.io/github/stars/EMCHOUIT/ChouiTV-Installer?style=flat&color=D6AF6B&labelColor=0A1D14" alt="stars"></a>
 </p>
 
-<p align="center"><a href="#download">⬇️ Téléchargement</a> · <a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#cleanup">🧹 Nettoyage</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a></p>
+<p align="center"><a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#cleanup">🧹 Nettoyage</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a> · <a href="#download">⬇️ Téléchargement</a></p>
 
 Une petite appli sur votre téléphone qui trouve votre télé, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle. **Sans ordinateur, sans commande, en environ deux minutes.**
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Télécharger%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>Pour téléphone Android 8 ou plus · environ 1 Mo</sub></p>
-
-<a id="download"></a>
-
-## ⬇️ Téléchargement direct
-
-<table>
-<tr>
-<td width="230" valign="top" align="center"><img src="docs/media/qr-download.png" alt="QR code" width="210"><br><sub>Scannez depuis votre ordinateur pour ouvrir le lien sur votre téléphone.</sub></td>
-<td valign="top">
-
-[**⬇ Télécharger l'APK**](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk) · `ChouiTV-Installer.apk` · environ 1 Mo
-
-[![version](https://img.shields.io/github/v/release/EMCHOUIT/ChouiTV-Installer?label=version&color=D6AF6B&labelColor=0A1D14)](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) [![downloads](https://img.shields.io/github/downloads/EMCHOUIT/ChouiTV-Installer/total?label=downloads&color=3F7A5C&labelColor=0A1D14)](https://github.com/EMCHOUIT/ChouiTV-Installer/releases)
-
-- 📱 Android 8 ou plus
-- 🔒 Signé, sans compte ni publicité
-- 📦 [Toutes les versions](https://github.com/EMCHOUIT/ChouiTV-Installer/releases)
-
-</td>
-</tr>
-</table>
-
-### Installer en trois gestes
-
-1. **Téléchargez** le fichier `ChouiTV-Installer.apk` sur votre téléphone (le bouton ci-dessus, ou le QR code depuis un autre écran).
-2. **Ouvrez-le.** Si Android demande une autorisation, acceptez une fois que votre navigateur ou votre gestionnaire de fichiers installe des applis. Un avertissement « appli inconnue » peut apparaître : le code est ouvert et vous pouvez le compiler vous-même ([Compiler](#build)).
-3. **Ouvrez ChouiTV Installer** et suivez les étapes.
-
-<details><summary><b>🔍 Vérifier le fichier</b></summary>
-
-La [page de la version](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) affiche l'empreinte SHA-256 à côté du fichier. Comparez-la au résultat de :
-
-```bash
-sha256sum ChouiTV-Installer.apk                       # Linux, macOS
-certutil -hashfile ChouiTV-Installer.apk SHA256       # Windows
-```
-
-L'empreinte du certificat de signature (SHA-256) est la même pour toutes les versions :
-
-```text
-f29f993b7456170455dcc574a2bc5f1f74b97f7995a564f8a839175d068a79c1
-```
-
-Pour la vérifier :
-
-```bash
-apksigner verify --print-certs ChouiTV-Installer.apk
-```
-</details>
 
 <a id="why"></a>
 
@@ -173,6 +124,50 @@ git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease
 ```
+
+<a id="download"></a>
+
+<h2 align="center">⬇️ Téléchargement direct</h2>
+
+<p align="center"><img src="docs/media/qr-download.png" alt="QR code" width="230"><br><sub>Scannez depuis votre ordinateur pour ouvrir le lien sur votre téléphone.</sub></p>
+
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger%20l%27APK-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="⬇ Télécharger l'APK"></a><br><sub><code>ChouiTV-Installer.apk</code> · environ 1 Mo</sub></p>
+
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest"><img src="https://img.shields.io/github/v/release/EMCHOUIT/ChouiTV-Installer?label=version&color=D6AF6B&labelColor=0A1D14" alt="version"></a> <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases"><img src="https://img.shields.io/github/downloads/EMCHOUIT/ChouiTV-Installer/total?label=downloads&color=3F7A5C&labelColor=0A1D14" alt="downloads"></a></p>
+
+<p align="center">📱 Android 8 ou plus &nbsp;·&nbsp; 🔒 Signé, sans compte ni publicité &nbsp;·&nbsp; 📦 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases">Toutes les versions</a></p>
+
+<h3 align="center">Installer en trois gestes</h3>
+
+<table align="center">
+<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Téléchargez</b> le fichier <code>ChouiTV-Installer.apk</code> sur votre téléphone (le bouton ci-dessus, ou le QR code depuis un autre écran).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Ouvrez-le.</b> Si Android demande une autorisation, acceptez une fois que votre navigateur ou votre gestionnaire de fichiers installe des applis. Un avertissement « appli inconnue » peut apparaître : le code est ouvert et vous pouvez le compiler vous-même (<a href="#build">Compiler</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Ouvrez ChouiTV Installer</b> et suivez les étapes.</td></tr>
+</table>
+
+<div align="center">
+
+<details><summary><b>🔍 Vérifier le fichier</b></summary>
+
+La [page de la version](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) affiche l'empreinte SHA-256 à côté du fichier. Comparez-la au résultat de :
+
+```bash
+sha256sum ChouiTV-Installer.apk                       # Linux, macOS
+certutil -hashfile ChouiTV-Installer.apk SHA256       # Windows
+```
+
+L'empreinte du certificat de signature (SHA-256) est la même pour toutes les versions :
+
+```text
+f29f993b7456170455dcc574a2bc5f1f74b97f7995a564f8a839175d068a79c1
+```
+
+Pour la vérifier :
+
+```bash
+apksigner verify --print-certs ChouiTV-Installer.apk
+```
+</details>
+
+</div>
 
 ## 💚 Crédits et licence
 
