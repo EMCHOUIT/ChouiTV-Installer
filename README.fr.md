@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/media/logo.png" alt="ChouiTV Installer logo (Ch8TV)" width="132"></p>
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="docs/media/hero-fr.png" alt="ChouiTV Installer : installez ChouiTV sur votre télé depuis votre téléphone" width="100%"></a></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/download/v1.3/ChouiTV-Installer-1.3.apk"><img src="docs/media/hero-fr.png" alt="ChouiTV Installer : installez ChouiTV sur votre télé depuis votre téléphone" width="100%"></a></p>
 
 <p align="center"><a href="README.md">🇲🇦 العربية</a> &nbsp;·&nbsp; <b>🇫🇷 Français</b> &nbsp;·&nbsp; <a href="README.en.md">🇬🇧 English</a></p>
 
@@ -15,7 +15,7 @@
 
 Une petite appli sur votre téléphone qui trouve votre télé, la nettoie si vous le voulez, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle, puis copie vos réglages sur une autre télé. **Elle vous guide pas à pas, ou vous choisissez vous-même. Sans ordinateur, sans commande.**
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Télécharger%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>Pour téléphone Android 8 ou plus · environ 1 Mo</sub></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/download/v1.3/ChouiTV-Installer-1.3.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Télécharger%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>Pour téléphone Android 8 ou plus · environ 1 Mo</sub></p>
 
 <a id="why"></a>
 
@@ -155,7 +155,7 @@ cd ChouiTV-Installer
 
 <p align="center"><img src="docs/media/qr-download.png" alt="QR code" width="230"><br><sub>Scannez depuis votre ordinateur pour ouvrir le lien sur votre téléphone.</sub></p>
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger%20l%27APK-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="⬇ Télécharger l'APK"></a><br><sub><code>ChouiTV-Installer.apk</code> · environ 1 Mo</sub></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/download/v1.3/ChouiTV-Installer-1.3.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger%20l%27APK-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="⬇ Télécharger l'APK"></a><br><sub><code>ChouiTV-Installer-1.3.apk</code> · environ 1 Mo</sub></p>
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest"><img src="https://img.shields.io/github/v/release/EMCHOUIT/ChouiTV-Installer?label=version&color=D6AF6B&labelColor=0A1D14" alt="version"></a> <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases"><img src="https://img.shields.io/github/downloads/EMCHOUIT/ChouiTV-Installer/total?label=downloads&color=3F7A5C&labelColor=0A1D14" alt="downloads"></a></p>
 
@@ -164,7 +164,7 @@ cd ChouiTV-Installer
 <h3 align="center">Installer en trois gestes</h3>
 
 <table align="center">
-<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Téléchargez</b> le fichier <code>ChouiTV-Installer.apk</code> sur votre téléphone (le bouton ci-dessus, ou le QR code depuis un autre écran).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Ouvrez-le.</b> Si Android demande une autorisation, acceptez une fois que votre navigateur ou votre gestionnaire de fichiers installe des applis. Un avertissement « appli inconnue » peut apparaître : le code est ouvert et vous pouvez le compiler vous-même (<a href="#build">Compiler</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Ouvrez ChouiTV Installer</b> et suivez les étapes.</td></tr>
+<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Téléchargez</b> le fichier <code>ChouiTV-Installer-1.3.apk</code> sur votre téléphone (le bouton ci-dessus, ou le QR code depuis un autre écran).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Ouvrez-le.</b> Si Android demande une autorisation, acceptez une fois que votre navigateur ou votre gestionnaire de fichiers installe des applis. Un avertissement « appli inconnue » peut apparaître : le code est ouvert et vous pouvez le compiler vous-même (<a href="#build">Compiler</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Ouvrez ChouiTV Installer</b> et suivez les étapes.</td></tr>
 </table>
 
 <div align="center">
@@ -174,8 +174,8 @@ cd ChouiTV-Installer
 La [page de la version](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) affiche l'empreinte SHA-256 à côté du fichier. Comparez-la au résultat de :
 
 ```bash
-sha256sum ChouiTV-Installer.apk                       # Linux, macOS
-certutil -hashfile ChouiTV-Installer.apk SHA256       # Windows
+sha256sum ChouiTV-Installer-1.3.apk                       # Linux, macOS
+certutil -hashfile ChouiTV-Installer-1.3.apk SHA256       # Windows
 ```
 
 L'empreinte du certificat de signature (SHA-256) est la même pour toutes les versions :
@@ -187,7 +187,7 @@ f29f993b7456170455dcc574a2bc5f1f74b97f7995a564f8a839175d068a79c1
 Pour la vérifier :
 
 ```bash
-apksigner verify --print-certs ChouiTV-Installer.apk
+apksigner verify --print-certs ChouiTV-Installer-1.3.apk
 ```
 </details>
 

@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/media/logo.png" alt="ChouiTV Installer logo (Ch8TV)" width="132"></p>
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="docs/media/hero-en.png" alt="ChouiTV Installer: install ChouiTV on your TV from your phone" width="100%"></a></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/download/v1.3/ChouiTV-Installer-1.3.apk"><img src="docs/media/hero-en.png" alt="ChouiTV Installer: install ChouiTV on your TV from your phone" width="100%"></a></p>
 
 <p align="center"><a href="README.md">🇲🇦 العربية</a> &nbsp;·&nbsp; <a href="README.fr.md">🇫🇷 Français</a> &nbsp;·&nbsp; <b>🇬🇧 English</b></p>
 
@@ -15,7 +15,7 @@
 
 A small app on your phone that finds your TV, cleans it if you want, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs and sets it up, then copies your settings to another TV. **It guides you step by step, or you choose yourself. No computer, no commands.**
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/download/v1.3/ChouiTV-Installer-1.3.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
 
 <a id="why"></a>
 
@@ -155,7 +155,7 @@ cd ChouiTV-Installer
 
 <p align="center"><img src="docs/media/qr-download.png" alt="QR code" width="230"><br><sub>Scan it from your computer to open the link on your phone.</sub></p>
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20the%20APK-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="⬇ Download the APK"></a><br><sub><code>ChouiTV-Installer.apk</code> · about 1 MB</sub></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/download/v1.3/ChouiTV-Installer-1.3.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20the%20APK-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="⬇ Download the APK"></a><br><sub><code>ChouiTV-Installer-1.3.apk</code> · about 1 MB</sub></p>
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest"><img src="https://img.shields.io/github/v/release/EMCHOUIT/ChouiTV-Installer?label=version&color=D6AF6B&labelColor=0A1D14" alt="version"></a> <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases"><img src="https://img.shields.io/github/downloads/EMCHOUIT/ChouiTV-Installer/total?label=downloads&color=3F7A5C&labelColor=0A1D14" alt="downloads"></a></p>
 
@@ -164,7 +164,7 @@ cd ChouiTV-Installer
 <h3 align="center">Install in three steps</h3>
 
 <table align="center">
-<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Download</b> the <code>ChouiTV-Installer.apk</code> file on your phone (the button above, or the QR code from another screen).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Open it.</b> If Android asks for permission, allow your browser or file manager to install apps once. An "unknown app" warning may appear: the code is open and you can build it yourself (<a href="#build">Build</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Open ChouiTV Installer</b> and follow the steps.</td></tr>
+<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Download</b> the <code>ChouiTV-Installer-1.3.apk</code> file on your phone (the button above, or the QR code from another screen).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Open it.</b> If Android asks for permission, allow your browser or file manager to install apps once. An "unknown app" warning may appear: the code is open and you can build it yourself (<a href="#build">Build</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Open ChouiTV Installer</b> and follow the steps.</td></tr>
 </table>
 
 <div align="center">
@@ -174,8 +174,8 @@ cd ChouiTV-Installer
 The [release page](https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest) shows the SHA-256 next to the file. Compare it with the result of:
 
 ```bash
-sha256sum ChouiTV-Installer.apk                       # Linux, macOS
-certutil -hashfile ChouiTV-Installer.apk SHA256       # Windows
+sha256sum ChouiTV-Installer-1.3.apk                       # Linux, macOS
+certutil -hashfile ChouiTV-Installer-1.3.apk SHA256       # Windows
 ```
 
 The signing certificate fingerprint (SHA-256) is the same for every version:
@@ -187,7 +187,7 @@ f29f993b7456170455dcc574a2bc5f1f74b97f7995a564f8a839175d068a79c1
 To check it:
 
 ```bash
-apksigner verify --print-certs ChouiTV-Installer.apk
+apksigner verify --print-certs ChouiTV-Installer-1.3.apk
 ```
 </details>
 
