@@ -9,7 +9,7 @@
 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/stargazers"><img src="https://img.shields.io/github/stars/EMCHOUIT/ChouiTV-Installer?style=flat&color=D6AF6B&labelColor=0A1D14" alt="stars"></a>
 </p>
 
-<p align="center"><a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#report">📮 Rapport</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a></p>
+<p align="center"><a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#cleanup">🧹 Nettoyage</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a></p>
 
 Une petite appli sur votre téléphone qui trouve votre télé, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle. **Sans ordinateur, sans commande, en environ deux minutes.**
 
@@ -34,7 +34,7 @@ Une petite appli sur votre téléphone qui trouve votre télé, télécharge la 
 2. **Préparez la télé** : activez le « Débogage USB » et le « Débogage réseau » ; c'est expliqué dans l'appli.
 3. **Connectez-vous** : l'appli trouve la télé sur le Wi-Fi, vous appuyez sur « Autoriser » sur son écran.
 4. **Installation** : une barre avec pourcentage et huit étapes, de la vérification au contrôle final.
-5. **Personnalisez, puis c'est fini** : ville, fuseau horaire, méthode de prière ; un merci et le partage facultatif du résultat.
+5. **Personnalisez, nettoyez (facultatif), puis c'est fini** : ville, fuseau horaire, méthode de prière ; un nettoyage facultatif des applis préinstallées ; un merci.
 
 <a id="installs"></a>
 
@@ -54,21 +54,28 @@ L'appli lit la version dans [`latest.json`](https://raw.githubusercontent.com/EM
 
 - **Filet de sécurité** : avant de couper l'accueil d'origine, l'appli arme sur la télé un script qui le rétablit tout seul au bout de 5 minutes si ChouiTV ne s'ouvre pas.
 - **Respect de votre télé** : si elle refuse de couper son accueil (comme la Nokia Streaming Box 8000), il est conservé et vous en êtes informé.
+- **Nettoyage sans risque** : il est facultatif, il coupe sans supprimer, vérifie la télé après chaque groupe et remet tout en place si elle va mal.
 - **Vie privée** : pas de compte, pas de publicité, pas de suivi ; la clé qui identifie votre téléphone y reste.
 
 > [!TIP]
 > **Une fois fini** : désactivez le « Débogage réseau » sur la télé.
 
 
-<a id="report"></a>
+<a id="cleanup"></a>
 
-## 📮 Partagez le résultat de votre télé
+## 🧹 Nettoyez votre télé en sécurité
 
-<img src="docs/media/report-fr.png" alt="📮 Partagez le résultat de votre télé" width="100%">
+<img src="docs/media/cleanup-fr.png" alt="🧹 Nettoyez votre télé en sécurité" width="100%">
 
-À la fin, vous pouvez partager le résultat de votre télé. **Si vous avez rencontré un problème**, votre rapport nous aide à trouver une solution. **Si tout s'est bien passé**, il nous aide à proposer de nouvelles fonctionnalités pour votre télé dans les prochaines versions.
+Certaines télés (Xiaomi, TCL, etc.) arrivent avec des applis préinstallées dont vous n'avez pas besoin : suivi, statistiques, publicités, services qui ralentissent l'appareil. Après l'installation, l'appli vous propose un **nettoyage facultatif**.
 
-Vous voyez **tout ce qui sera envoyé avant l'envoi** (marque et modèle, Android, versions, résultat des étapes) ; **jamais** l'adresse IP, le nom du Wi-Fi, le numéro de série ni votre ville. C'est vous qui appuyez sur « Submit ». La liste est dans [Télés testées](https://github.com/EMCHOUIT/ChouiTV/blob/main/docs/TESTED-TVS.fr.md).
+- **On coupe, on ne supprime pas** : chaque appli revient en un geste depuis « Restaurer » sur le premier écran.
+- **Vous voyez le plan avant tout** : les applis sont rangées par groupe (suivi, publicités, préinstallées, facultatives) et vous choisissez.
+- **Des listes réfléchies** : la liste ChouiTV pour les TCL, des listes communautaires pour le modèle de votre télé, et si le modèle est inconnu, seulement ce sur quoi plusieurs listes s'accordent.
+- **Toujours protégé** : ChouiTV, les services Google, les réglages et tout écran d'accueil.
+- **La télé est vérifiée après chaque groupe** : si elle va mal, le groupe est remis en place et le nettoyage s'arrête ; si la connexion est perdue, la télé remet tout en place d'elle-même au bout de 5 minutes.
+
+Le point de restauration est gardé sur le téléphone et sur la télé.
 
 <a id="faq"></a>
 
@@ -94,9 +101,14 @@ Certaines télés imposent leur accueil. L'appli vous le dit à la fin, et vous 
 Réactivez l'accueil de la télé dans ses réglages, ou utilisez `optimize/reset.sh` de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV).
 </details>
 
-<details><summary><b>Faut-il un compte GitHub ?</b></summary>
+<details><summary><b>Le nettoyage est-il sûr ?</b></summary>
 
-Pas pour installer ChouiTV. Le compte ne sert qu'à envoyer le rapport, et vous pouvez copier le texte et l'envoyer autrement.
+Il est facultatif, il coupe sans supprimer, vous montre le plan d'abord et vérifie la télé après chaque groupe. Mais une appli coupée ne se met plus à jour, et une mise à jour du système peut en réactiver. Certaines télés perdraient leur Wi-Fi enregistré si l'assistant de configuration était coupé : il est donc protégé lui aussi.
+</details>
+
+<details><summary><b>Comment annuler un nettoyage ?</b></summary>
+
+Depuis le premier écran, choisissez « Restaurer après un nettoyage », puis remettez une appli ou toutes. Une copie en texte est aussi sur la télé : `/data/local/tmp/chouitv-restore.txt`.
 </details>
 
 <a id="build"></a>

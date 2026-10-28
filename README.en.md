@@ -9,7 +9,7 @@
 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/stargazers"><img src="https://img.shields.io/github/stars/EMCHOUIT/ChouiTV-Installer?style=flat&color=D6AF6B&labelColor=0A1D14" alt="stars"></a>
 </p>
 
-<p align="center"><a href="#why">✨ Why</a> · <a href="#journey">🚀 The journey</a> · <a href="#installs">📦 Installed</a> · <a href="#safety">🛡️ Safety</a> · <a href="#report">📮 Report</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Build</a></p>
+<p align="center"><a href="#why">✨ Why</a> · <a href="#journey">🚀 The journey</a> · <a href="#installs">📦 Installed</a> · <a href="#safety">🛡️ Safety</a> · <a href="#cleanup">🧹 Cleanup</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Build</a></p>
 
 A small app on your phone that finds your TV, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs it and sets it up. **No computer, no commands, in about two minutes.**
 
@@ -34,7 +34,7 @@ A small app on your phone that finds your TV, downloads the **latest version** o
 2. **Prepare the TV**: turn on "USB debugging" and "Network debugging"; it is explained in the app.
 3. **Connect**: the app finds the TV on the Wi-Fi, and you press "Allow" on its screen.
 4. **Install**: a bar with a percentage and eight steps, from the check to the final verification.
-5. **Make it yours, then done**: city, time zone, prayer method; a thank-you and the optional sharing of the result.
+5. **Make it yours, clean up (optional), then done**: city, time zone, prayer method; an optional cleanup of the preinstalled apps; a thank-you.
 
 <a id="installs"></a>
 
@@ -54,21 +54,28 @@ The app reads the version from [`latest.json`](https://raw.githubusercontent.com
 
 - **Safety net**: before turning the TV's original home off, the app arms a script on the TV that puts it back by itself after 5 minutes if ChouiTV does not open.
 - **Respect for your TV**: if it refuses to turn its home off (like the Nokia Streaming Box 8000), it keeps it and you are told.
+- **Cleanup without risk**: it is optional, turns apps off without deleting them, checks the TV after each group and puts them back if it gets unwell.
 - **Privacy**: no accounts, no ads, no tracking; the key that identifies your phone stays in it.
 
 > [!TIP]
 > **When you are done**: turn "Network debugging" off on the TV.
 
 
-<a id="report"></a>
+<a id="cleanup"></a>
 
-## 📮 Share your TV's result
+## 🧹 Clean your TV, safely
 
-<img src="docs/media/report-en.png" alt="📮 Share your TV's result" width="100%">
+<img src="docs/media/cleanup-en.png" alt="🧹 Clean your TV, safely" width="100%">
 
-At the end you can share your TV's result. **If you ran into a problem**, your report helps us find a fix. **If everything went well**, it helps us suggest new features for your TV in the next versions.
+Some TVs (Xiaomi, TCL and others) ship with preinstalled apps you do not need: tracking, analytics, ads, services that slow the device down. After the install the app offers an **optional cleanup**.
 
-You see **everything that will be sent before it goes** (brand and model, Android, versions, the result of the steps); **never** the IP address, the Wi-Fi name, the serial number or your city. You press "Submit" yourself. The list is in [Tested TVs](https://github.com/EMCHOUIT/ChouiTV/blob/main/docs/TESTED-TVS.en.md).
+- **Turned off, never deleted**: every app comes back in one tap from "Restore" on the first screen.
+- **You see the plan first**: apps are grouped (tracking, ads, preinstalled, optional) and you choose.
+- **Careful lists**: ChouiTV's list for TCL, community lists for your TV's model, and when the model is unknown only what several lists agree on.
+- **Always protected**: ChouiTV, Google services, the settings and any home screen.
+- **The TV is checked after each group**: if it gets unwell the group is put back and the cleanup stops; if the connection is lost the TV puts everything back by itself within 5 minutes.
+
+The restore point is kept on the phone and on the TV.
 
 <a id="faq"></a>
 
@@ -94,9 +101,14 @@ Some TVs force their own home. The app tells you at the end, and you find ChouiT
 Turn the TV's home back on in its settings, or use `optimize/reset.sh` from [ChouiTV](https://github.com/EMCHOUIT/ChouiTV).
 </details>
 
-<details><summary><b>Do I need a GitHub account?</b></summary>
+<details><summary><b>Is the cleanup safe?</b></summary>
 
-Not to install ChouiTV. The account is only for sending the report, and you can copy the text and send it another way.
+It is optional, turns apps off without deleting them, shows you the plan first and checks the TV after each group. But an app that is off no longer updates, and a system update can turn some back on. Some TVs would lose their saved Wi-Fi if the setup wizard were turned off, so it is protected too.
+</details>
+
+<details><summary><b>How do I undo a cleanup?</b></summary>
+
+From the first screen choose "Restore after a cleanup", then put one app or all of them back. A plain-text copy is also on the TV: `/data/local/tmp/chouitv-restore.txt`.
 </details>
 
 <a id="build"></a>
