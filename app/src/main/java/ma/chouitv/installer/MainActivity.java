@@ -633,17 +633,25 @@ public class MainActivity extends Activity {
 
     /** The lists: the published file if it can be read, else the copy that came with the app. */
     private CleanupData loadCleanupData() throws Exception {
+        CleanupData bundled;
+        try (InputStream in = getAssets().open("cleanup.json")) {
+            ByteArrayOutputStream o = new ByteArrayOutputStream();
+            byte[] b = new byte[8192]; int n;
+            while ((n = in.read(b)) > 0) o.write(b, 0, n);
+            bundled = CleanupData.parse(new String(o.toByteArray(), "UTF-8"));
+        }
         try {
-            return CleanupData.parse(new String(Net.fetch(CLEANUP_URL), "UTF-8"));
+            CleanupData online = CleanupData.parse(new String(Net.fetch(CLEANUP_URL), "UTF-8"));
+            // the published lists are the truth; the names this app was built with fill any name they do not have yet
+            for (java.util.Map.Entry<String, String> e : bundled.display.entrySet()) online.display.putIfAbsent(e.getKey(), e.getValue());
+            for (java.util.Map.Entry<String, String> e : bundled.namesAr.entrySet()) online.namesAr.putIfAbsent(e.getKey(), e.getValue());
+            for (java.util.Map.Entry<String, String> e : bundled.namesFr.entrySet()) online.namesFr.putIfAbsent(e.getKey(), e.getValue());
+            return online;
         } catch (Exception offline) {
-            try (InputStream in = getAssets().open("cleanup.json")) {
-                ByteArrayOutputStream o = new ByteArrayOutputStream();
-                byte[] b = new byte[8192]; int n;
-                while ((n = in.read(b)) > 0) o.write(b, 0, n);
-                return CleanupData.parse(new String(o.toByteArray(), "UTF-8"));
-            }
+            return bundled;
         }
     }
+
 
     private String niceName(String pkg) {
         String ar = cleanupData == null ? null : cleanupData.namesAr.get(pkg);
