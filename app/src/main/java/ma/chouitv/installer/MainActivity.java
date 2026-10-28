@@ -302,7 +302,7 @@ public class MainActivity extends Activity {
         input.setPadding(dp(16), dp(12), dp(16), dp(12));
         body.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
         sectionLabel(body, t("sec_know"));
-        infoCard(body, t("on_tv") + " : " + t("allow1") + " " + t("allow2"));
+        infoCard(body, t("on_tv") + " : " + t("allow1") + "." + (char) 10 + t("allow2"));
         final TextView status = text("", regular, 14, GOLD);
         body.addView(status, lp(0, 12, 0, 12));
         button.setText(t("connect"));
@@ -1141,7 +1141,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
             cp.setMarginStart(dp(14));
             c.addView(col, cp);
-            c.setOnClickListener(v -> { if (!busy) { space = sp; show(1); } });
+            c.setOnClickListener(v -> { if (!busy) { clearGuide(); space = sp; show(1); } });   // choosing a space yourself leaves any guided path
             body.addView(c, lp(0, 12, 0, 0));
         }
         resumeCard(body);
