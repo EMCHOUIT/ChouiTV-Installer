@@ -263,6 +263,7 @@ public class MainActivity extends Activity {
 
     private void prepare(LinearLayout body, TextView button) {
         String[][] s = {{"prep1a", "prep1b"}, {"prep2a", "prep2b"}, {"prep3a", "prep3b"}};
+        sectionLabel(body, t("sec_todo"));
         for (int i = 0; i < 3; i++) {
             LinearLayout c = card(false);
             c.setOrientation(LinearLayout.HORIZONTAL);
@@ -535,6 +536,7 @@ public class MainActivity extends Activity {
     private String eta(long sec) { return sec < 45 ? t("eta_lt1") : t("eta_min", Math.max(1, Math.round(sec / 60f))); }
 
     private void personalise(LinearLayout body, final TextView button) {
+        sectionLabel(body, t("sec_choose"));
         cityV = addChoice(body, t("city"), city, v -> pickCity());
         tzV = addChoice(body, t("tz"), label("z_", tz), v -> pick(t("tz"), ZONES, "z_", x -> { tz = x; tzV.setText(label("z_", tz)); }));
         methodV = addChoice(body, t("method"), label("m_", method), v -> pick(t("method"), METHODS, "m_", x -> { method = x; methodV.setText(label("m_", method)); }));
@@ -638,16 +640,11 @@ public class MainActivity extends Activity {
         body.addView(star, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         cleanNowCard(body);
         if (homeResult != null && homeResult != Flow.Home.OURS) {
-            LinearLayout hw = card(false);
-            hw.setBackground(cardBg(false, 0x33E8896B, 0xFFE8896B));
-            hw.addView(text(homeResult == Flow.Home.UNSURE || homeResult == Flow.Home.FAILED ? t("home_unsure") : t("home_kept"), regular, 14, SAND));
-            body.addView(hw, lp(0, 14, 0, 0));
+            sectionLabel(body, t("sec_left"));
+            infoCard(body, homeResult == Flow.Home.UNSURE || homeResult == Flow.Home.FAILED ? t("home_unsure") : t("home_kept"));
         }
-        LinearLayout tip = card(false);
-        tip.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        tip.addView(text(t("tip"), medium, 15, GOLD));
-        tip.addView(text(t("tip_text"), regular, 14, SAND));
-        body.addView(tip, lp(0, 14, 0, 0));
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, t("tip") + " : " + t("tip_text"));
         TextView open = ghostButton(t("open_tv"), GOLD);
         open.setOnClickListener(v -> bg.execute(() -> { try { flow.openOnTv(); } catch (Exception ignored) { } }));
         body.addView(open, lp(0, 14, 0, 0));
@@ -1506,11 +1503,8 @@ public class MainActivity extends Activity {
         final Profile p = sendProfile;
         final Preview pv = sendPreview;
         titleBlock(body, t("st_send_title", p.name), t("st_send_sub"));
-        LinearLayout info = card(false);
-        info.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        info.addView(text(t("st_to", tvModelLine()), medium, 16, SAND));
-        info.addView(text(pv.error != null ? "" : pv.nothing ? t("st_nothing") : t("st_count", pv.count), regular, 13, MUTED));
-        body.addView(info, lp(0, 10, 0, 8));
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, t("st_to", tvModelLine()) + (pv.error != null ? "" : ". " + (pv.nothing ? t("st_nothing") : t("st_count", pv.count))));
         if (pv.error != null) {
             LinearLayout e = card(false);
             e.setBackground(cardBg(false, 0x33E8896B, 0xFFE8896B));
@@ -1526,6 +1520,7 @@ public class MainActivity extends Activity {
             button.setOnClickListener(v -> show(17));
             return;
         }
+        sectionLabel(body, t("sec_change"));
         for (String change : pv.changes) {
             LinearLayout c = card(false);
             c.setPadding(dp(16), dp(10), dp(16), dp(10));
@@ -1534,7 +1529,7 @@ public class MainActivity extends Activity {
             c.addView(tv);
             body.addView(c, lp(0, 0, 0, 6));
         }
-        body.addView(text(t("st_keep"), regular, 13, MUTED), lp(4, 8, 4, 0));
+        infoCard(body, t("st_keep"));
         button.setText(t("st_apply", pv.count));
         button.setOnClickListener(v -> {
             if (busy) return;
@@ -1711,11 +1706,9 @@ public class MainActivity extends Activity {
     /** After the save in the copy path: send now (both TVs are here) or later (the settings stay on the phone). */
     private void nowOrLater(LinearLayout body, TextView button) {
         titleBlock(body, t("cp_h"), t("cp_sub"));
-        LinearLayout saved = card(false);
-        saved.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        saved.addView(text(t("cp_saved"), medium, 17, GOLD));
-        saved.addView(text(guide != null ? guide.profile : "", regular, 14, SAND), lp(0, 2, 0, 0));
-        body.addView(saved, lp(0, 8, 0, 8));
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, t("cp_saved") + " : " + (guide != null ? guide.profile : ""));
+        sectionLabel(body, t("sec_choose"));
         LinearLayout now = card(true);
         now.addView(text(t("cp_now_t"), display, 22, SAND));
         now.addView(text(t("cp_now_d"), regular, 14, MUTED), lp(0, 2, 0, 6));
@@ -1747,13 +1740,11 @@ public class MainActivity extends Activity {
     /** The step that only asks to change TV: it says what to do on the other TV, then connects to it. */
     private void switchScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("sw_title"), t("sw_sub"));
-        LinearLayout c = card(false);
-        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
         if (guide != null && !guide.profile.isEmpty()) {
-            c.addView(text(t("sw_saved"), regular, 13, MUTED));
-            c.addView(text(guide.profile, medium, 19, SAND));
-            body.addView(c, lp(0, 10, 0, 10));
+            sectionLabel(body, t("sec_know"));
+            infoCard(body, t("sw_saved") + " : " + guide.profile);
         }
+        sectionLabel(body, t("sec_todo"));
         String[] items = {"prep2a", "prep3a", "prep3b"};
         for (int i = 0; i < items.length; i++) {
             LinearLayout row = card(false);

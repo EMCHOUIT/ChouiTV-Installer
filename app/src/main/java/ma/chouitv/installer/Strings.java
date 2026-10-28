@@ -425,6 +425,8 @@ final class Strings {
         k("st_undone_info", "أُلغي الإرسال.", "L'envoi est annulé.", "The send is undone.");
         k("kp_done", "«%s» محفوظة على هذا الهاتف", "« %s » est enregistré sur ce téléphone", "\"%s\" is saved on this phone");
         k("st_back_list", "أرسل إعدادات محفوظة", "Envoyer des réglages enregistrés", "Send saved settings");
+        k("sec_todo", "المطلوب منك", "À faire", "To do");
+        k("sec_change", "ما سيتغيّر", "Ce qui va changer", "What will change");
         // time zones and prayer methods
         k("z_Africa/Abidjan", "المغرب · GMT (Africa/Abidjan)", "Maroc · GMT (Africa/Abidjan)", "Morocco · GMT (Africa/Abidjan)");
         k("z_city", "حسب المدينة", "Selon la ville", "By city");
