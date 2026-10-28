@@ -46,6 +46,9 @@ import ma.chouitv.installer.cleanup.Executor;
 import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Reactivation;
+import ma.chouitv.installer.profiles.Preview;
+import ma.chouitv.installer.profiles.Profile;
+import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
 
@@ -118,7 +121,8 @@ public class MainActivity extends Activity {
         if (busy) return;
         if (step == 12) show(0);
         else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(12); }
-        else if (step == 11 || step == 13) show(12);
+        else if (step == 11 || step == 13 || step == 14) show(12);
+        else if (step == 15 || step == 16) show(14);
         else if (step == 1) show(12);
         else if (step == 2) show(1);
         else super.onBackPressed();
@@ -166,6 +170,9 @@ public class MainActivity extends Activity {
             case 10: cleanupResult(body, button); break;
             case 11: reactivate(body, button); break;
             case 13: reactivated(body, button); break;
+            case 14: settingsHome(body, button); break;
+            case 15: sendScreen(body, button); break;
+            case 16: sentScreen(body, button); break;
             default: done(body, button); break;
         }
     }
@@ -1078,9 +1085,9 @@ public class MainActivity extends Activity {
         cleanedHere = false;
         cleanFromDone = false;
         titleBlock(body, t("hub_title"), t("hub_sub"));
-        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_react_t", "hub_react_d", "hub_react_tag"}};
+        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_set_t", "hub_set_d", "hub_set_tag"}, {"4", "hub_react_t", "hub_react_d", "hub_react_tag"}};
         for (int i = 0; i < cards.length; i++) {
-            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : SPACE_REACT;
+            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_SET : SPACE_REACT;
             LinearLayout c = card(i == 0);
             c.setOrientation(LinearLayout.HORIZONTAL);
             c.setGravity(Gravity.CENTER_VERTICAL);
@@ -1104,6 +1111,7 @@ public class MainActivity extends Activity {
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
     private void afterConnect(final TextView button, final TextView status) {
         if (space == SPACE_INSTALL) { busy = false; show(3); return; }
+        if (space == SPACE_SET) { busy = false; show(14); return; }
         stopTicker();
         status.setTextColor(GOLD);
         status.setText(t(space == SPACE_CLEAN ? "cl_loading" : "re_loading"));
@@ -1303,6 +1311,234 @@ public class MainActivity extends Activity {
         });
         c.addView(go, new LinearLayout.LayoutParams(-1, dp(48)));
         body.addView(c, lp(0, 14, 0, 0));
+    }
+
+    // ---------- my settings: named profiles, saved from a TV and sent to another ----------
+
+    private static final int SPACE_SET = 3;
+    private Profile sendProfile;
+    private Preview sendPreview, sentResult;
+
+    private ProfileStore store() { return new ProfileStore(new File(getFilesDir(), "profiles")); }
+
+    private String now() { return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).format(new java.util.Date()); }
+
+    private String defaultProfileName() {
+        String day = new java.text.SimpleDateFormat("d MMM yyyy", new Locale(Strings.lang)).format(new java.util.Date());
+        return (tvModel.isEmpty() ? "ChouiTV" : tvModel) + " · " + day;
+    }
+
+    private TextView pill(String label, boolean filled) {
+        TextView p = text(label, medium, 14, filled ? DARK : GOLD);
+        p.setGravity(Gravity.CENTER);
+        p.setPadding(dp(10), dp(9), dp(10), dp(9));
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(22));
+        g.setColor(filled ? GOLD : 0xFF142C1F);
+        g.setStroke(dp(2), GOLD);
+        p.setBackground(g);
+        return p;
+    }
+
+    private void settingsHome(final LinearLayout body, TextView button) {
+        titleBlock(body, t("st_title"), t("st_sub"));
+        LinearLayout save = card(false);
+        save.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        save.addView(text(t("st_save_h"), medium, 18, GOLD));
+        save.addView(text(t("st_save_d"), regular, 13, MUTED), lp(0, 2, 0, 8));
+        final EditText name = new EditText(this);
+        name.setText(defaultProfileName());
+        name.setTextColor(SAND);
+        name.setTypeface(regular);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        name.setSingleLine(true);
+        name.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        name.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+        name.setBackground(cardBg(false));
+        name.setPadding(dp(16), dp(10), dp(16), dp(10));
+        save.addView(name, new LinearLayout.LayoutParams(-1, dp(52)));
+        final TextView saveBtn = button(t("st_save_btn"));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, dp(52));
+        sp.topMargin = dp(10);
+        saveBtn.setLayoutParams(sp);
+        saveBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        saveBtn.setOnClickListener(v -> {
+            if (busy) return;
+            busy = true;
+            saveBtn.setAlpha(0.6f);
+            final String typed = name.getText().toString();
+            bg.execute(() -> {
+                try {
+                    String json = flow.exportSettings();
+                    store().save(typed, now(), tvModel, json);
+                    runOnUiThread(() -> { busy = false; Toast.makeText(this, t("st_saved"), Toast.LENGTH_SHORT).show(); show(14); });
+                } catch (final Exception e) {
+                    runOnUiThread(() -> { busy = false; saveBtn.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                }
+            });
+        });
+        save.addView(saveBtn);
+        body.addView(save, lp(0, 10, 0, 8));
+        final java.util.List<Profile> all = store().list();
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.addView(text(t("st_list_h"), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(text(String.valueOf(all.size()), medium, 14, SAND));
+        body.addView(head, lp(4, 8, 4, 6));
+        if (all.isEmpty()) body.addView(text(t("st_empty"), regular, 14, MUTED), lp(4, 0, 4, 8));
+        for (final Profile p : all) {
+            LinearLayout c = card(false);
+            TextView nm = text(p.name, medium, 19, SAND);
+            nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            c.addView(nm);
+            TextView meta = text((p.tv.isEmpty() ? "" : p.tv + " · ") + "ChouiTV " + p.version + " · " + p.date, regular, 12, MUTED);
+            meta.setTextDirection(View.TEXT_DIRECTION_LTR);
+            c.addView(meta, lp(0, 2, 0, 10));
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            final TextView send = pill(t("st_send"), true), ren = pill(t("st_rename"), false), del = pill(t("st_delete"), false);
+            LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, -2, 1f);
+            w.setMarginEnd(dp(8));
+            row.addView(send, w);
+            row.addView(ren, w);
+            row.addView(del, new LinearLayout.LayoutParams(0, -2, 1f));
+            send.setOnClickListener(v -> startSend(p, send));
+            ren.setOnClickListener(v -> askRename(p));
+            del.setOnClickListener(v -> askDelete(p));
+            c.addView(row);
+            body.addView(c, lp(0, 0, 0, 8));
+        }
+        button.setText(t("cl_home"));
+        button.setOnClickListener(v -> show(12));
+    }
+
+    private void askRename(final Profile p) {
+        final EditText in = new EditText(this);
+        in.setText(p.name);
+        in.setSingleLine(true);
+        in.setSelection(in.getText().length());
+        new AlertDialog.Builder(this).setTitle(t("st_rename_h")).setView(in)
+            .setPositiveButton(t("st_ok"), (d, w) -> {
+                try { store().rename(p.id, in.getText().toString()); } catch (Exception e) { Toast.makeText(this, t("st_err", e.getMessage()), Toast.LENGTH_LONG).show(); }
+                show(14);
+            }).setNegativeButton(t("cancel"), null).show();
+    }
+
+    private void askDelete(final Profile p) {
+        new AlertDialog.Builder(this).setTitle(t("st_del_q", p.name))
+            .setPositiveButton(t("st_delete"), (d, w) -> { store().delete(p.id); show(14); })
+            .setNegativeButton(t("cancel"), null).show();
+    }
+
+    /** Asks the TV what an import would change; nothing is applied. */
+    private void startSend(final Profile p, final TextView trigger) {
+        if (busy) return;
+        busy = true;
+        trigger.setAlpha(0.6f);
+        bg.execute(() -> {
+            String out;
+            try {
+                out = flow.importSettings(Base64.encodeToString(p.settingsJson.getBytes("UTF-8"), Base64.NO_WRAP), false);
+            } catch (IOException e) {
+                out = e.getMessage() == null ? "error: no answer" : e.getMessage();   // the TV's «error: …», or a lost connection
+            } catch (Exception e) {
+                out = "error: " + e;
+            }
+            final Preview pv = Preview.parse(out);
+            runOnUiThread(() -> { busy = false; sendProfile = p; sendPreview = pv; show(15); });
+        });
+    }
+
+    private void sendScreen(LinearLayout body, final TextView button) {
+        final Profile p = sendProfile;
+        final Preview pv = sendPreview;
+        titleBlock(body, t("st_send_title", p.name), t("st_send_sub"));
+        LinearLayout info = card(false);
+        info.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        info.addView(text(t("st_to", tvModelLine()), medium, 16, SAND));
+        info.addView(text(pv.error != null ? "" : pv.nothing ? t("st_nothing") : t("st_count", pv.count), regular, 13, MUTED));
+        body.addView(info, lp(0, 10, 0, 8));
+        if (pv.error != null) {
+            LinearLayout e = card(false);
+            e.setBackground(cardBg(false, 0x33E8896B, 0xFFE8896B));
+            e.addView(text(t("st_err_import"), medium, 15, SAND));
+            e.addView(text(pv.error, regular, 12, MUTED), lp(0, 4, 0, 0));
+            body.addView(e);
+            button.setText(t("st_back"));
+            button.setOnClickListener(v -> show(14));
+            return;
+        }
+        if (pv.nothing) {
+            button.setText(t("st_back"));
+            button.setOnClickListener(v -> show(14));
+            return;
+        }
+        for (String change : pv.changes) {
+            LinearLayout c = card(false);
+            c.setPadding(dp(16), dp(10), dp(16), dp(10));
+            TextView tv = text(change.replace(" -> ", "  →  "), regular, 14, SAND);
+            tv.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            c.addView(tv);
+            body.addView(c, lp(0, 0, 0, 6));
+        }
+        body.addView(text(t("st_keep"), regular, 13, MUTED), lp(4, 8, 4, 0));
+        button.setText(t("st_apply", pv.count));
+        button.setOnClickListener(v -> {
+            if (busy) return;
+            busy = true;
+            button.setAlpha(0.6f);
+            bg.execute(() -> {
+                try {
+                    String out = flow.importSettings(Base64.encodeToString(p.settingsJson.getBytes("UTF-8"), Base64.NO_WRAP), true);
+                    try { flow.rescheduleAdhan(); } catch (IOException ignored) { }
+                    final Preview done = Preview.parse(out);
+                    runOnUiThread(() -> { busy = false; sentResult = done; show(16); });
+                } catch (final Exception e) {
+                    runOnUiThread(() -> { busy = false; button.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                }
+            });
+        });
+    }
+
+    private void sentScreen(LinearLayout body, TextView button) {
+        body.setGravity(Gravity.CENTER_HORIZONTAL);
+        Orn.Arch arch = new Orn.Arch(this);
+        LinearLayout in = new LinearLayout(this);
+        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
+        TextView check = text("✓", medium, 40, GOLD);
+        check.setGravity(Gravity.CENTER);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
+        check.setBackground(ring);
+        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
+        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
+        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
+        body.addView(arch, ap);
+        TextView title = text(t("st_sent_t"), display, 26, SAND);
+        title.setGravity(Gravity.CENTER);
+        body.addView(title, lp(0, 14, 0, 10));
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        c.addView(text(t("st_sent_d", sentResult == null ? 0 : sentResult.count, tvModelLine()), regular, 15, SAND));
+        body.addView(c, lp(0, 0, 0, 10));
+        final TextView undo = ghostButton(t("st_undo"), MUTED);
+        undo.setOnClickListener(v -> {
+            if (busy) return;
+            busy = true; undo.setAlpha(0.6f);
+            bg.execute(() -> {
+                try {
+                    flow.undoImport();
+                    try { flow.rescheduleAdhan(); } catch (IOException ignored) { }
+                    runOnUiThread(() -> { busy = false; undo.setAlpha(1f); undo.setText(t("st_undone")); undo.setEnabled(false); });
+                } catch (final Exception e) {
+                    runOnUiThread(() -> { busy = false; undo.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                }
+            });
+        });
+        body.addView(undo, new LinearLayout.LayoutParams(-1, dp(52)));
+        button.setText(t("st_back"));
+        button.setOnClickListener(v -> show(14));
     }
 
     // ---------- choosers ----------

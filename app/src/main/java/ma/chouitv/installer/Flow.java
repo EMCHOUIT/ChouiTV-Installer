@@ -244,9 +244,28 @@ final class Flow {
         tv.shell("am broadcast -n " + HOME + "/.tilawah.MusicReceiver -a " + HOME + ".ADHAN_" + (on ? "ON" : "OFF"));
     }
 
-    /** A settings file made by «export»: what it would change (apply=false), or applies it (apply=true). */
+    /** The settings of this TV as one JSON export (the screensaver app answers the EXPORT broadcast). */
+    String exportSettings() throws IOException {
+        String out = saver("EXPORT", "");
+        int open = out.indexOf('{'), close = out.lastIndexOf('}');   // the broadcast adds its own quote and line ends around the JSON
+        if (open < 0 || close < open) throw new IOException("the TV sent no settings");
+        return out.substring(open, close + 1);
+    }
+
+    /** A settings file made by «export»: what it would change (apply=false), or applies it (apply=true). A big one travels as a file. */
     String importSettings(String b64, boolean apply) throws IOException {
-        return saver("IMPORT", "--es json_b64 " + b64 + (apply ? " --es apply yes" : ""));
+        String tail = apply ? " --es apply yes" : "";
+        if (b64.length() <= 3000) return saver("IMPORT", "--es json_b64 " + b64 + tail);
+        File f = new File(cache, "profile.b64");
+        try (java.io.FileOutputStream o = new java.io.FileOutputStream(f)) { o.write(b64.getBytes("US-ASCII")); }
+        try { tv.pushShell(f, "/data/local/tmp/chouitv-profile.b64", null); } finally { f.delete(); }
+        try { return saver("IMPORT", "--es json_b64 \"$(cat /data/local/tmp/chouitv-profile.b64)\"" + tail); }
+        finally { tv.shell("rm -f /data/local/tmp/chouitv-profile.b64"); }
+    }
+
+    /** Puts the settings from before the last import back. */
+    String undoImport() throws IOException {
+        return saver("IMPORT", "--ez undo true --es apply yes");
     }
 
     void openOnTv() throws IOException {
