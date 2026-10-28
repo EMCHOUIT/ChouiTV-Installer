@@ -166,7 +166,7 @@ public class UserAppsTest {
         CleanupData d = data();
         assertEquals("Netflix", d.label("com.netflix.ninja", "fr"));
         assertEquals("نتفليكس", d.label("com.netflix.ninja", "ar"));
-        assertEquals("some.pkg", d.label("some.pkg", "en"));
+        assertEquals("an unknown package is made readable, never shown raw", "Pkg", d.label("some.pkg", "en"));
     }
 
     // ---------- the run ----------

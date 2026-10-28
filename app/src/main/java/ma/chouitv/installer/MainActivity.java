@@ -748,7 +748,7 @@ public class MainActivity extends Activity {
         final TextView list = text("", regular, 12, MUTED);
         list.setTextDirection(View.TEXT_DIRECTION_LTR);
         StringBuilder b = new StringBuilder();
-        for (Planner.Item it : noise) b.append("• ").append(cleanupData.label(it.pkg, Strings.lang)).append("\n");
+        for (Planner.Item it : noise) b.append("• ").append(cleanupData.label(it.pkg, Strings.lang)).append("\n   ").append(it.pkg).append("\n");
         list.setText(b.toString().trim());
         list.setVisibility(View.GONE);
         c.addView(list, lp(0, 8, 0, 0));
