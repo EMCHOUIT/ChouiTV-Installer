@@ -121,8 +121,8 @@ public class MainActivity extends Activity {
         if (busy) return;
         if (step == 12) show(0);
         else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(12); }
-        else if (step == 11 || step == 13 || step == 14) show(12);
-        else if (step == 15 || step == 16) show(14);
+        else if (step == 11 || step == 13 || step == 14 || step == 17) show(12);
+        else if (step == 15 || step == 16) show(17);
         else if (step == 1) show(12);
         else if (step == 2) show(1);
         else super.onBackPressed();
@@ -170,7 +170,8 @@ public class MainActivity extends Activity {
             case 10: cleanupResult(body, button); break;
             case 11: reactivate(body, button); break;
             case 13: reactivated(body, button); break;
-            case 14: settingsHome(body, button); break;
+            case 14: profilesScreen(body, button, true); break;
+            case 17: profilesScreen(body, button, false); break;
             case 15: sendScreen(body, button); break;
             case 16: sentScreen(body, button); break;
             default: done(body, button); break;
@@ -1085,9 +1086,9 @@ public class MainActivity extends Activity {
         cleanedHere = false;
         cleanFromDone = false;
         titleBlock(body, t("hub_title"), t("hub_sub"));
-        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_set_t", "hub_set_d", "hub_set_tag"}, {"4", "hub_react_t", "hub_react_d", "hub_react_tag"}};
+        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}};
         for (int i = 0; i < cards.length; i++) {
-            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_SET : SPACE_REACT;
+            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : SPACE_REACT;
             LinearLayout c = card(i == 0);
             c.setOrientation(LinearLayout.HORIZONTAL);
             c.setGravity(Gravity.CENTER_VERTICAL);
@@ -1111,7 +1112,8 @@ public class MainActivity extends Activity {
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
     private void afterConnect(final TextView button, final TextView status) {
         if (space == SPACE_INSTALL) { busy = false; show(3); return; }
-        if (space == SPACE_SET) { busy = false; show(14); return; }
+        if (space == SPACE_GET) { busy = false; show(14); return; }
+        if (space == SPACE_SEND) { busy = false; show(17); return; }
         stopTicker();
         status.setTextColor(GOLD);
         status.setText(t(space == SPACE_CLEAN ? "cl_loading" : "re_loading"));
@@ -1315,7 +1317,7 @@ public class MainActivity extends Activity {
 
     // ---------- my settings: named profiles, saved from a TV and sent to another ----------
 
-    private static final int SPACE_SET = 3;
+    private static final int SPACE_GET = 3, SPACE_SEND = 4;
     private Profile sendProfile;
     private Preview sendPreview, sentResult;
 
@@ -1340,8 +1342,44 @@ public class MainActivity extends Activity {
         return p;
     }
 
-    private void settingsHome(final LinearLayout body, TextView button) {
-        titleBlock(body, t("st_title"), t("st_sub"));
+    /** The list of saved settings: from «get» it only manages them; from «send» each one can be sent to the connected TV. */
+    private void profilesScreen(final LinearLayout body, TextView button, final boolean getMode) {
+        titleBlock(body, t(getMode ? "g_title" : "s_title"), t(getMode ? "g_sub" : "s_sub"));
+        if (getMode) addSaveCard(body); else addTarget(body);
+        final java.util.List<Profile> all = store().list();
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.addView(text(t("st_list_h"), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(text(String.valueOf(all.size()), medium, 14, SAND));
+        body.addView(head, lp(4, 8, 4, 6));
+        if (all.isEmpty()) body.addView(text(t(getMode ? "st_empty" : "s_empty"), regular, 14, MUTED), lp(4, 0, 4, 8));
+        for (final Profile p : all) {
+            LinearLayout c = card(false);
+            TextView nm = text(p.name, medium, 19, SAND);
+            nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            c.addView(nm);
+            TextView meta = text((p.tv.isEmpty() ? "" : p.tv + " · ") + "ChouiTV " + p.version + " · " + p.date, regular, 12, MUTED);
+            meta.setTextDirection(View.TEXT_DIRECTION_LTR);
+            c.addView(meta, lp(0, 2, 0, 10));
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            final TextView send = pill(t("st_send"), true), ren = pill(t("st_rename"), false), del = pill(t("st_delete"), false);
+            LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, -2, 1f);
+            w.setMarginEnd(dp(8));
+            if (!getMode) row.addView(send, w);
+            row.addView(ren, w);
+            row.addView(del, new LinearLayout.LayoutParams(0, -2, 1f));
+            send.setOnClickListener(v -> startSend(p, send));
+            ren.setOnClickListener(v -> askRename(p));
+            del.setOnClickListener(v -> askDelete(p));
+            c.addView(row);
+            body.addView(c, lp(0, 0, 0, 8));
+        }
+        button.setText(t("cl_home"));
+        button.setOnClickListener(v -> show(12));
+    }
+
+    private void addSaveCard(final LinearLayout body) {
         LinearLayout save = card(false);
         save.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
         save.addView(text(t("st_save_h"), medium, 18, GOLD));
@@ -1379,37 +1417,15 @@ public class MainActivity extends Activity {
         });
         save.addView(saveBtn);
         body.addView(save, lp(0, 10, 0, 8));
-        final java.util.List<Profile> all = store().list();
-        LinearLayout head = new LinearLayout(this);
-        head.setOrientation(LinearLayout.HORIZONTAL);
-        head.addView(text(t("st_list_h"), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
-        head.addView(text(String.valueOf(all.size()), medium, 14, SAND));
-        body.addView(head, lp(4, 8, 4, 6));
-        if (all.isEmpty()) body.addView(text(t("st_empty"), regular, 14, MUTED), lp(4, 0, 4, 8));
-        for (final Profile p : all) {
-            LinearLayout c = card(false);
-            TextView nm = text(p.name, medium, 19, SAND);
-            nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
-            c.addView(nm);
-            TextView meta = text((p.tv.isEmpty() ? "" : p.tv + " · ") + "ChouiTV " + p.version + " · " + p.date, regular, 12, MUTED);
-            meta.setTextDirection(View.TEXT_DIRECTION_LTR);
-            c.addView(meta, lp(0, 2, 0, 10));
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            final TextView send = pill(t("st_send"), true), ren = pill(t("st_rename"), false), del = pill(t("st_delete"), false);
-            LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, -2, 1f);
-            w.setMarginEnd(dp(8));
-            row.addView(send, w);
-            row.addView(ren, w);
-            row.addView(del, new LinearLayout.LayoutParams(0, -2, 1f));
-            send.setOnClickListener(v -> startSend(p, send));
-            ren.setOnClickListener(v -> askRename(p));
-            del.setOnClickListener(v -> askDelete(p));
-            c.addView(row);
-            body.addView(c, lp(0, 0, 0, 8));
-        }
-        button.setText(t("cl_home"));
-        button.setOnClickListener(v -> show(12));
+    }
+
+    /** On «send», the banner says which TV the settings will go to. */
+    private void addTarget(LinearLayout body) {
+        LinearLayout info = card(false);
+        info.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        info.addView(text(t("st_to", tvModelLine()), medium, 16, SAND));
+        info.addView(text(t("s_choose"), regular, 13, MUTED));
+        body.addView(info, lp(0, 10, 0, 8));
     }
 
     private void askRename(final Profile p) {
@@ -1420,13 +1436,13 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle(t("st_rename_h")).setView(in)
             .setPositiveButton(t("st_ok"), (d, w) -> {
                 try { store().rename(p.id, in.getText().toString()); } catch (Exception e) { Toast.makeText(this, t("st_err", e.getMessage()), Toast.LENGTH_LONG).show(); }
-                show(14);
+                show(step);
             }).setNegativeButton(t("cancel"), null).show();
     }
 
     private void askDelete(final Profile p) {
         new AlertDialog.Builder(this).setTitle(t("st_del_q", p.name))
-            .setPositiveButton(t("st_delete"), (d, w) -> { store().delete(p.id); show(14); })
+            .setPositiveButton(t("st_delete"), (d, w) -> { store().delete(p.id); show(step); })
             .setNegativeButton(t("cancel"), null).show();
     }
 
@@ -1465,12 +1481,12 @@ public class MainActivity extends Activity {
             e.addView(text(pv.error, regular, 12, MUTED), lp(0, 4, 0, 0));
             body.addView(e);
             button.setText(t("st_back"));
-            button.setOnClickListener(v -> show(14));
+            button.setOnClickListener(v -> show(17));
             return;
         }
         if (pv.nothing) {
             button.setText(t("st_back"));
-            button.setOnClickListener(v -> show(14));
+            button.setOnClickListener(v -> show(17));
             return;
         }
         for (String change : pv.changes) {
@@ -1538,7 +1554,7 @@ public class MainActivity extends Activity {
         });
         body.addView(undo, new LinearLayout.LayoutParams(-1, dp(52)));
         button.setText(t("st_back"));
-        button.setOnClickListener(v -> show(14));
+        button.setOnClickListener(v -> show(17));
     }
 
     // ---------- choosers ----------

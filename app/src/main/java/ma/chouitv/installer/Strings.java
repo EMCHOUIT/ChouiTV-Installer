@@ -239,9 +239,6 @@ final class Strings {
         k("re_done_d", "%d تطبيقًا عاد", "%d applis de retour", "%d apps are back");
         k("re_fail", "%d لم تُفعَّل: حاول مجددًا", "%d n'ont pas voulu se réactiver : réessayez", "%d would not turn back on: try again");
         k("re_more", "أعِد تفعيل تطبيقات أخرى", "Réactiver d'autres applis", "Turn more apps back on");
-        k("hub_set_t", "إعداداتي", "Mes réglages", "My settings");
-        k("hub_set_d", "احفظ إعدادات تلفزيون باسم، وأرسلها إلى تلفزيون آخر.", "Enregistrez les réglages d'une télé sous un nom, envoyez-les à une autre.", "Save the settings of a TV under a name, send them to another one.");
-        k("hub_set_tag", "جديد", "Nouveau", "New");
         k("st_title", "إعداداتي", "Mes réglages", "My settings");
         k("st_sub", "احفظ، سمِّ، أرسل", "Enregistrez, nommez, envoyez", "Save, name, send");
         k("st_save_h", "احفظ إعدادات هذا التلفزيون", "Enregistrer cette télé", "Save this TV");
@@ -269,7 +266,19 @@ final class Strings {
         k("st_sent_d", "طُبّق %d تغييرًا على %s", "%d changements appliqués sur %s", "%d changes applied on %s");
         k("st_undo", "تراجع عن الإرسال", "Annuler l'envoi", "Undo the send");
         k("st_undone", "عادت الإعدادات السابقة ✓", "Réglages précédents remis ✓", "Previous settings restored ✓");
-        k("st_back", "العودة إلى إعداداتي", "Retour à mes réglages", "Back to my settings");
+        k("st_back", "العودة إلى القائمة", "Retour à la liste", "Back to the list");
+        k("hub_get_t", "استرجاع إعدادات", "Récupérer des réglages", "Get the settings");
+        k("hub_get_d", "احفظ إعدادات هذا التلفزيون باسم تختاره.", "Enregistrez les réglages de cette télé sous un nom.", "Save this TV's settings under a name.");
+        k("hub_get_tag", "جديد", "Nouveau", "New");
+        k("hub_send_t", "إرسال إعدادات", "Envoyer des réglages", "Send settings");
+        k("hub_send_d", "ضع إعدادات محفوظة على هذا التلفزيون.", "Mettez des réglages enregistrés sur cette télé.", "Put saved settings on this TV.");
+        k("hub_send_tag", "جديد", "Nouveau", "New");
+        k("g_title", "استرجاع إعدادات", "Récupérer", "Get");
+        k("g_sub", "إعدادات التلفزيون المتصل", "Les réglages de la télé connectée", "The settings of the connected TV");
+        k("s_title", "إرسال إعدادات", "Envoyer", "Send");
+        k("s_sub", "إلى التلفزيون المتصل", "Des réglages vers la télé connectée", "Settings to the connected TV");
+        k("s_choose", "اختر الإعدادات التي تضعها عليه.", "Choisissez les réglages à mettre dessus.", "Pick the settings to put on it.");
+        k("s_empty", "لا شيء محفوظ. استعمل «استرجاع إعدادات» على التلفزيون الأصلي أولًا.", "Rien d'enregistré. Utilisez « Récupérer des réglages » sur la télé d'origine d'abord.", "Nothing saved. Use \"Get the settings\" on the original TV first.");
         // time zones and prayer methods
         k("z_Africa/Abidjan", "المغرب · GMT (Africa/Abidjan)", "Maroc · GMT (Africa/Abidjan)", "Morocco · GMT (Africa/Abidjan)");
         k("z_city", "حسب المدينة", "Selon la ville", "By city");
