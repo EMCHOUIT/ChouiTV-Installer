@@ -11,9 +11,9 @@
 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/stargazers"><img src="https://img.shields.io/github/stars/EMCHOUIT/ChouiTV-Installer?style=flat&color=D6AF6B&labelColor=0A1D14" alt="stars"></a>
 </p>
 
-<p align="center"><a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#cleanup">🧹 Nettoyage</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a> · <a href="#download">⬇️ Téléchargement</a></p>
+<p align="center"><a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#cleanup">🧹 Nettoyage</a> · <a href="#settings">🔁 Réglages</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a> · <a href="#download">⬇️ Téléchargement</a></p>
 
-Une petite appli sur votre téléphone qui trouve votre télé, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle. **Sans ordinateur, sans commande, en environ deux minutes.**
+Une petite appli sur votre téléphone qui trouve votre télé, la nettoie si vous le voulez, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle, puis copie vos réglages sur une autre télé. **Elle vous guide pas à pas, ou vous choisissez vous-même. Sans ordinateur, sans commande.**
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Télécharger%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>Pour téléphone Android 8 ou plus · environ 1 Mo</sub></p>
 
@@ -22,21 +22,21 @@ Une petite appli sur votre téléphone qui trouve votre télé, télécharge la 
 ## ✨ Pourquoi cette appli ?
 
 <table>
-<tr><td width="50%" valign="top">💻<br><b>Sans ordinateur</b><br><sub>Tout se fait depuis le téléphone : connexion, téléchargement, installation, réglages.</sub></td><td width="50%" valign="top">📊<br><b>Vous voyez tout</b><br><sub>Un pourcentage global et huit étapes qui avancent une à une sous vos yeux.</sub></td></tr>
-<tr><td width="50%" valign="top">🛡️<br><b>Avec filet de sécurité</b><br><sub>Si le nouvel accueil ne s'ouvre pas, la télé rétablit seule le sien.</sub></td><td width="50%" valign="top">🌍<br><b>Dans votre langue</b><br><sub>Arabe, français et anglais, avec le même soin.</sub></td></tr>
+<tr><td width="50%" valign="top">🧭<br><b>Guidé ou libre</b><br><sub>Un assistant pas à pas, ou cinq espaces à ouvrir directement.</sub></td><td width="50%" valign="top">🧹<br><b>Un nettoyage que vous contrôlez</b><br><sub>Une case par appli, avec des noms lisibles, et rien sans votre accord.</sub></td></tr>
+<tr><td width="50%" valign="top">🔁<br><b>Vos réglages voyagent</b><br><sub>Enregistrez les réglages d'une télé sous un nom, envoyez-les à une autre, maintenant ou plus tard.</sub></td><td width="50%" valign="top">🛡️<br><b>Tout est annulable</b><br><sub>Les applis sont coupées, pas supprimées, avec un filet de sécurité sur la télé.</sub></td></tr>
 </table>
 
 <a id="journey"></a>
 
-## 🚀 Le parcours en cinq étapes
+## 🚀 Le parcours en cinq écrans
 
-<img src="docs/media/journey-fr.png" alt="🚀 Le parcours en cinq étapes" width="100%">
+<img src="docs/media/journey-fr.png" alt="🚀 Le parcours en cinq écrans" width="100%">
 
 1. **Langue** : arabe, français ou anglais.
-2. **Préparez la télé** : activez le « Débogage USB » et le « Débogage réseau » ; c'est expliqué dans l'appli.
-3. **Connectez-vous** : l'appli trouve la télé sur le Wi-Fi, vous appuyez sur « Autoriser » sur son écran.
-4. **Installation** : une barre avec pourcentage et huit étapes, de la vérification au contrôle final.
-5. **Personnalisez, nettoyez (facultatif), puis c'est fini** : ville, fuseau horaire, méthode de prière ; un nettoyage facultatif des applis préinstallées ; un merci.
+2. **Le mode** : « Je me laisse guider » (un assistant pas à pas, avec reprise si vous quittez) ou « Je choisis moi-même ».
+3. **Le parcours ou les espaces** : « Équiper ma télé », « Copier d'une télé à l'autre », « Envoyer des réglages enregistrés », « Remettre une appli », ou les cinq espaces directement.
+4. **Le nettoyage** : vous voyez le plan avant tout changement et vous cochez ce que vous n'utilisez pas.
+5. **Installation et réglages** : une barre avec pourcentage, puis ville, fuseau horaire et méthode de prière.
 
 <a id="installs"></a>
 
@@ -56,7 +56,7 @@ L'appli lit la version dans [`latest.json`](https://raw.githubusercontent.com/EM
 
 - **Filet de sécurité** : avant de couper l'accueil d'origine, l'appli arme sur la télé un script qui le rétablit tout seul au bout de 5 minutes si ChouiTV ne s'ouvre pas.
 - **Respect de votre télé** : si elle refuse de couper son accueil (comme la Nokia Streaming Box 8000), il est conservé et vous en êtes informé.
-- **Nettoyage sans risque** : il est facultatif, il coupe sans supprimer, vérifie la télé après chaque groupe et remet tout en place si elle va mal.
+- **Nettoyage sans risque** : il est facultatif, il coupe sans supprimer, vérifie la télé après chaque groupe et remet tout en place si elle va mal ; l'espace « Réactiver des applis » remet une appli à la demande.
 - **Vie privée** : pas de compte, pas de publicité, pas de suivi ; la clé qui identifie votre téléphone y reste.
 
 > [!TIP]
@@ -69,15 +69,29 @@ L'appli lit la version dans [`latest.json`](https://raw.githubusercontent.com/EM
 
 <img src="docs/media/cleanup-fr.png" alt="🧹 Nettoyez votre télé en sécurité" width="100%">
 
-Certaines télés (Xiaomi, TCL, etc.) arrivent avec des applis préinstallées dont vous n'avez pas besoin : suivi, statistiques, publicités, services qui ralentissent l'appareil. Après l'installation, l'appli vous propose un **nettoyage facultatif**.
+Certaines télés (Xiaomi, TCL, etc.) arrivent avec des applis préinstallées dont vous n'avez pas besoin : suivi, statistiques, publicités, services qui ralentissent l'appareil. Vous avez aussi peut-être des applis qui démarrent avec la télé sans que vous les utilisiez. **Le nettoyage est facultatif, et c'est vous qui décidez.**
 
-- **On coupe, on ne supprime pas** : chaque appli revient en un geste depuis « Restaurer » sur le premier écran.
-- **Vous voyez le plan avant tout** : les applis sont rangées par groupe (suivi, publicités, préinstallées, facultatives) et vous choisissez.
-- **Des listes réfléchies** : la liste ChouiTV pour les TCL, des listes communautaires pour le modèle de votre télé, et si le modèle est inconnu, seulement ce sur quoi plusieurs listes s'accordent.
+- **Une case par appli** : « Applis préinstallées » (cochées d'avance), « Streaming et divertissement » (Netflix, Prime Video… décochées) et « Vos applis installées », avec un conseil pour celles qui démarrent avec la télé et la ralentissent.
+- **Des noms lisibles** : le nom de l'appli, son paquet en dessous.
+- **Une confirmation avant de commencer** : vous relisez la liste et laissez décochées celles que vous utilisez, elles restent intactes.
+- **On coupe, on ne supprime pas** : la télé est vérifiée après chaque groupe, remise en place si elle va mal, et si la connexion est perdue elle remet tout d'elle-même au bout de 5 minutes.
 - **Toujours protégé** : ChouiTV, les services Google, les réglages et tout écran d'accueil.
-- **La télé est vérifiée après chaque groupe** : si elle va mal, le groupe est remis en place et le nettoyage s'arrête ; si la connexion est perdue, la télé remet tout en place d'elle-même au bout de 5 minutes.
+- **Remettez une appli quand vous voulez** : l'espace « Réactiver des applis » lit ce qui est coupé sur la télé elle-même.
 
-Le point de restauration est gardé sur le téléphone et sur la télé.
+<a id="settings"></a>
+
+## 🔁 Copiez vos réglages sur une autre télé
+
+<img src="docs/media/settings-fr.png" alt="🔁 Copiez vos réglages sur une autre télé" width="100%">
+
+Utilisez les espaces **Récupérer des réglages** et **Envoyer des réglages** (ou le parcours guidé « Copier d'une télé à l'autre »).
+
+- **Enregistrez sous un nom** : les réglages de la télé connectée (ville, prière, adhan, panneaux, équipes, raccourcis de l'accueil…) sont gardés sur votre téléphone, nulle part ailleurs.
+- **Envoyez maintenant ou plus tard** : si les deux télés sont ensemble, envoyez tout de suite ; sinon emportez les réglages et envoyez-les depuis « Envoyer des réglages enregistrés ».
+- **Aperçu et annulation** : vous voyez les changements avant de les appliquer, et l'envoi garde une copie des réglages précédents.
+- **Jamais enregistré** : l'adresse IP ou le nom du Wi-Fi, le numéro de série, vos photos et vos tâches.
+
+ChouiTV 3.173 ou plus est nécessaire sur les deux télés.
 
 <a id="faq"></a>
 
@@ -110,7 +124,17 @@ Il est facultatif, il coupe sans supprimer, vous montre le plan d'abord et véri
 
 <details><summary><b>Comment annuler un nettoyage ?</b></summary>
 
-Depuis le premier écran, choisissez « Restaurer après un nettoyage », puis remettez une appli ou toutes. Une copie en texte est aussi sur la télé : `/data/local/tmp/chouitv-restore.txt`.
+Ouvrez l'espace « Réactiver des applis » et cochez celles que vous voulez remettre : il lit ce qui est coupé sur la télé elle-même, n'importe quel téléphone peut donc le faire. Une copie en texte est aussi sur la télé : `/data/local/tmp/chouitv-restore.txt`.
+</details>
+
+<details><summary><b>Quelle différence entre « Je me laisse guider » et « Je choisis moi-même » ?</b></summary>
+
+Le premier est un assistant qui vous dit quoi faire étape par étape et permet de reprendre si vous quittez. Le second ouvre directement les cinq espaces. Vous pouvez changer de mode à tout moment.
+</details>
+
+<details><summary><b>Comment copier mes réglages sur une autre télé ?</b></summary>
+
+Avec « Copier d'une télé à l'autre » : vous enregistrez les réglages de la première télé sous un nom, puis vous les envoyez tout de suite si les deux télés sont ensemble, ou plus tard depuis « Envoyer des réglages enregistrés ». ChouiTV 3.173 ou plus est nécessaire sur les deux télés ; l'aperçu s'affiche avant d'appliquer et l'envoi peut s'annuler.
 </details>
 
 <a id="build"></a>

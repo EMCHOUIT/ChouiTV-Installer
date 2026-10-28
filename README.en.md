@@ -11,9 +11,9 @@
 <a href="https://github.com/EMCHOUIT/ChouiTV-Installer/stargazers"><img src="https://img.shields.io/github/stars/EMCHOUIT/ChouiTV-Installer?style=flat&color=D6AF6B&labelColor=0A1D14" alt="stars"></a>
 </p>
 
-<p align="center"><a href="#why">✨ Why</a> · <a href="#journey">🚀 The journey</a> · <a href="#installs">📦 Installed</a> · <a href="#safety">🛡️ Safety</a> · <a href="#cleanup">🧹 Cleanup</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Build</a> · <a href="#download">⬇️ Download</a></p>
+<p align="center"><a href="#why">✨ Why</a> · <a href="#journey">🚀 The journey</a> · <a href="#installs">📦 Installed</a> · <a href="#safety">🛡️ Safety</a> · <a href="#cleanup">🧹 Cleanup</a> · <a href="#settings">🔁 Settings</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Build</a> · <a href="#download">⬇️ Download</a></p>
 
-A small app on your phone that finds your TV, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs it and sets it up. **No computer, no commands, in about two minutes.**
+A small app on your phone that finds your TV, cleans it if you want, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs and sets it up, then copies your settings to another TV. **It guides you step by step, or you choose yourself. No computer, no commands.**
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
 
@@ -22,21 +22,21 @@ A small app on your phone that finds your TV, downloads the **latest version** o
 ## ✨ Why this app?
 
 <table>
-<tr><td width="50%" valign="top">💻<br><b>No computer</b><br><sub>Everything happens on the phone: connect, download, install, set up.</sub></td><td width="50%" valign="top">📊<br><b>You see everything</b><br><sub>A global percentage and eight steps moving forward one by one in front of you.</sub></td></tr>
-<tr><td width="50%" valign="top">🛡️<br><b>With a safety net</b><br><sub>If the new home does not open, the TV puts its own back by itself.</sub></td><td width="50%" valign="top">🌍<br><b>In your language</b><br><sub>Arabic, French and English, with the same care.</sub></td></tr>
+<tr><td width="50%" valign="top">🧭<br><b>Guided or free</b><br><sub>A step-by-step assistant, or five spaces to open directly.</sub></td><td width="50%" valign="top">🧹<br><b>A cleanup you control</b><br><sub>One box per app, with readable names, and nothing without your say.</sub></td></tr>
+<tr><td width="50%" valign="top">🔁<br><b>Your settings travel</b><br><sub>Save one TV's settings under a name, send them to another, now or later.</sub></td><td width="50%" valign="top">🛡️<br><b>Everything can be undone</b><br><sub>Apps are turned off, not deleted, with a safety net on the TV.</sub></td></tr>
 </table>
 
 <a id="journey"></a>
 
-## 🚀 The journey in five steps
+## 🚀 The journey in five screens
 
-<img src="docs/media/journey-en.png" alt="🚀 The journey in five steps" width="100%">
+<img src="docs/media/journey-en.png" alt="🚀 The journey in five screens" width="100%">
 
 1. **Language**: Arabic, French or English.
-2. **Prepare the TV**: turn on "USB debugging" and "Network debugging"; it is explained in the app.
-3. **Connect**: the app finds the TV on the Wi-Fi, and you press "Allow" on its screen.
-4. **Install**: a bar with a percentage and eight steps, from the check to the final verification.
-5. **Make it yours, clean up (optional), then done**: city, time zone, prayer method; an optional cleanup of the preinstalled apps; a thank-you.
+2. **The mode**: "Guide me" (a step-by-step assistant, with resume if you leave) or "I choose myself".
+3. **The path or the spaces**: "Set up my TV", "Copy from one TV to another", "Send saved settings", "Put an app back", or the five spaces directly.
+4. **The cleanup**: you see the plan before any change and tick what you do not use.
+5. **Install and settings**: a bar with a percentage, then city, time zone and prayer method.
 
 <a id="installs"></a>
 
@@ -56,7 +56,7 @@ The app reads the version from [`latest.json`](https://raw.githubusercontent.com
 
 - **Safety net**: before turning the TV's original home off, the app arms a script on the TV that puts it back by itself after 5 minutes if ChouiTV does not open.
 - **Respect for your TV**: if it refuses to turn its home off (like the Nokia Streaming Box 8000), it keeps it and you are told.
-- **Cleanup without risk**: it is optional, turns apps off without deleting them, checks the TV after each group and puts them back if it gets unwell.
+- **Cleanup without risk**: it is optional, turns apps off without deleting them, checks the TV after each group and puts them back if it gets unwell; the "Turn apps back on" space puts an app back whenever you want.
 - **Privacy**: no accounts, no ads, no tracking; the key that identifies your phone stays in it.
 
 > [!TIP]
@@ -69,15 +69,29 @@ The app reads the version from [`latest.json`](https://raw.githubusercontent.com
 
 <img src="docs/media/cleanup-en.png" alt="🧹 Clean your TV, safely" width="100%">
 
-Some TVs (Xiaomi, TCL and others) ship with preinstalled apps you do not need: tracking, analytics, ads, services that slow the device down. After the install the app offers an **optional cleanup**.
+Some TVs (Xiaomi, TCL and others) ship with preinstalled apps you do not need: tracking, analytics, ads, services that slow the device down. You may also have apps that start with the TV without you using them. **The cleanup is optional, and you decide.**
 
-- **Turned off, never deleted**: every app comes back in one tap from "Restore" on the first screen.
-- **You see the plan first**: apps are grouped (tracking, ads, preinstalled, optional) and you choose.
-- **Careful lists**: ChouiTV's list for TCL, community lists for your TV's model, and when the model is unknown only what several lists agree on.
+- **One box per app**: "Preinstalled apps" (ticked for you), "Streaming and entertainment" (Netflix, Prime Video… unticked) and "Your installed apps", with an advice for the ones that start with the TV and slow it down.
+- **Readable names**: the app name, its package below.
+- **A confirmation before it starts**: you look over the list and leave unticked the ones you use, they stay untouched.
+- **Turned off, never deleted**: the TV is checked after each group, put back if it gets unwell, and if the connection is lost it puts everything back by itself within 5 minutes.
 - **Always protected**: ChouiTV, Google services, the settings and any home screen.
-- **The TV is checked after each group**: if it gets unwell the group is put back and the cleanup stops; if the connection is lost the TV puts everything back by itself within 5 minutes.
+- **Put an app back any time**: the "Turn apps back on" space reads what is off on the TV itself.
 
-The restore point is kept on the phone and on the TV.
+<a id="settings"></a>
+
+## 🔁 Copy your settings to another TV
+
+<img src="docs/media/settings-en.png" alt="🔁 Copy your settings to another TV" width="100%">
+
+Use the **Get the settings** and **Send settings** spaces (or the guided "Copy from one TV to another" path).
+
+- **Save under a name**: the settings of the connected TV (city, prayer, adhan, panels, teams, home shortcuts…) are kept on your phone, nowhere else.
+- **Send now or later**: if both TVs are together, send right away; otherwise take the settings with you and send them from "Send saved settings".
+- **Preview and undo**: you see the changes before applying them, and the send keeps a copy of the previous settings.
+- **Never saved**: the IP address or Wi-Fi name, the serial number, your photos and your tasks.
+
+ChouiTV 3.173 or newer is needed on both TVs.
 
 <a id="faq"></a>
 
@@ -110,7 +124,17 @@ It is optional, turns apps off without deleting them, shows you the plan first a
 
 <details><summary><b>How do I undo a cleanup?</b></summary>
 
-From the first screen choose "Restore after a cleanup", then put one app or all of them back. A plain-text copy is also on the TV: `/data/local/tmp/chouitv-restore.txt`.
+Open the "Turn apps back on" space and tick the ones you want back: it reads what is off on the TV itself, so any phone can do it. A plain-text copy is also on the TV: `/data/local/tmp/chouitv-restore.txt`.
+</details>
+
+<details><summary><b>What is the difference between "Guide me" and "I choose myself"?</b></summary>
+
+The first is an assistant that tells you what to do step by step and lets you resume if you leave. The second opens the five spaces directly. You can change the mode at any time.
+</details>
+
+<details><summary><b>How do I copy my settings to another TV?</b></summary>
+
+With "Copy from one TV to another": you save the first TV's settings under a name, then send them right away if both TVs are together, or later from "Send saved settings". ChouiTV 3.173 or newer is needed on both TVs; the preview shows before applying and the send can be undone.
 </details>
 
 <a id="build"></a>
