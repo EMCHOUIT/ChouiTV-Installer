@@ -172,7 +172,7 @@ final class Strings {
         k("cl_net_lost", "انقطع الاتصال. شبكة الأمان على التلفزيون تُرجع كل شيء خلال 5 دقائق.", "Connexion perdue. Le filet de sécurité de la télé remet tout en place en 5 minutes.", "Connection lost. The TV's safety net puts everything back in 5 minutes.");
         k("cl_res_title", "تم التنظيف", "Nettoyage terminé", "Cleanup done");
         k("cl_res_off", "موقوفة", "coupées", "turned off");
-        k("cl_res_mb", "ميغابايت RAM", "Mo de RAM", "MB of RAM");
+        k("cl_res_kept", "محمية", "protégées", "protected");
         k("cl_res_del", "محذوفة", "supprimées", "deleted");
         k("cl_rolled", "لم يعد التلفزيون سليمًا بعد «%s»: أُعيدت وتوقف التنظيف.", "La télé n'allait plus bien après « %s » : remis en place, nettoyage arrêté.", "The TV was not healthy after \"%s\": put back, cleanup stopped.");
         k("cl_refused", "%d رفضها التلفزيون وبقيت كما هي", "%d refusées par la télé, laissées en place", "%d refused by the TV, left on");

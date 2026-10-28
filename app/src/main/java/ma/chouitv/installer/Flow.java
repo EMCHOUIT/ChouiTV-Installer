@@ -42,14 +42,6 @@ final class Flow {
             packages("pm list packages"), packages("pm list packages -d"));
     }
 
-    /** Free memory in kB, 0 when the TV does not say. */
-    long freeRamKb() {
-        try {
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("MemAvailable:\\s+(\\d+)").matcher(tv.shell("cat /proc/meminfo"));
-            return m.find() ? Long.parseLong(m.group(1)) : 0;
-        } catch (Exception e) { return 0; }
-    }
-
     // ---------- the steps of the installation ----------
 
     String model() throws IOException { return tv.shell("getprop ro.product.model").trim(); }

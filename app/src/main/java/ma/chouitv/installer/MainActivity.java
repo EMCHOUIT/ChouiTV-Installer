@@ -625,7 +625,6 @@ public class MainActivity extends Activity {
     private Planner.Plan cleanPlan;
     private java.util.EnumSet<CleanupData.Group> cleanChosen = java.util.EnumSet.noneOf(CleanupData.Group.class);
     private Executor.Result cleanResult;
-    private long freedKb;
     private boolean restoreMode;
 
     private static final String CLEANUP_URL = "https://raw.githubusercontent.com/EMCHOUIT/ChouiTV/main/optimize/lists/cleanup.json";
@@ -770,7 +769,7 @@ public class MainActivity extends Activity {
         }
         LinearLayout prot = card(false);
         prot.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
-        prot.addView(text(t("cl_protected", Math.max(cleanPlan.protectedCount, 1)), medium, 16, GOLD));
+        prot.addView(text(t("cl_protected", cleanupData.keep.size()), medium, 16, GOLD));
         prot.addView(text(t("cl_protected_d"), regular, 13, SAND), lp(0, 4, 0, 0));
         body.addView(prot, lp(0, 4, 0, 0));
         updateRunButton(button);
@@ -852,7 +851,6 @@ public class MainActivity extends Activity {
         final String date = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).format(new java.util.Date());
         bg.execute(() -> {
             try {
-                long before = flow.freeRamKb();
                 Restore point = new Restore(tvModel, date, planned);   // saved BEFORE the first change
                 saveRestore(point);
                 pushRestoreToTv(point);
@@ -867,8 +865,6 @@ public class MainActivity extends Activity {
                 Restore real = new Restore(tvModel, date, cleanResult.disabled);   // what was really turned off
                 saveRestore(real);
                 pushRestoreToTv(real);
-                long after = flow.freeRamKb();
-                freedKb = before > 0 && after > before ? after - before : 0;
                 runOnUiThread(() -> { busy = false; getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); show(10); });
             } catch (final Exception e) {
                 runOnUiThread(() -> {
@@ -904,7 +900,7 @@ public class MainActivity extends Activity {
         LinearLayout stats = new LinearLayout(this);
         stats.setOrientation(LinearLayout.HORIZONTAL);
         int nOff = cleanResult == null ? 0 : cleanResult.disabled.size();
-        String[][] st = {{String.valueOf(nOff), t("cl_res_off")}, {freedKb > 0 ? "+" + (freedKb / 1024) : "–", t("cl_res_mb")}, {"0", t("cl_res_del")}};
+        String[][] st = {{String.valueOf(nOff), t("cl_res_off")}, {String.valueOf(cleanupData.keep.size()), t("cl_res_kept")}, {"0", t("cl_res_del")}};
         for (String[] s : st) {
             LinearLayout c = card(false);
             c.setGravity(Gravity.CENTER_HORIZONTAL);
