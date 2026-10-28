@@ -186,6 +186,27 @@ final class Strings {
         k("cl_restore_one", "أعِد", "Remettre", "Put back");
         k("cl_restore_all", "أعِد الكل", "Tout remettre", "Put everything back");
         k("cl_restore_link", "استرجاع ما أوقفه التنظيف", "Restaurer après un nettoyage", "Restore after a cleanup");
+        k("cl_pre_h", "تطبيقات مثبّتة مسبقًا", "Applis préinstallées", "Preinstalled apps");
+        k("cl_pre_d", "مؤشَّرة مسبقًا لك. ألغِ علامة ما تستعمله.", "Déjà cochées pour vous. Décochez celles que vous utilisez.", "Already ticked for you. Untick the ones you use.");
+        k("cl_str_h", "البث والترفيه", "Streaming et divertissement", "Streaming and entertainment");
+        k("cl_str_d", "ضع علامة على ما لا تستعمله: كثيرون لا يفتحون هذه التطبيقات أبدًا.", "À cocher si vous ne les utilisez pas : beaucoup de gens n'ouvrent jamais ces applis.", "Tick the ones you do not use: many people never open these apps.");
+        k("cl_usr_h", "تطبيقاتك المثبّتة", "Vos applis installées", "Your installed apps");
+        k("cl_usr_d", "بعضها يبدأ مع التلفزيون ويبطئه. أشّرنا على ما ننصح بإيقافه.", "Certaines se lancent au démarrage de la télé et la ralentissent. Nous avons coché celles que nous conseillons de couper.", "Some start with the TV and slow it down. We ticked the ones we advise turning off.");
+        k("cl_g_noise", "التتبّع والإعلانات", "Suivi et publicités", "Tracking and ads");
+        k("cl_g_usr", "تطبيقاتك", "Vos applis", "Your apps");
+        k("cl_ticked", "%d من %d", "%d sur %d cochées", "%d of %d ticked");
+        k("cl_tick_all", "تأشير الكل", "Tout cocher", "Tick all");
+        k("cl_untick_all", "إلغاء الكل", "Tout décocher", "Untick all");
+        k("cl_conf_h", "قبل أن تتابع", "Avant de continuer", "Before you continue");
+        k("cl_conf_stream", "أغلب الناس لا يستعملون Netflix أو Prime Video أو YouTube Music: أشّر عليها لتخفيف التلفزيون.", "La plupart des gens n'utilisent pas Netflix, Prime Video ou YouTube Music : cochez-les pour libérer la télé.", "Most people do not use Netflix, Prime Video or YouTube Music: tick them to free up the TV.");
+        k("cl_conf_mine", "راجع تطبيقاتك: اترك بلا علامة ما تستعمله.", "Relisez vos applis : laissez décochées celles que vous utilisez.", "Look over your apps: leave unticked the ones you use.");
+        k("cl_conf_keep", "ما تتركه بلا علامة يبقى كما هو.", "Ce que vous laissez décoché reste intact.", "Whatever you leave unticked stays untouched.");
+        k("cl_conf_check", "راجعت القائمة: أحتفظ بما أستعمله", "J'ai vérifié la liste : je garde ce que j'utilise", "I checked the list: I keep what I use");
+        k("cl_conf_needed", "أكّد أولًا أنك راجعت القائمة", "Confirmez d'abord que vous avez vérifié la liste", "First confirm that you checked the list");
+        k("cl_chip_rec", "ننصح", "Conseillé", "Advised");
+        k("cl_chip_boot", "يبدأ مع التلفزيون", "Démarre avec la télé", "Starts with the TV");
+        k("cl_chip_ram", "%d م.ب", "%d Mo", "%d MB");
+        k("cl_chip_recent", "استُعمل مؤخرًا", "Utilisée récemment", "Used lately");
         // time zones and prayer methods
         k("z_Africa/Abidjan", "المغرب · GMT (Africa/Abidjan)", "Maroc · GMT (Africa/Abidjan)", "Morocco · GMT (Africa/Abidjan)");
         k("z_city", "حسب المدينة", "Selon la ville", "By city");

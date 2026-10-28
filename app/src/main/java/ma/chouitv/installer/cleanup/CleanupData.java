@@ -12,7 +12,7 @@ import java.util.Set;
 
 /** The cleanup lists (optimize/lists/cleanup.json of the ChouiTV repository), parsed. Immutable once built. */
 public final class CleanupData {
-    public enum Group { TRACKING, ADS, PREINSTALLED, OPTIONAL;
+    public enum Group { TRACKING, ADS, PREINSTALLED, OPTIONAL, USER;
         static Group of(String s) {
             switch (s) {
                 case "tracking": return TRACKING;
@@ -32,7 +32,7 @@ public final class CleanupData {
 
     public final Set<String> keep = new HashSet<>(), homes = new HashSet<>(), genericModels = new HashSet<>(), genericDevices = new HashSet<>();
     public final Map<String, Group> group = new HashMap<>();
-    public final Map<String, String> namesAr = new HashMap<>();
+    public final Map<String, String> namesAr = new HashMap<>(), display = new HashMap<>();
     public final List<Entry> lists = new ArrayList<>();
 
     public static CleanupData parse(String json) throws Exception {
@@ -54,6 +54,8 @@ public final class CleanupData {
             JSONObject ar = names.getJSONObject("ar");
             for (java.util.Iterator<String> it = ar.keys(); it.hasNext(); ) { String k = it.next(); d.namesAr.put(k, ar.getString(k)); }
         }
+        JSONObject disp = o.optJSONObject("display");
+        if (disp != null) for (java.util.Iterator<String> it = disp.keys(); it.hasNext(); ) { String k = it.next(); d.display.put(k, disp.getString(k)); }
         JSONArray ls = o.getJSONArray("lists");
         for (int i = 0; i < ls.length(); i++) {
             JSONObject l = ls.getJSONObject(i);
@@ -70,6 +72,12 @@ public final class CleanupData {
 
     private static void fill(Set<String> into, JSONArray a) throws Exception {
         for (int i = 0; i < a.length(); i++) into.add(a.getString(i));
+    }
+
+    /** The name to show: the Arabic one in Arabic, else the brand name, else the package itself. */
+    public String label(String pkg, String lang) {
+        if ("ar".equals(lang) && namesAr.containsKey(pkg)) return namesAr.get(pkg);
+        return display.containsKey(pkg) ? display.get(pkg) : pkg;
     }
 
     public Entry list(String id) {

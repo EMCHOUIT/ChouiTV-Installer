@@ -55,10 +55,16 @@ public final class Executor {
         return false;
     }
 
+    /** A run by group: every package of the chosen groups. */
     public Result run(Plan plan, Set<Group> chosen, Listener l) throws IOException {
+        return runSelected(plan, plan.packagesOf(chosen), l);
+    }
+
+    /** A run of exactly the ticked packages, still group by group (the least risky first) with a health check between the groups. */
+    public Result runSelected(Plan plan, Set<String> selected, Listener l) throws IOException {
         Result r = new Result();
         List<Item> all = new ArrayList<>();
-        for (Group g : EnumSet.allOf(Group.class)) if (chosen.contains(g)) all.addAll(plan.groups.get(g));
+        for (Group g : EnumSet.allOf(Group.class)) for (Item i : plan.groups.get(g)) if (selected.contains(i.pkg)) all.add(i);
         if (all.isEmpty()) return r;
         List<String> names = new ArrayList<>();
         for (Item i : all) names.add(i.pkg);
@@ -66,9 +72,12 @@ public final class Executor {
         l.started(all.size());
         int done = 0;
         for (Group g : EnumSet.allOf(Group.class)) {
-            if (!chosen.contains(g) || plan.groups.get(g).isEmpty()) continue;
             List<String> mine = new ArrayList<>();
+            boolean any = false;
+            for (Item it : plan.groups.get(g)) if (selected.contains(it.pkg)) any = true;
+            if (!any) continue;
             for (Item it : plan.groups.get(g)) {
+                if (!selected.contains(it.pkg)) continue;
                 String cmd = Guard.disable(it.pkg);
                 if (Guard.refusal(cmd) != null) { r.refused.add(it.pkg); done++; l.package_(g, it.pkg, false, done, all.size()); continue; }
                 String out = tv.run(cmd);

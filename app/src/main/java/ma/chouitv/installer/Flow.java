@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Shell;
 
@@ -36,10 +37,26 @@ final class Flow {
         return s;
     }
 
-    /** What the TV says about itself and which apps it has, on and off. */
+    /** What the TV says about itself and which apps it has, on and off, and about the apps its owner installed. */
     Planner.Tv tvInfo() throws IOException {
         return new Planner.Tv(prop("ro.product.manufacturer"), prop("ro.product.brand"), prop("ro.product.model"), prop("ro.product.device"),
-            packages("pm list packages"), packages("pm list packages -d"));
+            packages("pm list packages"), packages("pm list packages -d"), facts());
+    }
+
+    /** Each fact is optional: a TV that does not answer one only means fewer recommendations, never a failed plan. */
+    private Facts facts() {
+        Facts f = new Facts();
+        try { f.user.addAll(Facts.packages(tv.shell("pm list packages -3"))); } catch (IOException ignored) { }
+        try { f.autostart.addAll(Facts.componentPackages(tv.shell("cmd package query-receivers --brief -a android.intent.action.BOOT_COMPLETED"))); } catch (IOException ignored) { }
+        try { f.ramMb.putAll(Facts.memory(tv.shell("dumpsys meminfo"))); } catch (IOException ignored) { }
+        try {
+            long today = Long.parseLong(tv.shell("date +%s").trim()) / 86400;
+            f.usage(tv.shell("dumpsys usagestats | grep 'package=.*lastTimeUsed='"), today);
+        } catch (IOException | NumberFormatException ignored) { }
+        try { f.sensitive.addAll(Facts.componentList(tv.shell("ime list -s"))); } catch (IOException ignored) { }
+        try { f.sensitive.addAll(Facts.componentList(tv.shell("settings get secure enabled_accessibility_services"))); } catch (IOException ignored) { }
+        try { f.sensitive.addAll(Facts.componentPackages(tv.shell("cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2> /dev/null"))); } catch (IOException ignored) { }
+        return f;
     }
 
     // ---------- the steps of the installation ----------

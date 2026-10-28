@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 
 import ma.chouitv.installer.cleanup.CleanupData;
 import ma.chouitv.installer.cleanup.Executor;
+import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
@@ -623,7 +624,9 @@ public class MainActivity extends Activity {
 
     private CleanupData cleanupData;
     private Planner.Plan cleanPlan;
-    private java.util.EnumSet<CleanupData.Group> cleanChosen = java.util.EnumSet.noneOf(CleanupData.Group.class);
+    /** The packages ticked in the plan, and whether the person confirmed having looked at the lists. */
+    private final java.util.Set<String> cleanSel = new java.util.LinkedHashSet<>();
+    private boolean cleanConfirmed;
     private Executor.Result cleanResult;
     private boolean restoreMode;
 
@@ -653,6 +656,7 @@ public class MainActivity extends Activity {
             case TRACKING: return t("cl_g_tracking");
             case ADS: return t("cl_g_ads");
             case OPTIONAL: return t("cl_g_opt");
+            case USER: return t("cl_g_usr");
             default: return t("cl_g_pre");
         }
     }
@@ -706,8 +710,9 @@ public class MainActivity extends Activity {
                     cleanupData = loadCleanupData();
                     Planner.Tv info = flow.tvInfo();
                     cleanPlan = Planner.plan(cleanupData, info);
-                    cleanChosen = java.util.EnumSet.noneOf(CleanupData.Group.class);
-                    for (CleanupData.Group g : CleanupData.Group.values()) if (Planner.Plan.defaultOn(g) && !cleanPlan.groups.get(g).isEmpty()) cleanChosen.add(g);
+                    cleanSel.clear();
+                    cleanSel.addAll(cleanPlan.defaultSelection());
+                    cleanConfirmed = false;
                     runOnUiThread(() -> { busy = false; show(8); });
                 } catch (final Exception e) {
                     runOnUiThread(() -> { busy = false; button.setAlpha(1f); status.setTextColor(0xFFE8896B); status.setText(t("cl_err", friendly(e, "", false))); });
@@ -734,59 +739,211 @@ public class MainActivity extends Activity {
             button.setOnClickListener(v -> show(5));
             return;
         }
-        final TextView[] counter = new TextView[1];
-        for (final CleanupData.Group g : CleanupData.Group.values()) {
-            final java.util.List<Planner.Item> items = p.groups.get(g);
-            if (items.isEmpty()) continue;
-            final LinearLayout c = card(false);
-            LinearLayout head = new LinearLayout(this);
-            head.setOrientation(LinearLayout.HORIZONTAL);
-            head.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout tt = new LinearLayout(this);
-            tt.setOrientation(LinearLayout.VERTICAL);
-            tt.addView(text(groupName(g), medium, 18, SAND));
-            tt.addView(text(t("cl_count", items.size()) + " · " + t("cl_tap"), regular, 13, MUTED));
-            head.addView(tt, new LinearLayout.LayoutParams(0, -2, 1f));
-            final android.widget.Switch sw = new android.widget.Switch(this);
-            sw.setChecked(cleanChosen.contains(g));
-            sw.setThumbTintList(new android.content.res.ColorStateList(new int[][] {{android.R.attr.state_checked}, {}}, new int[] {GOLD, 0xFF96A098}));
-            sw.setTrackTintList(new android.content.res.ColorStateList(new int[][] {{android.R.attr.state_checked}, {}}, new int[] {0x66D6AF6B, 0x66505A52}));
-            head.addView(sw);
-            c.addView(head);
-            final TextView list = text("", regular, 12, MUTED);
-            list.setTextDirection(View.TEXT_DIRECTION_LTR);
-            StringBuilder b = new StringBuilder();
-            for (Planner.Item it : items) b.append("• ").append(niceName(it.pkg)).append("\n");
-            list.setText(b.toString().trim());
-            list.setVisibility(View.GONE);
-            c.addView(list, lp(0, 8, 0, 0));
-            c.setOnClickListener(v -> list.setVisibility(list.getVisibility() == View.GONE ? View.VISIBLE : View.GONE));
-            sw.setOnCheckedChangeListener((x, on) -> {
-                if (on) cleanChosen.add(g); else cleanChosen.remove(g);
-                updateRunButton(button);
-            });
-            body.addView(c, lp(0, 0, 0, 8));
-        }
+        final java.util.List<Planner.Item> noise = new java.util.ArrayList<>(p.groups.get(CleanupData.Group.TRACKING));
+        noise.addAll(p.groups.get(CleanupData.Group.ADS));
+        if (!noise.isEmpty()) addNoiseCard(body, noise, button);
+        addChecklist(body, button, CleanupData.Group.PREINSTALLED, "cl_pre_h", "cl_pre_d");
+        addChecklist(body, button, CleanupData.Group.OPTIONAL, "cl_str_h", "cl_str_d");
+        addChecklist(body, button, CleanupData.Group.USER, "cl_usr_h", "cl_usr_d");
         LinearLayout prot = card(false);
         prot.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
         prot.addView(text(t("cl_protected", cleanupData.keep.size()), medium, 16, GOLD));
         prot.addView(text(t("cl_protected_d"), regular, 13, SAND), lp(0, 4, 0, 0));
-        body.addView(prot, lp(0, 4, 0, 0));
+        body.addView(prot, lp(0, 4, 0, 10));
+        // the confirmation: the person is asked to look, and the button waits for it
+        boolean streaming = !p.groups.get(CleanupData.Group.OPTIONAL).isEmpty(), mine = !p.groups.get(CleanupData.Group.USER).isEmpty();
+        LinearLayout ask = card(false);
+        ask.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
+        ask.addView(text(t("cl_conf_h"), medium, 18, GOLD));
+        if (streaming) ask.addView(text(t("cl_conf_stream"), regular, 14, SAND), lp(0, 6, 0, 0));
+        if (mine) ask.addView(text(t("cl_conf_mine"), regular, 14, SAND), lp(0, 6, 0, 0));
+        ask.addView(text(t("cl_conf_keep"), regular, 14, SAND), lp(0, 6, 0, 0));
+        final TextView sure = text(t("cl_conf_check"), medium, 15, SAND);
+        final TextView box = checkBox(cleanConfirmed);
+        LinearLayout sureRow = new LinearLayout(this);
+        sureRow.setOrientation(LinearLayout.HORIZONTAL);
+        sureRow.setGravity(Gravity.CENTER_VERTICAL);
+        sureRow.addView(box, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, -2, 1f);
+        sp.setMarginStart(dp(12));
+        sureRow.addView(sure, sp);
+        sureRow.setOnClickListener(v -> { cleanConfirmed = !cleanConfirmed; styleCheck(box, cleanConfirmed); updateRunButton(button); });
+        ask.addView(sureRow, lp(0, 12, 0, 0));
+        body.addView(ask, lp(0, 0, 0, 0));
         updateRunButton(button);
-        button.setOnClickListener(v -> { if (!busy && selectedCount() > 0) show(9); });
+    }
+
+    /** One switch for the tracking and the ads: it is not a choice most people want to make app by app; touching the card shows the names. */
+    private void addNoiseCard(LinearLayout body, final java.util.List<Planner.Item> noise, final TextView button) {
+        final LinearLayout c = card(false);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout tt = new LinearLayout(this);
+        tt.setOrientation(LinearLayout.VERTICAL);
+        tt.addView(text(t("cl_g_noise"), medium, 18, SAND));
+        tt.addView(text(t("cl_count", noise.size()) + " · " + t("cl_tap"), regular, 13, MUTED));
+        head.addView(tt, new LinearLayout.LayoutParams(0, -2, 1f));
+        final android.widget.Switch sw = new android.widget.Switch(this);
+        boolean on = true;
+        for (Planner.Item i : noise) if (!cleanSel.contains(i.pkg)) on = false;
+        sw.setChecked(on);
+        sw.setThumbTintList(new android.content.res.ColorStateList(new int[][] {{android.R.attr.state_checked}, {}}, new int[] {GOLD, 0xFF96A098}));
+        sw.setTrackTintList(new android.content.res.ColorStateList(new int[][] {{android.R.attr.state_checked}, {}}, new int[] {0x66D6AF6B, 0x66505A52}));
+        head.addView(sw);
+        c.addView(head);
+        final TextView list = text("", regular, 12, MUTED);
+        list.setTextDirection(View.TEXT_DIRECTION_LTR);
+        StringBuilder b = new StringBuilder();
+        for (Planner.Item it : noise) b.append("• ").append(cleanupData.label(it.pkg, Strings.lang)).append("\n");
+        list.setText(b.toString().trim());
+        list.setVisibility(View.GONE);
+        c.addView(list, lp(0, 8, 0, 0));
+        c.setOnClickListener(v -> list.setVisibility(list.getVisibility() == View.GONE ? View.VISIBLE : View.GONE));
+        sw.setOnCheckedChangeListener((x, isOn) -> {
+            for (Planner.Item i : noise) { if (isOn) cleanSel.add(i.pkg); else cleanSel.remove(i.pkg); }
+            updateRunButton(button);
+        });
+        body.addView(c, lp(0, 0, 0, 8));
+    }
+
+    /** A section with a tick box per app, the count and a «tick all / none» link. */
+    private void addChecklist(LinearLayout body, final TextView button, final CleanupData.Group g, String titleKey, String descKey) {
+        final java.util.List<Planner.Item> items = cleanPlan.groups.get(g);
+        if (items.isEmpty()) return;
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text(t(titleKey), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView count = text("", medium, 13, SAND);
+        head.addView(count);
+        body.addView(head, lp(4, 10, 4, 0));
+        body.addView(text(t(descKey), regular, 13, MUTED), lp(4, 2, 4, 6));
+        final java.util.List<TextView> boxes = new java.util.ArrayList<>();
+        final Runnable recount = () -> {
+            int n = 0;
+            for (Planner.Item i : items) if (cleanSel.contains(i.pkg)) n++;
+            count.setText(t("cl_ticked", n, items.size()));
+        };
+        for (final Planner.Item it : items) {
+            final TextView box = checkBox(cleanSel.contains(it.pkg));
+            boxes.add(box);
+            LinearLayout row = card(false);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), dp(10), dp(14), dp(10));
+            row.addView(box, new LinearLayout.LayoutParams(dp(30), dp(30)));
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            String name = cleanupData.label(it.pkg, Strings.lang);
+            TextView nm = text(name, medium, 16, SAND);
+            nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            col.addView(nm);
+            if (!name.equals(it.pkg)) {
+                TextView pk = text(it.pkg, regular, 11, MUTED);
+                pk.setTextDirection(View.TEXT_DIRECTION_LTR);
+                col.addView(pk);
+            }
+            Planner.UserApp ua = cleanPlan.userApps.get(it.pkg);
+            if (ua != null) col.addView(chipsFor(ua), lp(0, 6, 0, 0));
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+            cp.setMarginStart(dp(12));
+            row.addView(col, cp);
+            row.setOnClickListener(v -> {
+                boolean on = !cleanSel.contains(it.pkg);
+                if (on) cleanSel.add(it.pkg); else cleanSel.remove(it.pkg);
+                styleCheck(box, on);
+                recount.run();
+                updateRunButton(button);
+            });
+            body.addView(row, lp(0, 0, 0, 6));
+        }
+        recount.run();
+        final TextView all = text(t("cl_untick_all"), medium, 14, GOLD);
+        all.setGravity(Gravity.CENTER);
+        all.setPadding(0, dp(6), 0, dp(10));
+        all.setOnClickListener(v -> {
+            boolean any = false;
+            for (Planner.Item i : items) if (cleanSel.contains(i.pkg)) any = true;
+            for (int k = 0; k < items.size(); k++) {
+                if (any) cleanSel.remove(items.get(k).pkg); else cleanSel.add(items.get(k).pkg);
+                styleCheck(boxes.get(k), !any);
+            }
+            all.setText(t(any ? "cl_tick_all" : "cl_untick_all"));
+            recount.run();
+            updateRunButton(button);
+        });
+        all.setText(t(allTicked(items) ? "cl_untick_all" : "cl_tick_all"));
+        body.addView(all, lp(0, 0, 0, 4));
+    }
+
+    private boolean allTicked(java.util.List<Planner.Item> items) {
+        for (Planner.Item i : items) if (!cleanSel.contains(i.pkg)) return false;
+        return true;
+    }
+
+    /** «Recommended», «starts with the TV» and the memory it holds: the reasons, on the row, so the person can decide. */
+    private View chipsFor(Planner.UserApp u) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        if (u.recommended) r.addView(chip(t("cl_chip_rec"), GOLD, DARK, 0));
+        if (u.autostart) r.addView(chip(t("cl_chip_boot"), 0x44D6826E, SAND, 0xFFD6826E));
+        if (u.ramMb > 0) r.addView(chip(t("cl_chip_ram", u.ramMb), 0, SAND, 0xFF96A098));
+        else if (u.daysSinceUse >= 0 && u.daysSinceUse < Facts.LONG_UNUSED_DAYS) r.addView(chip(t("cl_chip_recent"), 0, SAND, 0xFF96A098));
+        return r;
+    }
+
+    private TextView chip(String label, int fill, int color, int stroke) {
+        TextView c = text(label, medium, 11, color);
+        c.setPadding(dp(9), dp(2), dp(9), dp(2));
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(12));
+        g.setColor(fill);
+        if (stroke != 0 || fill == 0) g.setStroke(dp(1), stroke == 0 ? 0xFF96A098 : stroke);
+        c.setBackground(g);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
+        p.setMarginEnd(dp(6));
+        c.setLayoutParams(p);
+        return c;
+    }
+
+    private TextView checkBox(boolean on) {
+        TextView b = text("", medium, 16, DARK);
+        b.setGravity(Gravity.CENTER);
+        styleCheck(b, on);
+        return b;
+    }
+
+    private void styleCheck(TextView b, boolean on) {
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(8));
+        if (on) { g.setColor(GOLD); b.setText("✓"); b.setTextColor(DARK); }
+        else { g.setColor(0); g.setStroke(dp(2), 0xFF96A098); b.setText(""); }
+        b.setBackground(g);
     }
 
     private int selectedCount() {
         int n = 0;
-        for (CleanupData.Group g : cleanChosen) n += cleanPlan.groups.get(g).size();
+        for (CleanupData.Group g : CleanupData.Group.values()) for (Planner.Item i : cleanPlan.groups.get(g)) if (cleanSel.contains(i.pkg)) n++;
         return n;
     }
 
+    /** The button shows how many apps will be turned off and waits for the confirmation; with nothing ticked it simply continues. */
     private void updateRunButton(TextView button) {
         int n = selectedCount();
-        button.setText(n > 0 ? t("cl_run", n) : t("cl_continue"));
-        button.setAlpha(1f);
-        if (n == 0) button.setOnClickListener(v -> show(5)); else button.setOnClickListener(v -> { if (!busy) show(9); });
+        if (n == 0) {
+            button.setText(t("cl_continue"));
+            button.setAlpha(1f);
+            button.setOnClickListener(v -> show(5));
+            return;
+        }
+        button.setText(t("cl_run", n));
+        button.setAlpha(cleanConfirmed ? 1f : 0.45f);
+        button.setOnClickListener(v -> {
+            if (busy) return;
+            if (!cleanConfirmed) { Toast.makeText(this, t("cl_conf_needed"), Toast.LENGTH_SHORT).show(); return; }
+            show(9);
+        });
     }
 
     private String tvModelLine() { return (tvBrand.isEmpty() ? "" : cap(tvBrand) + " · ") + tvModel; }
@@ -847,7 +1004,7 @@ public class MainActivity extends Activity {
         button.setAlpha(0.6f);
         busy = true;
         final java.util.List<String> planned = new java.util.ArrayList<>();
-        for (CleanupData.Group g : cleanChosen) for (Planner.Item it : cleanPlan.groups.get(g)) planned.add(it.pkg);
+        for (CleanupData.Group g : CleanupData.Group.values()) for (Planner.Item it : cleanPlan.groups.get(g)) if (cleanSel.contains(it.pkg)) planned.add(it.pkg);
         final String date = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).format(new java.util.Date());
         bg.execute(() -> {
             try {
@@ -855,7 +1012,7 @@ public class MainActivity extends Activity {
                 saveRestore(point);
                 pushRestoreToTv(point);
                 Executor ex = new Executor(flow.shell(), Thread::sleep, newToken());
-                cleanResult = ex.run(cleanPlan, cleanChosen, new Executor.Listener() {
+                cleanResult = ex.runSelected(cleanPlan, new java.util.LinkedHashSet<>(cleanSel), new Executor.Listener() {
                     public void started(int total) { }
                     public void package_(CleanupData.Group g, final String pkg, boolean ok, final int done, final int total) {
                         runOnUiThread(() -> { int pct = total == 0 ? 0 : done * 100 / total; pctV.setText(pct + "%"); bar.set(pct / 100f); countV.setText(done + " / " + total); last.setText(pkg); });
