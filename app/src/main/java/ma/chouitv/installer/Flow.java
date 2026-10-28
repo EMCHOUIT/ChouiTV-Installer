@@ -53,6 +53,7 @@ final class Flow {
             long today = Long.parseLong(tv.shell("date +%s").trim()) / 86400;
             f.usage(tv.shell("dumpsys usagestats | grep 'package=.*lastTimeUsed='"), today);
         } catch (IOException | NumberFormatException ignored) { }
+        try { f.chouiHome = tv.shell("cmd package resolve-activity --brief -c android.intent.category.HOME -a android.intent.action.MAIN").contains(HOME); } catch (IOException ignored) { }
         try { f.sensitive.addAll(Facts.componentList(tv.shell("ime list -s"))); } catch (IOException ignored) { }
         try { f.sensitive.addAll(Facts.componentList(tv.shell("settings get secure enabled_accessibility_services"))); } catch (IOException ignored) { }
         try { f.sensitive.addAll(Facts.componentPackages(tv.shell("cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2> /dev/null"))); } catch (IOException ignored) { }

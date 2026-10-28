@@ -23,6 +23,8 @@ public final class Facts {
     public final Map<String, Integer> daysSinceUse = new HashMap<>();
     /** True when the TV gave usable usage statistics: only then is «not used lately» a fact and not a guess. */
     public boolean usageKnown;
+    /** True when ChouiTV's own home answers the Home button: only then may the manufacturer's home be turned off, the TV keeps a home. */
+    public boolean chouiHome;
     /** Apps the TV needs as they are: the keyboard, the accessibility services, the home screens. */
     public final Set<String> sensitive = new HashSet<>();
 

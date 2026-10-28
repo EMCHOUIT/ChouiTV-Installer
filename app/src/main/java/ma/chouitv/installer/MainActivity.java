@@ -163,8 +163,13 @@ public class MainActivity extends Activity {
         body.setOrientation(LinearLayout.VERTICAL);
         sv.addView(body, new ViewGroup.LayoutParams(-1, -2));
         col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        View fade = new View(this);
+        fade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0x000A1B13, 0xE60A1B13}));
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, dp(28));
+        fp.topMargin = -dp(28);
+        col.addView(fade, fp);
         TextView button = button("");
-        col.addView(button, lp(0, 12, 0, 0));
+        col.addView(button, lp(0, 8, 0, 0));
         if (guide != null && (n == 1 || n == 2 || n == 4 || n == 8 || n == 11 || n == 14 || n == 17 || n == 21)) {
             if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
             guideBar(body);
@@ -706,19 +711,41 @@ public class MainActivity extends Activity {
     /** A ready button is gold; one that is not ready yet stays clearly readable (grey-green, full-strength text), never faded away. */
     private void ready(TextView b, boolean on) {
         b.setAlpha(1f);
+        GradientDrawable g;
         if (on) {
-            GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFFFFE296, 0xFFC48E3A});
-            g.setCornerRadius(dp(30));
-            b.setBackground(g);
+            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFFFFE296, 0xFFC48E3A});
+            g.setStroke(dp(1), 0xAAFFF4CD);
             b.setTextColor(DARK);
         } else {
-            GradientDrawable g = new GradientDrawable();
-            g.setCornerRadius(dp(30));
+            g = new GradientDrawable();
             g.setColor(0xFF3C4840);
             g.setStroke(dp(2), 0xFF96A098);
-            b.setBackground(g);
             b.setTextColor(SAND);
         }
+        g.setCornerRadius(dp(30));
+        b.setBackground(g);
+        if (b instanceof Btn) ((Btn) b).arrow(on);
+    }
+
+    /** A grave action is never a big button: a small red link, away from the main one, that only opens a confirmation. */
+    private TextView dangerLink(String label) {
+        TextView l = text("\u26A0  " + label, medium, 16, 0xFFE8896B);
+        l.setGravity(Gravity.CENTER);
+        l.setPaintFlags(l.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+        l.setPadding(dp(8), dp(14), dp(8), dp(14));
+        return l;
+    }
+
+    /** The safe answer is the first one (keep), the grave one is second and red. */
+    private void confirmGrave(String title, String message, String keep, String doIt, final Runnable run) {
+        final AlertDialog dlg = new AlertDialog.Builder(this).setTitle(title).setMessage(message)
+            .setPositiveButton(keep, null)
+            .setNegativeButton(doIt, (d, w) -> run.run()).create();
+        dlg.setOnShowListener(x -> {
+            dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(0xFFB27E30);
+            dlg.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(0xFFD9573F);
+        });
+        dlg.show();
     }
 
     private TextView ghostButton(String label, int color) {
@@ -1091,19 +1118,23 @@ public class MainActivity extends Activity {
         undo.addView(text(t("cl_res_undo_t"), medium, 16, GOLD));
         undo.addView(text(t("cl_res_undo_d"), regular, 13, SAND), lp(0, 4, 0, 0));
         body.addView(undo, lp(0, 12, 0, 8));
-        final TextView undoAll = ghostButton(t("cl_undo_all"), MUTED);
+        final TextView undoAll = dangerLink(t("cl_undo_link"));
         undoAll.setOnClickListener(v -> {
             if (busy) return;
-            busy = true; undoAll.setAlpha(0.6f);
-            bg.execute(() -> {
-                try {
-                    Restore r = loadRestore();
-                    if (r != null) Restore.apply(flow.shell(), r.packages);
-                    runOnUiThread(() -> { busy = false; undoAll.setText(t("cl_restored")); undoAll.setAlpha(1f); });
-                } catch (Exception e) { runOnUiThread(() -> { busy = false; undoAll.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
+            Restore now = loadRestore();
+            final int n = now == null ? 0 : now.packages.size();
+            confirmGrave(t("cl_undo_q"), t("cl_undo_msg", n), t("cl_undo_keep"), t("cl_undo_do"), () -> {
+                busy = true; undoAll.setAlpha(0.6f);
+                bg.execute(() -> {
+                    try {
+                        Restore r = loadRestore();
+                        if (r != null) Restore.apply(flow.shell(), r.packages);
+                        runOnUiThread(() -> { busy = false; undoAll.setText(t("cl_restored")); undoAll.setOnClickListener(null); undoAll.setAlpha(1f); });
+                    } catch (Exception e) { runOnUiThread(() -> { busy = false; undoAll.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
+                });
             });
         });
-        body.addView(undoAll, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
+        body.addView(undoAll, new LinearLayout.LayoutParams(-1, -2));
         if (!cleanFromDone) {
             TextView home = ghostButton(t("cl_home"), MUTED);
             home.setOnClickListener(v -> show(12));
@@ -1595,21 +1626,23 @@ public class MainActivity extends Activity {
         c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
         c.addView(text(t("st_sent_d", sentResult == null ? 0 : sentResult.count, tvModelLine()), regular, 15, SAND));
         body.addView(c, lp(0, 0, 0, 10));
-        final TextView undo = ghostButton(t("st_undo"), MUTED);
+        final TextView undo = dangerLink(t("st_undo"));
         undo.setOnClickListener(v -> {
             if (busy) return;
-            busy = true; undo.setAlpha(0.6f);
-            bg.execute(() -> {
-                try {
-                    flow.undoImport();
-                    try { flow.rescheduleAdhan(); } catch (IOException ignored) { }
-                    runOnUiThread(() -> { busy = false; undo.setAlpha(1f); undo.setText(t("st_undone")); undo.setEnabled(false); });
-                } catch (final Exception e) {
-                    runOnUiThread(() -> { busy = false; undo.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
-                }
+            confirmGrave(t("st_undo_q"), t("st_undo_msg"), t("st_undo_keep"), t("st_undo_do"), () -> {
+                busy = true; undo.setAlpha(0.6f);
+                bg.execute(() -> {
+                    try {
+                        flow.undoImport();
+                        try { flow.rescheduleAdhan(); } catch (IOException ignored) { }
+                        runOnUiThread(() -> { busy = false; undo.setAlpha(1f); undo.setText(t("st_undone")); undo.setOnClickListener(null); });
+                    } catch (final Exception e) {
+                        runOnUiThread(() -> { busy = false; undo.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                    }
+                });
             });
         });
-        body.addView(undo, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
+        body.addView(undo, new LinearLayout.LayoutParams(-1, -2));
         button.setText(t("st_back"));
         button.setOnClickListener(v -> show(17));
     }
@@ -1939,12 +1972,27 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** The main button of a screen: gold, raised, with a chevron on the reading side when it is ready to go on. */
+    private final class Btn extends TextView {
+        boolean arrow = true;
+        CharSequence raw = "";
+        Btn(Context c) { super(c); }
+        @Override public void setText(CharSequence t, BufferType type) {
+            raw = t == null ? "" : t;
+            super.setText(arrow && raw.length() > 0 ? raw + "  " + (Strings.rtl() ? "\u2039" : "\u203A") : raw, type);
+        }
+        void arrow(boolean on) { arrow = on; setText(raw); }
+    }
+
     private TextView button(String label) {
-        TextView b = text(label, medium, 19, DARK);
+        Btn b = new Btn(this);
+        b.setTypeface(medium);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        b.setTextColor(DARK);
         b.setGravity(Gravity.CENTER);
-        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFFFFE296, 0xFFC48E3A});
-        g.setCornerRadius(dp(30));
-        b.setBackground(g);
+        b.setText(label);
+        ready(b, true);
+        b.setElevation(dp(8));
         b.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         return b;
     }

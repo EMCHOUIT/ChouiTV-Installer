@@ -124,6 +124,7 @@ public final class Planner {
         for (Group g : Group.values()) p.groups.put(g, new ArrayList<Item>());
         Set<String> seen = new LinkedHashSet<>();
         if (list != null) fromList(d, tv, list, p, seen);
+        xiaomiHome(d, tv, p, seen);
         streaming(d, tv, p, seen);
         if (tv.facts != null) userApps(d, tv, p, seen);
         return p;
@@ -138,6 +139,19 @@ public final class Planner {
             if (tv.disabled.contains(pkg)) { p.alreadyOff++; continue; }
             Group g = d.group.containsKey(pkg) ? d.group.get(pkg) : Group.PREINSTALLED;
             p.groups.get(g).add(new Item(pkg, g));
+        }
+    }
+
+    /** Xiaomi's own home screens: useless once ChouiTV is the home, and never touched before (the TV would be left without one). */
+    static final java.util.List<String> XIAOMI_HOME = java.util.Arrays.asList("com.mitv.tvhome.atv", "com.mitv.tvhome.mitvplus");
+
+    private static void xiaomiHome(CleanupData d, Tv tv, Plan p, Set<String> seen) {
+        if (tv.facts == null || !tv.facts.chouiHome) return;
+        for (String pkg : XIAOMI_HOME) {
+            if (seen.contains(pkg) || !tv.installed.contains(pkg) || d.keep.contains(pkg)) continue;
+            if (tv.disabled.contains(pkg)) { p.alreadyOff++; continue; }
+            seen.add(pkg);
+            p.groups.get(Group.PREINSTALLED).add(new Item(pkg, Group.PREINSTALLED));
         }
     }
 

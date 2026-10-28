@@ -176,9 +176,8 @@ final class Strings {
         k("cl_res_del", "محذوفة", "supprimées", "deleted");
         k("cl_rolled", "لم يعد التلفزيون سليمًا بعد «%s»: أُعيدت وتوقف التنظيف.", "La télé n'allait plus bien après « %s » : remis en place, nettoyage arrêté.", "The TV was not healthy after \"%s\": put back, cleanup stopped.");
         k("cl_refused", "%d رفضها التلفزيون وبقيت كما هي", "%d refusées par la télé, laissées en place", "%d refused by the TV, left on");
-        k("cl_res_undo_t", "يمكنك التراجع دائمًا", "Vous pouvez toujours annuler", "You can always undo");
-        k("cl_res_undo_d", "من الشاشة الأولى ← استرجاع", "depuis le premier écran → Restaurer", "from the first screen → Restore");
-        k("cl_undo_all", "تراجع عن كل شيء", "Tout annuler", "Undo everything");
+        k("cl_res_undo_t", "يمكنك دائمًا التراجع", "Vous pouvez toujours annuler", "You can always undo");
+        k("cl_res_undo_d", "من مساحة «أعِد تفعيل تطبيقات»: أشّر على ما تريد إرجاعه.", "Depuis l'espace « Réactiver des applis » : cochez ce que vous voulez remettre.", "From the \"Turn apps back on\" space: tick what you want back.");
         k("cl_restored", "تمت الاستعادة ✓", "Restauré ✓", "Restored ✓");
         k("cl_restore_title", "استرجاع", "Restauration", "Restore");
         k("cl_restore_sub", "أعد ما أوقفه التنظيف", "Remettez ce que le nettoyage a coupé", "Put back what the cleanup turned off");
@@ -264,7 +263,6 @@ final class Strings {
         k("st_apply", "طبّق %d تغييرًا", "Appliquer les %d changements", "Apply the %d changes");
         k("st_sent_t", "أُرسلت الإعدادات", "Réglages envoyés", "Settings sent");
         k("st_sent_d", "طُبّق %d تغييرًا على %s", "%d changements appliqués sur %s", "%d changes applied on %s");
-        k("st_undo", "تراجع عن الإرسال", "Annuler l'envoi", "Undo the send");
         k("st_undone", "عادت الإعدادات السابقة ✓", "Réglages précédents remis ✓", "Previous settings restored ✓");
         k("st_back", "العودة إلى القائمة", "Retour à la liste", "Back to the list");
         k("hub_get_t", "استرجاع إعدادات", "Récupérer des réglages", "Get the settings");
@@ -365,6 +363,16 @@ final class Strings {
         k("cp_later_2", "تجدها في «أرسل إعدادات محفوظة»", "Vous les retrouvez dans « Envoyer »", "You find them in \"Send\"");
         k("kp_h", "الإعدادات محفوظة", "Réglages gardés", "Settings kept");
         k("kp_d", "«%s» محفوظة. عندما تكون قرب التلفزيون الآخر: افتح المساعد، «أرسل إعدادات محفوظة»، ثم اختر «%s».", "« %s » est enregistré. Quand vous serez près de l'autre télé : ouvrez l'assistant, « Envoyer des réglages enregistrés », puis choisissez « %s ».", "\"%s\" is saved. When you are near the other TV: open the assistant, \"Send saved settings\", then pick \"%s\".");
+        k("cl_undo_link", "أعِد كل شيء كما كان…", "Tout remettre comme avant…", "Put everything back as before…");
+        k("cl_undo_q", "أعِد كل شيء كما كان؟", "Tout remettre comme avant ?", "Put everything back as before?");
+        k("cl_undo_msg", "ستُعاد %d تطبيقًا موقوفًا. ستزول فوائد التنظيف: يصبح التلفزيون أبطأ من جديد. يمكنك إعادة التنظيف لاحقًا.", "Les %d applis coupées seront réactivées. Les bénéfices du nettoyage disparaîtront : la télé sera de nouveau plus lente. Vous pourrez refaire un nettoyage plus tard.", "The %d apps that were turned off will be turned back on. The benefits of the cleanup will go away: the TV will be slower again. You can clean up again later.");
+        k("cl_undo_keep", "أبقِ التنظيف", "Garder le nettoyage", "Keep the cleanup");
+        k("cl_undo_do", "أعِد كل شيء", "Tout remettre", "Put everything back");
+        k("st_undo", "تراجع عن الإرسال…", "Annuler l'envoi…", "Undo the send…");
+        k("st_undo_q", "تراجع عن الإرسال؟", "Annuler l'envoi ?", "Undo the send?");
+        k("st_undo_msg", "ستعود إعدادات هذا التلفزيون السابقة، وتزول التغييرات التي أُرسلت.", "Les réglages précédents de cette télé seront remis, et les changements envoyés disparaîtront.", "This TV's previous settings will be put back, and the changes that were sent will go away.");
+        k("st_undo_keep", "أبقِ الإرسال", "Garder l'envoi", "Keep the send");
+        k("st_undo_do", "تراجع عن الإرسال", "Annuler l'envoi", "Undo the send");
         // time zones and prayer methods
         k("z_Africa/Abidjan", "المغرب · GMT (Africa/Abidjan)", "Maroc · GMT (Africa/Abidjan)", "Morocco · GMT (Africa/Abidjan)");
         k("z_city", "حسب المدينة", "Selon la ville", "By city");

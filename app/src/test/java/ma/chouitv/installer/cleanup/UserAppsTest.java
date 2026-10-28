@@ -129,6 +129,23 @@ public class UserAppsTest {
         assertTrue("already off: not offered", Planner.plan(d, off).groups.get(Group.OPTIONAL).isEmpty());
     }
 
+    @Test public void xiaomiHomeScreensAreOfferedOnlyWhenChouiTVIsTheHome() throws Exception {
+        Facts f = facts();
+        f.chouiHome = true;
+        Plan p = Planner.plan(data(), tv(f, "com.mitv.tvhome.atv", "com.mitv.tvhome.mitvplus", "com.mitv.tvhome.michannel", "com.google.android.tvlauncher"));
+        Set<String> pre = new HashSet<>();
+        for (Planner.Item i : p.groups.get(Group.PREINSTALLED)) pre.add(i.pkg);
+        assertTrue(pre.contains("com.mitv.tvhome.atv")); assertTrue(pre.contains("com.mitv.tvhome.mitvplus"));
+        assertFalse("only the two", pre.contains("com.mitv.tvhome.michannel"));
+        assertFalse("another home is never offered", pre.contains("com.google.android.tvlauncher"));
+        assertTrue("ticked by default", p.defaultSelection().containsAll(Arrays.asList("com.mitv.tvhome.atv", "com.mitv.tvhome.mitvplus")));
+        f.chouiHome = false;
+        Plan none = Planner.plan(data(), tv(f, "com.mitv.tvhome.atv", "com.mitv.tvhome.mitvplus"));
+        assertTrue("the TV would be left without a home", none.groups.get(Group.PREINSTALLED).isEmpty());
+        Plan off = Planner.plan(data(), new Planner.Tv("X", "X", "M", "d", new HashSet<>(Arrays.asList("com.mitv.tvhome.atv")), new HashSet<>(Arrays.asList("com.mitv.tvhome.atv")), f));
+        assertTrue(off.groups.get(Group.PREINSTALLED).isEmpty());
+    }
+
     @Test public void withoutUsageStatisticsNothingIsRecommended() throws Exception {
         Facts f = facts("com.nova.tv");
         f.usage(null, TODAY);
