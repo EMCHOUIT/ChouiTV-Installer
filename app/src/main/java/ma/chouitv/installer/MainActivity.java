@@ -357,7 +357,7 @@ public class MainActivity extends Activity {
             tt.setPadding(0, dp(8), 0, dp(10));
             titleV[i] = text(titles[i], medium, 16, SAND);
             subV[i] = text(subs0[i], regular, 13, MUTED);
-            subV[i].setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            subV[i].setTextDirection(Strings.rtl() ? View.TEXT_DIRECTION_RTL : View.TEXT_DIRECTION_LTR);
             tt.addView(titleV[i]);
             tt.addView(subV[i]);
             LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
@@ -632,8 +632,8 @@ public class MainActivity extends Activity {
     private String[][] reportRows() {
         String home = homeResult == Flow.Home.OURS ? t("rp_home_off") : homeResult == Flow.Home.KEPT_STOCK ? t("rp_home_kept") : t("rp_home_unsure");
         java.util.List<String[]> r = new ArrayList<>();
-        r.add(new String[] {t("rp_brand"), (tvBrand.isEmpty() ? "" : cap(tvBrand) + " · ") + tvModel});
-        r.add(new String[] {t("rp_android"), tvAndroid + (tvSdk.isEmpty() ? "" : " (API " + tvSdk + ")")});
+        r.add(new String[] {t("rp_brand"), "\u2066" + (tvBrand.isEmpty() ? "" : cap(tvBrand) + " · ") + tvModel + "\u2069"});
+        r.add(new String[] {t("rp_android"), "\u2066" + tvAndroid + (tvSdk.isEmpty() ? "" : " (API " + tvSdk + ")") + "\u2069"});
         r.add(new String[] {t("rp_version"), installedVersion});
         if (installError.isEmpty()) r.add(new String[] {t("rp_home"), home});
         r.add(new String[] {t("rp_pp"), flow != null && flow.playProtect ? t("rp_pp_yes") : t("rp_pp_no")});
