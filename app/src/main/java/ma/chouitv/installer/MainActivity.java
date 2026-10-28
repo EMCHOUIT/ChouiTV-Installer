@@ -47,6 +47,7 @@ import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Reactivation;
 import ma.chouitv.installer.guide.Guide;
+import ma.chouitv.installer.guide.Outcome;
 import ma.chouitv.installer.profiles.Preview;
 import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
@@ -73,6 +74,7 @@ public class MainActivity extends Activity {
     private Flow flow;
     private String model = "";
     private volatile boolean busy;
+    private int cleanAsked;
     private Flow.Home homeResult;
     private String tvBrand = "", tvModel = "";
     private String chosen = "";
@@ -121,6 +123,7 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (busy) return;
+        if (step == 23) return;
         if (step == 12) show(18);
         else if (step == 18) show(0);
         else if (step == 19) show(18);
@@ -129,7 +132,8 @@ public class MainActivity extends Activity {
         else if (step == 22) show(18);
         else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(guide != null ? 19 : 12); }
         else if (step == 11 || step == 13 || step == 14 || step == 17) show(guide != null ? 19 : 12);
-        else if (step == 15 || step == 16) show(17);
+        else if (step == 15) show(17);
+        else if (step == 24) show(18);
         else if (step == 1) show(guide != null ? 19 : 12);
         else if (step == 2) show(1);
         else super.onBackPressed();
@@ -176,7 +180,7 @@ public class MainActivity extends Activity {
             if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
             guideBar(body);
         }
-        if (guide != null && ((n == 5 && guide.path == Guide.Path.EQUIP) || n == 13 || n == 16)) clearGuide();
+        if (guide != null && ((n == 5 && guide.path == Guide.Path.EQUIP) || n == 13)) clearGuide();
         switch (n) {
             case 0: language(body, button); break;
             case 18: modeScreen(body, button); break;
@@ -197,7 +201,8 @@ public class MainActivity extends Activity {
             case 14: profilesScreen(body, button, true); break;
             case 17: profilesScreen(body, button, false); break;
             case 15: sendScreen(body, button); break;
-            case 16: sentScreen(body, button); break;
+            case 23: progressScreen(body, button); break;
+            case 24: endScreen(body, button); break;
             default: done(body, button); break;
         }
     }
@@ -295,12 +300,8 @@ public class MainActivity extends Activity {
         input.setBackground(cardBg(false));
         input.setPadding(dp(16), dp(12), dp(16), dp(12));
         body.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
-        LinearLayout tip = card(false);
-        tip.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        tip.addView(text(t("on_tv"), medium, 15, GOLD));
-        tip.addView(text(t("allow1"), regular, 14, SAND));
-        tip.addView(text(t("allow2"), regular, 13, MUTED));
-        body.addView(tip, lp(0, 16, 0, 0));
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, t("on_tv") + " : " + t("allow1") + " " + t("allow2"));
         final TextView status = text("", regular, 14, GOLD);
         body.addView(status, lp(0, 12, 0, 12));
         button.setText(t("connect"));
@@ -647,8 +648,12 @@ public class MainActivity extends Activity {
         tip.addView(text(t("tip"), medium, 15, GOLD));
         tip.addView(text(t("tip_text"), regular, 14, SAND));
         body.addView(tip, lp(0, 14, 0, 0));
-        button.setText(t("open_tv"));
-        button.setOnClickListener(v -> bg.execute(() -> { try { flow.openOnTv(); } catch (Exception ignored) { } }));
+        TextView open = ghostButton(t("open_tv"), GOLD);
+        open.setOnClickListener(v -> bg.execute(() -> { try { flow.openOnTv(); } catch (Exception ignored) { } }));
+        body.addView(open, lp(0, 14, 0, 0));
+        button.setText(t("cl_home"));
+        ready(button, true);
+        button.setOnClickListener(v -> show(18));
     }
 
     private static String cap(String s) { return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1); }
@@ -765,11 +770,8 @@ public class MainActivity extends Activity {
         final Planner.Plan p = cleanPlan;
         String src = p.source.equals("ours") ? t("cl_src_ours") : p.source.equals("community") ? t("cl_src_model")
             : p.why.endsWith("ambiguous") ? t("cl_src_amb") : t("cl_src_cons");
-        LinearLayout info = card(false);
-        info.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        info.addView(text(tvModelLine(), medium, 16, SAND));
-        info.addView(text(src + (p.alreadyOff > 0 ? " · " + t("cl_already", p.alreadyOff) : ""), regular, 13, MUTED));
-        body.addView(info, lp(0, 10, 0, 6));
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, tvModelLine() + " · " + src + (p.alreadyOff > 0 ? " · " + t("cl_already", p.alreadyOff) : ""));
         if (p.total() == 0) {
             LinearLayout none = card(false);
             none.addView(text(t("cl_none"), medium, 17, GOLD));
@@ -777,18 +779,17 @@ public class MainActivity extends Activity {
             afterCleanup(button);
             return;
         }
+        sectionLabel(body, t("sec_choose"));
         final java.util.List<Planner.Item> noise = new java.util.ArrayList<>(p.groups.get(CleanupData.Group.TRACKING));
         noise.addAll(p.groups.get(CleanupData.Group.ADS));
         if (!noise.isEmpty()) addNoiseCard(body, noise, button);
         addChecklist(body, button, CleanupData.Group.PREINSTALLED, "cl_pre_h", "cl_pre_d");
         addChecklist(body, button, CleanupData.Group.OPTIONAL, "cl_str_h", "cl_str_d");
         addChecklist(body, button, CleanupData.Group.USER, "cl_usr_h", "cl_usr_d");
-        LinearLayout prot = card(false);
-        prot.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
-        prot.addView(text(t("cl_protected", cleanupData.keep.size()), medium, 16, GOLD));
-        prot.addView(text(t("cl_protected_d"), regular, 13, SAND), lp(0, 4, 0, 0));
-        body.addView(prot, lp(0, 4, 0, 10));
+        sectionLabel(body, t("sec_prot"));
+        infoCard(body, t("cl_protected", cleanupData.keep.size()) + " · " + t("cl_protected_d"));
         // the confirmation: the person is asked to look, and the button waits for it
+        sectionLabel(body, t("sec_before"));
         boolean streaming = !p.groups.get(CleanupData.Group.OPTIONAL).isEmpty(), mine = !p.groups.get(CleanupData.Group.USER).isEmpty();
         LinearLayout ask = card(false);
         ask.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
@@ -1042,6 +1043,7 @@ public class MainActivity extends Activity {
         busy = true;
         final java.util.List<String> planned = new java.util.ArrayList<>();
         for (CleanupData.Group g : CleanupData.Group.values()) for (Planner.Item it : cleanPlan.groups.get(g)) if (cleanSel.contains(it.pkg)) planned.add(it.pkg);
+        cleanAsked = planned.size();
         final String date = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).format(new java.util.Date());
         bg.execute(() -> {
             try {
@@ -1073,77 +1075,45 @@ public class MainActivity extends Activity {
     }
 
     private void cleanupResult(LinearLayout body, TextView button) {
-        body.setGravity(Gravity.CENTER_HORIZONTAL);
-        Orn.Arch arch = new Orn.Arch(this);
-        LinearLayout in = new LinearLayout(this);
-        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
-        TextView check = text("✓", medium, 40, GOLD);
-        check.setGravity(Gravity.CENTER);
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
-        check.setBackground(ring);
-        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
-        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
-        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
-        body.addView(arch, ap);
-        TextView title = text(t("cl_res_title"), display, 26, SAND);
-        title.setGravity(Gravity.CENTER);
-        body.addView(title, lp(0, 14, 0, 10));
-        LinearLayout stats = new LinearLayout(this);
-        stats.setOrientation(LinearLayout.HORIZONTAL);
-        int nOff = cleanResult == null ? 0 : cleanResult.disabled.size();
-        String[][] st = {{String.valueOf(nOff), t("cl_res_off")}, {String.valueOf(cleanupData.keep.size()), t("cl_res_kept")}, {"0", t("cl_res_del")}};
-        for (String[] s : st) {
-            LinearLayout c = card(false);
-            c.setGravity(Gravity.CENTER_HORIZONTAL);
-            c.setBackground(cardBg(false, 0x18D6AF6B, 0xAAD6AF6B));
-            TextView v = text(s[0], display, 30, GOLD); v.setGravity(Gravity.CENTER);
-            TextView l = text(s[1], regular, 12, SAND); l.setGravity(Gravity.CENTER);
-            c.addView(v); c.addView(l);
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
-            cp.setMargins(dp(4), 0, dp(4), 0);
-            stats.addView(c, cp);
-        }
-        body.addView(stats, lp(0, 0, 0, 0));
-        if (cleanResult != null && cleanResult.rolledBack != null) {
-            LinearLayout w = card(false);
-            w.setBackground(cardBg(false, 0x33E8896B, 0xFFE8896B));
-            w.addView(text(t("cl_rolled", groupName(cleanResult.rolledBack)), regular, 14, SAND));
-            body.addView(w, lp(0, 12, 0, 0));
-        }
-        if (cleanResult != null && !cleanResult.refused.isEmpty()) {
-            body.addView(text(t("cl_refused", cleanResult.refused.size()), regular, 13, MUTED), lp(4, 10, 4, 0));
-        }
-        LinearLayout undo = card(false);
-        undo.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        undo.addView(text(t("cl_res_undo_t"), medium, 16, GOLD));
-        undo.addView(text(t("cl_res_undo_d"), regular, 13, SAND), lp(0, 4, 0, 0));
-        body.addView(undo, lp(0, 12, 0, 8));
-        final TextView undoAll = dangerLink(t("cl_undo_link"));
-        undoAll.setOnClickListener(v -> {
-            if (busy) return;
-            Restore now = loadRestore();
-            final int n = now == null ? 0 : now.packages.size();
-            confirmGrave(t("cl_undo_q"), t("cl_undo_msg", n), t("cl_undo_keep"), t("cl_undo_do"), () -> {
-                busy = true; undoAll.setAlpha(0.6f);
-                bg.execute(() -> {
-                    try {
-                        Restore r = loadRestore();
-                        if (r != null) Restore.apply(flow.shell(), r.packages);
-                        runOnUiThread(() -> { busy = false; undoAll.setText(t("cl_restored")); undoAll.setOnClickListener(null); undoAll.setAlpha(1f); });
-                    } catch (Exception e) { runOnUiThread(() -> { busy = false; undoAll.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
-                });
+        Executor.Result r = cleanResult;
+        int asked = cleanAsked, done = r == null ? 0 : r.disabled.size();
+        boolean problem = r != null && (r.rolledBack != null || r.netLost);
+        Outcome.Status st = Outcome.of(asked, done, problem);
+        java.util.List<String> did = lines(t("cl_end_done_n", done), t("cl_end_kept", cleanupData.keep.size()), t("cl_end_nodel"));
+        java.util.List<String> left = new ArrayList<>();
+        if (r != null && r.rolledBack != null) left.add(t("cl_rolled", groupName(r.rolledBack)));
+        if (r != null && !r.refused.isEmpty()) left.add(t("cl_refused", r.refused.size()));
+        if (r != null && r.netLost) left.add(t("cl_net_lost"));
+        setEnd(st, t(st == Outcome.Status.SUCCESS ? "cl_end_ok_t" : st == Outcome.Status.PARTIAL ? "cl_end_part_t" : "cl_end_fail_t"), t("cl_end_sub", done, asked), did, left, t("cl_res_undo_d"));
+        if (done > 0) { endUndo = this::undoCleanup; endUndoLabel = t("cl_undo_link"); }
+        if (cleanFromDone) { endNextLabel = t("cl_continue"); endNext = () -> show(5); }
+        else { endNextLabel = t("cl_next_install"); endNext = () -> { space = SPACE_INSTALL; if (guide != null && guide.path == Guide.Path.EQUIP) { guide.step = 1; saveGuide(); } show(3); }; }
+        endScreen(body, button);
+    }
+
+    /** The grave one: everything the cleanup turned off comes back, after a confirmation that says what that costs. */
+    private void undoCleanup() {
+        Restore now = loadRestore();
+        final int n = now == null ? 0 : now.packages.size();
+        confirmGrave(t("cl_undo_q"), t("cl_undo_msg", n), t("cl_undo_keep"), t("cl_undo_do"), () -> {
+            busy = true;
+            bg.execute(() -> {
+                try {
+                    Restore r = loadRestore();
+                    java.util.List<String> back = r == null ? new ArrayList<String>() : Restore.apply(flow.shell(), r.packages);
+                    final int total = r == null ? 0 : r.packages.size(), ok = back.size();
+                    runOnUiThread(() -> {
+                        busy = false;
+                        Outcome.Status st = Outcome.of(total, ok, false);
+                        showEnd(st, t(st == Outcome.Status.SUCCESS ? "cl_back_ok_t" : "cl_back_part_t"), t("re_end_sub", ok, total), lines(t("re_done_d", ok)), new ArrayList<String>(), t("cl_back_info"));
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(() -> { busy = false; Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                }
             });
         });
-        body.addView(undoAll, new LinearLayout.LayoutParams(-1, -2));
-        if (!cleanFromDone) {
-            TextView home = ghostButton(t("cl_home"), MUTED);
-            home.setOnClickListener(v -> show(12));
-            body.addView(home, lp(0, 8, 0, 0));
-        }
-        afterCleanup(button);
     }
+
 
     // ---------- the three spaces: clean, install, turn back on ----------
 
@@ -1247,6 +1217,7 @@ public class MainActivity extends Activity {
             button.setOnClickListener(v -> show(12));
             return;
         }
+        sectionLabel(body, t("sec_choose"));
         reactSection(body, button, p.ours, "re_ours_h", "re_ours_d");
         reactSection(body, button, p.others, "re_oth_h", "re_oth_d");
         updateReactButton(button);
@@ -1332,46 +1303,24 @@ public class MainActivity extends Activity {
     }
 
     private void reactivated(LinearLayout body, TextView button) {
-        body.setGravity(Gravity.CENTER_HORIZONTAL);
-        Orn.Arch arch = new Orn.Arch(this);
-        LinearLayout in = new LinearLayout(this);
-        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
-        TextView check = text("✓", medium, 40, GOLD);
-        check.setGravity(Gravity.CENTER);
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
-        check.setBackground(ring);
-        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
-        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
-        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
-        body.addView(arch, ap);
-        TextView title = text(t("re_done_t"), display, 26, SAND);
-        title.setGravity(Gravity.CENTER);
-        body.addView(title, lp(0, 14, 0, 10));
-        LinearLayout c = card(false);
-        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        StringBuilder names = new StringBuilder();
-        for (String p : reactBack) names.append("• ").append(cleanupData.label(p, Strings.lang)).append("\n");
-        c.addView(text(t("re_done_d", reactBack.size()), medium, 16, GOLD));
-        TextView list = text(names.toString().trim(), regular, 14, SAND);
-        list.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
-        c.addView(list, lp(0, 6, 0, 0));
-        if (reactBack.size() < reactAsked) c.addView(text(t("re_fail", reactAsked - reactBack.size()), regular, 13, 0xFFE8896B), lp(0, 8, 0, 0));
-        body.addView(c, lp(0, 0, 0, 10));
-        final TextView more = ghostButton(t("re_more"), GOLD);
-        more.setOnClickListener(v -> {
-            if (busy) return;
-            busy = true; more.setAlpha(0.6f);
+        int asked = reactAsked, done = reactBack.size();
+        Outcome.Status st = Outcome.of(asked, done, false);
+        java.util.List<String> did = new ArrayList<>();
+        for (String p : reactBack) did.add(cleanupData.label(p, Strings.lang));
+        java.util.List<String> left = new ArrayList<>();
+        if (done < asked) left.add(t("re_fail", asked - done));
+        setEnd(st, t(st == Outcome.Status.SUCCESS ? "re_done_t" : st == Outcome.Status.PARTIAL ? "re_part_t" : "re_none_t"), t("re_end_sub", done, asked), did, left, t("re_end_info"));
+        endNextLabel = t("re_more");
+        endNext = () -> {
+            busy = true;
             bg.execute(() -> {
                 try { loadReactivation(); runOnUiThread(() -> { busy = false; show(11); }); }
-                catch (final Exception e) { runOnUiThread(() -> { busy = false; more.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
+                catch (final Exception e) { runOnUiThread(() -> { busy = false; Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
             });
-        });
-        body.addView(more, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
-        button.setText(t("cl_home"));
-        button.setOnClickListener(v -> show(12));
+        };
+        endScreen(body, button);
     }
+
 
     /** At the end of an install, a person who did not clean first is offered to do it now. */
     private void cleanNowCard(LinearLayout body) {
@@ -1434,7 +1383,7 @@ public class MainActivity extends Activity {
         final java.util.List<Profile> all = every;
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
-        head.addView(text(t("st_list_h"), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(text(t(getMode ? "st_list_h" : "sec_choose"), medium, 19, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
         head.addView(text(String.valueOf(all.size()), medium, 14, SAND));
         body.addView(head, lp(4, 8, 4, 6));
         if (all.isEmpty()) body.addView(text(t(getMode ? "st_empty" : "s_empty"), regular, 14, MUTED), lp(4, 0, 4, 8));
@@ -1465,6 +1414,7 @@ public class MainActivity extends Activity {
     }
 
     private void addSaveCard(final LinearLayout body) {
+        sectionLabel(body, t("sec_save"));
         LinearLayout save = card(false);
         save.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
         save.addView(text(t("st_save_h"), medium, 18, GOLD));
@@ -1487,21 +1437,21 @@ public class MainActivity extends Activity {
         saveBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         saveBtn.setOnClickListener(v -> {
             if (busy) return;
-            busy = true;
-            saveBtn.setAlpha(0.6f);
             final String typed = name.getText().toString();
-            bg.execute(() -> {
-                try {
-                    String json = flow.exportSettings();
-                    final Profile saved = store().save(typed, now(), tvModel, json);
-                    runOnUiThread(() -> {
-                        busy = false;
-                        Toast.makeText(this, t("st_saved"), Toast.LENGTH_SHORT).show();
-                        if (guide != null && guide.path == Guide.Path.COPY) { guide.step = 1; guide.profile = saved.name; saveGuide(); show(21); }
-                        else show(14);
-                    });
-                } catch (final Exception e) {
-                    runOnUiThread(() -> { busy = false; saveBtn.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+            final String[] json = new String[1];
+            final Profile[] saved = new Profile[1];
+            runSteps(t("pg_get_t"), t("pg_sub"), new String[] {t("pg_get_1"), t("pg_get_2")}, new StepWork[] {
+                () -> { json[0] = flow.exportSettings(); },
+                () -> { saved[0] = store().save(typed, now(), tvModel, json[0]); }
+            }, (failed, err) -> {
+                if (failed < 0) {
+                    if (guide != null && guide.path == Guide.Path.COPY) { guide.step = 1; guide.profile = saved[0].name; saveGuide(); show(21); return; }
+                    setEnd(Outcome.Status.SUCCESS, t("g_end_t"), t("ok_sub"), lines(t("g_end_d1", tvModelLine()), t("g_end_d2", saved[0].name)), new ArrayList<String>(), t("st_save_d"));
+                    endNextLabel = t("g_end_next"); endNext = () -> show(17);
+                    show(24);
+                } else {
+                    Outcome.Status st = Outcome.of(2, failed, true);
+                    showEnd(st, t(st == Outcome.Status.PARTIAL ? "g_part_t" : "g_fail_t"), t("g_part_sub"), failed == 0 ? new ArrayList<String>() : lines(t("pg_get_1")), lines(friendly(err, "", false)), t("g_fail_info"));
                 }
             });
         });
@@ -1511,11 +1461,8 @@ public class MainActivity extends Activity {
 
     /** On «send», the banner says which TV the settings will go to. */
     private void addTarget(LinearLayout body) {
-        LinearLayout info = card(false);
-        info.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        info.addView(text(t("st_to", tvModelLine()), medium, 16, SAND));
-        info.addView(text(t("s_choose"), regular, 13, MUTED));
-        body.addView(info, lp(0, 10, 0, 8));
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, t("st_to", tvModelLine()) + ". " + t("s_choose"));
     }
 
     private void askRename(final Profile p) {
@@ -1591,63 +1538,50 @@ public class MainActivity extends Activity {
         button.setText(t("st_apply", pv.count));
         button.setOnClickListener(v -> {
             if (busy) return;
+            final String b64 = Base64.encodeToString(p.settingsJson.getBytes(java.nio.charset.StandardCharsets.UTF_8), Base64.NO_WRAP);
+            final Preview[] applied = new Preview[1], verify = new Preview[1];
+            runSteps(t("pg_send_t"), t("pg_sub"), new String[] {t("pg_send_1"), t("pg_send_2"), t("pg_send_3")}, new StepWork[] {
+                () -> { applied[0] = Preview.parse(flow.importSettings(b64, true)); if (applied[0].error != null) throw new IOException(applied[0].error); },
+                () -> { try { flow.rescheduleAdhan(); } catch (IOException ignored) { } },
+                () -> { verify[0] = Preview.parse(flow.importSettings(b64, false)); if (verify[0].error != null) throw new IOException(verify[0].error); }
+            }, (failed, err) -> finishSend(p, pv, applied[0], verify[0], failed, err));
+        });
+    }
+
+    /** The send ends here: what was applied, checked again on the TV, and what is left if the check still finds changes. */
+    private void finishSend(Profile p, Preview pv, Preview applied, Preview verify, int failed, Exception err) {
+        int asked = pv.count;
+        int stillToDo = verify != null && !verify.nothing ? Math.max(verify.count, verify.changes.size()) : 0;
+        int done = failed == 0 || applied == null ? 0 : Math.max(0, Math.min(asked, asked - stillToDo));
+        boolean problem = failed >= 0 || stillToDo > 0;
+        Outcome.Status st = Outcome.of(asked, done, problem);
+        java.util.List<String> did = new ArrayList<>(), left = new ArrayList<>();
+        if (done > 0 || failed < 0) { did.add(t("st_end_d1", tvModelLine())); did.add(t("st_end_d2", done)); }
+        if (failed < 0 && stillToDo == 0) did.add(t("st_end_d3"));
+        if (verify != null && !verify.nothing) for (String c : verify.changes) left.add(c.replace(" -> ", "  →  "));
+        if (failed >= 0 && err != null) left.add(friendly(err, "", false));
+        setEnd(st, t(st == Outcome.Status.SUCCESS ? "st_sent_t" : st == Outcome.Status.PARTIAL ? "st_part_t" : "st_fail_t"), t("st_end_sub", done, asked), did, left, t("st_keep"));
+        endNextLabel = t("st_back"); endNext = () -> show(17);
+        if (done > 0) { endUndo = () -> undoSend(); endUndoLabel = t("st_undo"); }
+        if (st == Outcome.Status.SUCCESS && guide != null && (guide.path == Guide.Path.COPY || guide.path == Guide.Path.SEND)) clearGuide();
+        show(24);
+    }
+
+    private void undoSend() {
+        confirmGrave(t("st_undo_q"), t("st_undo_msg"), t("st_undo_keep"), t("st_undo_do"), () -> {
             busy = true;
-            button.setAlpha(0.6f);
             bg.execute(() -> {
                 try {
-                    String out = flow.importSettings(Base64.encodeToString(p.settingsJson.getBytes("UTF-8"), Base64.NO_WRAP), true);
+                    flow.undoImport();
                     try { flow.rescheduleAdhan(); } catch (IOException ignored) { }
-                    final Preview done = Preview.parse(out);
-                    runOnUiThread(() -> { busy = false; sentResult = done; show(16); });
+                    runOnUiThread(() -> { busy = false; showEnd(Outcome.Status.SUCCESS, t("st_undone_t"), t("ok_sub"), lines(t("st_undone")), new ArrayList<String>(), t("st_undone_info")); });
                 } catch (final Exception e) {
-                    runOnUiThread(() -> { busy = false; button.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+                    runOnUiThread(() -> { busy = false; Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
                 }
             });
         });
     }
 
-    private void sentScreen(LinearLayout body, TextView button) {
-        body.setGravity(Gravity.CENTER_HORIZONTAL);
-        Orn.Arch arch = new Orn.Arch(this);
-        LinearLayout in = new LinearLayout(this);
-        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
-        TextView check = text("✓", medium, 40, GOLD);
-        check.setGravity(Gravity.CENTER);
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
-        check.setBackground(ring);
-        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
-        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
-        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
-        body.addView(arch, ap);
-        TextView title = text(t("st_sent_t"), display, 26, SAND);
-        title.setGravity(Gravity.CENTER);
-        body.addView(title, lp(0, 14, 0, 10));
-        LinearLayout c = card(false);
-        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        c.addView(text(t("st_sent_d", sentResult == null ? 0 : sentResult.count, tvModelLine()), regular, 15, SAND));
-        body.addView(c, lp(0, 0, 0, 10));
-        final TextView undo = dangerLink(t("st_undo"));
-        undo.setOnClickListener(v -> {
-            if (busy) return;
-            confirmGrave(t("st_undo_q"), t("st_undo_msg"), t("st_undo_keep"), t("st_undo_do"), () -> {
-                busy = true; undo.setAlpha(0.6f);
-                bg.execute(() -> {
-                    try {
-                        flow.undoImport();
-                        try { flow.rescheduleAdhan(); } catch (IOException ignored) { }
-                        runOnUiThread(() -> { busy = false; undo.setAlpha(1f); undo.setText(t("st_undone")); undo.setOnClickListener(null); });
-                    } catch (final Exception e) {
-                        runOnUiThread(() -> { busy = false; undo.setAlpha(1f); Toast.makeText(this, t("st_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
-                    }
-                });
-            });
-        });
-        body.addView(undo, new LinearLayout.LayoutParams(-1, -2));
-        button.setText(t("st_back"));
-        button.setOnClickListener(v -> show(17));
-    }
 
     // ---------- the guide: choose a mode, choose a path, and know where you are ----------
 
@@ -1804,30 +1738,11 @@ public class MainActivity extends Activity {
     private void kept(LinearLayout body, TextView button) {
         String name = guide != null ? guide.profile : "";
         clearGuide();
-        body.setGravity(Gravity.CENTER_HORIZONTAL);
-        Orn.Arch arch = new Orn.Arch(this);
-        LinearLayout in = new LinearLayout(this);
-        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
-        TextView check = text("✓", medium, 40, GOLD);
-        check.setGravity(Gravity.CENTER);
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
-        check.setBackground(ring);
-        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
-        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
-        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
-        body.addView(arch, ap);
-        TextView title = text(t("kp_h"), display, 26, SAND);
-        title.setGravity(Gravity.CENTER);
-        body.addView(title, lp(0, 14, 0, 10));
-        LinearLayout c = card(false);
-        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        c.addView(text(t("kp_d", name, name), regular, 15, SAND));
-        body.addView(c, lp(0, 0, 0, 10));
-        button.setText(t("cl_home"));
-        button.setOnClickListener(v -> show(18));
+        setEnd(Outcome.Status.SUCCESS, t("kp_h"), t("ok_sub"), lines(t("kp_done", name)), new ArrayList<String>(), t("kp_d", name, name));
+        endNextLabel = t("st_back_list"); endNext = () -> show(17);
+        endScreen(body, button);
     }
+
 
     /** The step that only asks to change TV: it says what to do on the other TV, then connects to it. */
     private void switchScreen(LinearLayout body, TextView button) {
@@ -1858,6 +1773,190 @@ public class MainActivity extends Activity {
             if (tv != null) { tv.close(); tv = null; }
             space = SPACE_SEND;
             show(2);
+        });
+    }
+
+    // ---------- the end of an operation: one screen for all, success or incomplete, and the way home ----------
+
+    private Outcome.Status endStatus = Outcome.Status.SUCCESS;
+    private String endTitle = "", endSub = "", endInfo = "", endNextLabel = "", endUndoLabel = "";
+    private final java.util.List<String> endDone = new ArrayList<>(), endLeft = new ArrayList<>();
+    private Runnable endNext, endUndo;
+
+    private void setEnd(Outcome.Status st, String title, String sub, java.util.List<String> done, java.util.List<String> left, String info) {
+        endStatus = st; endTitle = title; endSub = sub; endInfo = info == null ? "" : info;
+        endDone.clear(); endDone.addAll(done); endLeft.clear(); endLeft.addAll(left);
+        endNext = null; endNextLabel = ""; endUndo = null; endUndoLabel = "";
+    }
+
+    private void showEnd(Outcome.Status st, String title, String sub, java.util.List<String> done, java.util.List<String> left, String info) {
+        setEnd(st, title, sub, done, left, info);
+        show(24);
+    }
+
+    private static java.util.List<String> lines(String... s) { return new ArrayList<>(java.util.Arrays.asList(s)); }
+
+    /** A small title over a group of things, so that what informs, what is chosen and what is done never look alike. */
+    private void sectionLabel(LinearLayout body, String label) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        TextView l = text(label.toUpperCase(Strings.rtl() ? java.util.Locale.ROOT : java.util.Locale.getDefault()), medium, 12, 0xFF96A098);
+        l.setLetterSpacing(Strings.rtl() ? 0f : 0.08f);
+        box.addView(l);
+        View rule = new View(this);
+        rule.setBackgroundColor(0x28FFFFFF);
+        box.addView(rule, new LinearLayout.LayoutParams(-1, dp(1)));
+        body.addView(box, lp(4, 16, 4, 8));
+    }
+
+    /** An indication: calm, never clickable, with an (i) on the reading side. */
+    private void infoCard(LinearLayout body, String message) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.HORIZONTAL);
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        c.setPadding(dp(16), dp(12), dp(16), dp(12));
+        c.setBackground(cardBg(false, 0x243F7A5C, 0xFF3F7A5C));
+        TextView i = text("i", medium, 15, 0xFF96D2AF);
+        i.setGravity(Gravity.CENTER);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL); ring.setColor(0); ring.setStroke(dp(2), 0xFF3F7A5C);
+        i.setBackground(ring);
+        c.addView(i, new LinearLayout.LayoutParams(dp(28), dp(28)));
+        TextView m = text(message, regular, 14, SAND);
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(0, -2, 1f);
+        mp.setMarginStart(dp(12));
+        c.addView(m, mp);
+        body.addView(c, lp(0, 0, 0, 8));
+    }
+
+    private void endScreen(LinearLayout body, TextView button) {
+        body.setGravity(Gravity.CENTER_HORIZONTAL);
+        final int color = endStatus == Outcome.Status.SUCCESS ? GOLD : endStatus == Outcome.Status.PARTIAL ? 0xFFF0BE5A : 0xFFE8896B;
+        TextView mark = text(endStatus == Outcome.Status.SUCCESS ? "✓" : endStatus == Outcome.Status.PARTIAL ? "!" : "✕", medium, 44, color);
+        mark.setGravity(Gravity.CENTER);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(4), color);
+        mark.setBackground(ring);
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(dp(104), dp(104));
+        mp.gravity = Gravity.CENTER_HORIZONTAL; mp.topMargin = dp(12);
+        body.addView(mark, mp);
+        TextView title = text(endTitle, display, 27, SAND);
+        title.setGravity(Gravity.CENTER);
+        body.addView(title, lp(0, 14, 0, 4));
+        TextView sub = text(endSub, medium, 16, color);
+        sub.setGravity(Gravity.CENTER);
+        body.addView(sub, lp(0, 0, 0, 6));
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setGravity(Gravity.START);
+        body.addView(list, new LinearLayout.LayoutParams(-1, -2));
+        // what was done, and what is left: the two are never mixed
+        if (!endDone.isEmpty()) {
+            sectionLabel(list, t("sec_done"));
+            for (String s : endDone) {
+                TextView r = text("◆  " + s, regular, 15, SAND);
+                list.addView(r, lp(4, 0, 4, 6));
+            }
+        }
+        if (!endLeft.isEmpty()) {
+            sectionLabel(list, t("sec_left"));
+            for (String s : endLeft) {
+                TextView r = text("▲  " + s, regular, 15, 0xFFF0BE5A);
+                list.addView(r, lp(4, 0, 4, 6));
+            }
+        }
+        if (!endInfo.isEmpty()) {
+            sectionLabel(list, t("sec_know"));
+            infoCard(list, endInfo);
+        }
+        if (endNext != null) {
+            sectionLabel(list, t("sec_next"));
+            TextView go = ghostButton(endNextLabel, GOLD);
+            final Runnable run = endNext;
+            go.setOnClickListener(v -> { if (!busy) run.run(); });
+            list.addView(go, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
+        }
+        if (endUndo != null) {
+            TextView u = dangerLink(endUndoLabel);
+            final Runnable run = endUndo;
+            u.setOnClickListener(v -> { if (!busy) run.run(); });
+            list.addView(u, new LinearLayout.LayoutParams(-1, -2));
+        }
+        // the way home is always the bottom button
+        button.setText(t("cl_home"));
+        ready(button, true);
+        button.setOnClickListener(v -> { if (!busy) show(18); });
+    }
+
+    // ---------- a run of steps, shown with a bar, a percentage and the state of each step ----------
+
+    private interface StepWork { void run() throws Exception; }
+    private interface StepsDone { void done(int failed, Exception error); }
+    private String progTitle = "", progSub = "";
+    private String[] progLabels = new String[0];
+    private StepWork[] progWork = new StepWork[0];
+    private StepsDone progDone;
+
+    private void runSteps(String title, String sub, String[] labels, StepWork[] work, StepsDone done) {
+        progTitle = title; progSub = sub; progLabels = labels; progWork = work; progDone = done;
+        show(23);
+    }
+
+    private void progressScreen(LinearLayout body, final TextView button) {
+        titleBlock(body, progTitle, progSub);
+        final int n = progLabels.length;
+        final TextView pctV = text("0%", display, 58, SAND);
+        pctV.setGravity(Gravity.CENTER);
+        pctV.setTextDirection(View.TEXT_DIRECTION_LTR);
+        body.addView(pctV, lp(0, 4, 0, 4));
+        final Orn.Bar bar = new Orn.Bar(this);
+        body.addView(bar, new LinearLayout.LayoutParams(-1, dp(32)));
+        sectionLabel(body, t("sec_steps"));
+        final TextView[] marks = new TextView[n];
+        final LinearLayout[] cards = new LinearLayout[n];
+        for (int i = 0; i < n; i++) {
+            LinearLayout c = card(false);
+            c.setOrientation(LinearLayout.HORIZONTAL);
+            c.setGravity(Gravity.CENTER_VERTICAL);
+            c.setClickable(false);
+            TextView m = text("", medium, 15, SAND);
+            m.setGravity(Gravity.CENTER);
+            c.addView(m, new LinearLayout.LayoutParams(dp(30), dp(30)));
+            TextView l = text(progLabels[i], regular, 16, SAND);
+            LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0, -2, 1f);
+            lp2.setMarginStart(dp(12));
+            c.addView(l, lp2);
+            marks[i] = m; cards[i] = c;
+            mark(m, c, "wait");
+            body.addView(c, lp(0, 0, 0, 8));
+        }
+        sectionLabel(body, t("sec_know"));
+        infoCard(body, t("pg_info"));
+        button.setText(t("pg_running"));
+        ready(button, false);
+        button.setOnClickListener(null);
+        busy = true;
+        final StepWork[] work = progWork;
+        final StepsDone done = progDone;
+        bg.execute(() -> {
+            int failed = -1;
+            Exception error = null;
+            for (int i = 0; i < n; i++) {
+                final int k = i;
+                runOnUiThread(() -> mark(marks[k], cards[k], "run"));
+                try {
+                    work[i].run();
+                } catch (Exception e) {
+                    failed = i; error = e;
+                    runOnUiThread(() -> mark(marks[k], cards[k], "fail"));
+                    break;
+                }
+                final int pct = Outcome.percent(i + 1, n);
+                runOnUiThread(() -> { mark(marks[k], cards[k], "done"); pctV.setText(pct + "%"); bar.set(pct / 100f); });
+            }
+            try { Thread.sleep(600); } catch (InterruptedException ignored) { }
+            final int f = failed; final Exception err = error;
+            runOnUiThread(() -> { busy = false; done.done(f, err); });
         });
     }
 
