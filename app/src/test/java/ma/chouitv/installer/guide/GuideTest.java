@@ -10,6 +10,7 @@ public class GuideTest {
     @Test public void eachPathHasItsSteps() {
         assertEquals(3, Guide.Path.EQUIP.steps);
         assertEquals(3, Guide.Path.COPY.steps);
+        assertEquals(2, Guide.Path.SEND.steps);
         assertEquals(1, Guide.Path.REACT.steps);
     }
 

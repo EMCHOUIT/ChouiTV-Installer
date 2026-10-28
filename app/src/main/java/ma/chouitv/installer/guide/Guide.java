@@ -10,7 +10,7 @@ import java.util.Locale;
  */
 public final class Guide {
     public enum Path {
-        EQUIP(3), COPY(3), REACT(1);
+        EQUIP(3), COPY(3), SEND(2), REACT(1);
         public final int steps;
         Path(int steps) { this.steps = steps; }
         public String key() { return name().toLowerCase(Locale.ROOT); }

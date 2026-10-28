@@ -125,6 +125,8 @@ public class MainActivity extends Activity {
         else if (step == 18) show(0);
         else if (step == 19) show(18);
         else if (step == 20) show(19);
+        else if (step == 21) show(19);
+        else if (step == 22) show(18);
         else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(guide != null ? 19 : 12); }
         else if (step == 11 || step == 13 || step == 14 || step == 17) show(guide != null ? 19 : 12);
         else if (step == 15 || step == 16) show(17);
@@ -163,7 +165,7 @@ public class MainActivity extends Activity {
         col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
         TextView button = button("");
         col.addView(button, lp(0, 12, 0, 0));
-        if (guide != null && (n == 1 || n == 2 || n == 4 || n == 8 || n == 11 || n == 14 || n == 17)) {
+        if (guide != null && (n == 1 || n == 2 || n == 4 || n == 8 || n == 11 || n == 14 || n == 17 || n == 21)) {
             if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
             guideBar(body);
         }
@@ -173,6 +175,8 @@ public class MainActivity extends Activity {
             case 18: modeScreen(body, button); break;
             case 19: pathsScreen(body, button); break;
             case 20: switchScreen(body, button); break;
+            case 21: nowOrLater(body, button); break;
+            case 22: kept(body, button); break;
             case 1: prepare(body, button); break;
             case 2: connect(body, button); break;
             case 3: install(body, button); break;
@@ -1437,7 +1441,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         busy = false;
                         Toast.makeText(this, t("st_saved"), Toast.LENGTH_SHORT).show();
-                        if (guide != null && guide.path == Guide.Path.COPY) { guide.step = 1; guide.profile = saved.name; saveGuide(); show(20); }
+                        if (guide != null && guide.path == Guide.Path.COPY) { guide.step = 1; guide.profile = saved.name; saveGuide(); show(21); }
                         else show(14);
                     });
                 } catch (final Exception e) {
@@ -1602,13 +1606,15 @@ public class MainActivity extends Activity {
         switch (g.path) {
             case EQUIP: return g.step == 0 ? SPACE_CLEAN : SPACE_INSTALL;
             case COPY: return g.step == 0 ? SPACE_GET : SPACE_SEND;
+            case SEND: return SPACE_SEND;
             default: return SPACE_REACT;
         }
     }
 
     /** Starts or resumes a guided path: each space begins with the connection to the TV, except the step that only asks to change TV. */
     private void goGuided() {
-        if (guide.path == Guide.Path.COPY && guide.step == 1) { show(20); return; }
+        if (guide.path == Guide.Path.COPY && guide.step == 1) { show(21); return; }
+        if (guide.path == Guide.Path.SEND && guide.step == 0) { show(20); return; }
         if (guide.path == Guide.Path.EQUIP && guide.step == 2) { guide.step = 1; saveGuide(); }   // the settings step needs the install's own state: redo from the install
         space = spaceFor(guide);
         show(1);
@@ -1636,7 +1642,7 @@ public class MainActivity extends Activity {
     private void pathsScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("pt_title"), t("pt_sub"));
         resumeCard(body);
-        String[][] paths = {{"equip", "pt_equip_t", "pt_equip_d", "pt_equip_n"}, {"copy", "pt_copy_t", "pt_copy_d", "pt_copy_n"}, {"react", "pt_react_t", "pt_react_d", "pt_react_n"}};
+        String[][] paths = {{"equip", "pt_equip_t", "pt_equip_d", "pt_equip_n"}, {"copy", "pt_copy_t", "pt_copy_d", "pt_copy_n"}, {"send", "pt_send_t", "pt_send_d", "pt_send_n"}, {"react", "pt_react_t", "pt_react_d", "pt_react_n"}};
         for (final String[] p : paths) {
             LinearLayout card = card(false);
             card.addView(text(t(p[1]), display, 22, SAND));
@@ -1710,14 +1716,71 @@ public class MainActivity extends Activity {
         body.addView(c, lp(0, 0, 0, 10));
     }
 
+    /** After the save in the copy path: send now (both TVs are here) or later (the settings stay on the phone). */
+    private void nowOrLater(LinearLayout body, TextView button) {
+        titleBlock(body, t("cp_h"), t("cp_sub"));
+        LinearLayout saved = card(false);
+        saved.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        saved.addView(text(t("cp_saved"), medium, 17, GOLD));
+        saved.addView(text(guide != null ? guide.profile : "", regular, 14, SAND), lp(0, 2, 0, 0));
+        body.addView(saved, lp(0, 8, 0, 8));
+        LinearLayout now = card(true);
+        now.addView(text(t("cp_now_t"), display, 22, SAND));
+        now.addView(text(t("cp_now_d"), regular, 14, MUTED), lp(0, 2, 0, 6));
+        now.addView(text("◆  " + t("cp_now_1"), regular, 14, SAND));
+        now.addView(text("◆  " + t("cp_now_2"), regular, 14, SAND));
+        now.setOnClickListener(v -> show(20));
+        body.addView(now, lp(0, 8, 0, 0));
+        LinearLayout later = card(false);
+        later.addView(text(t("cp_later_t"), display, 22, SAND));
+        later.addView(text(t("cp_later_d"), regular, 14, MUTED), lp(0, 2, 0, 6));
+        later.addView(text("◆  " + t("cp_later_1"), regular, 14, SAND));
+        later.addView(text("◆  " + t("cp_later_2"), regular, 14, SAND));
+        later.setOnClickListener(v -> show(22));
+        body.addView(later, lp(0, 10, 0, 0));
+        button.setText(t("cp_now_t"));
+        button.setOnClickListener(v -> show(20));
+    }
+
+    /** The copy path ends here when the settings will be sent later: they stay on the phone, and the way back is told. */
+    private void kept(LinearLayout body, TextView button) {
+        String name = guide != null ? guide.profile : "";
+        clearGuide();
+        body.setGravity(Gravity.CENTER_HORIZONTAL);
+        Orn.Arch arch = new Orn.Arch(this);
+        LinearLayout in = new LinearLayout(this);
+        in.setOrientation(LinearLayout.VERTICAL); in.setGravity(Gravity.CENTER); in.setPadding(dp(18), dp(36), dp(18), dp(16));
+        TextView check = text("✓", medium, 40, GOLD);
+        check.setGravity(Gravity.CENTER);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL); ring.setColor(0xFF142C1F); ring.setStroke(dp(3), GOLD);
+        check.setBackground(ring);
+        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
+        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(180), dp(180));
+        ap.gravity = Gravity.CENTER_HORIZONTAL; ap.topMargin = dp(10);
+        body.addView(arch, ap);
+        TextView title = text(t("kp_h"), display, 26, SAND);
+        title.setGravity(Gravity.CENTER);
+        body.addView(title, lp(0, 14, 0, 10));
+        LinearLayout c = card(false);
+        c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
+        c.addView(text(t("kp_d", name, name), regular, 15, SAND));
+        body.addView(c, lp(0, 0, 0, 10));
+        button.setText(t("cl_home"));
+        button.setOnClickListener(v -> show(18));
+    }
+
     /** The step that only asks to change TV: it says what to do on the other TV, then connects to it. */
     private void switchScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("sw_title"), t("sw_sub"));
         LinearLayout c = card(false);
         c.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
-        c.addView(text(t("sw_saved"), regular, 13, MUTED));
-        c.addView(text(guide != null && !guide.profile.isEmpty() ? guide.profile : "—", medium, 19, SAND));
-        body.addView(c, lp(0, 10, 0, 10));
+        if (guide != null && !guide.profile.isEmpty()) {
+            c.addView(text(t("sw_saved"), regular, 13, MUTED));
+            c.addView(text(guide.profile, medium, 19, SAND));
+            body.addView(c, lp(0, 10, 0, 10));
+        }
         String[] items = {"prep2a", "prep3a", "prep3b"};
         for (int i = 0; i < items.length; i++) {
             LinearLayout row = card(false);
@@ -1733,7 +1796,7 @@ public class MainActivity extends Activity {
         button.setText(t("sw_btn"));
         button.setOnClickListener(v -> {
             if (busy) return;
-            if (guide != null) { guide.step = 2; saveGuide(); }
+            if (guide != null && guide.path == Guide.Path.SEND) { guide.step = 1; saveGuide(); }
             if (tv != null) { tv.close(); tv = null; }
             space = SPACE_SEND;
             show(2);
