@@ -169,7 +169,9 @@ public class MainActivity extends Activity {
         fp.topMargin = -dp(28);
         col.addView(fade, fp);
         TextView button = button("");
-        col.addView(button, lp(0, 8, 0, 0));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(BTN_H));
+        bp.topMargin = dp(8);
+        col.addView(button, bp);
         if (guide != null && (n == 1 || n == 2 || n == 4 || n == 8 || n == 11 || n == 14 || n == 17 || n == 21)) {
             if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
             guideBar(body);
@@ -705,8 +707,8 @@ public class MainActivity extends Activity {
         body.addView(new Orn.Rule(this), new LinearLayout.LayoutParams(-1, dp(22)));
     }
 
-    /** The same size for every button of the same kind, on every screen: full width 56 dp, small ones in a row 48 dp. */
-    private static final int BTN_H = 56, PILL_H = 48;
+    /** The same size for every button of the same kind, on every screen: full width 64 dp, small ones in a row 52 dp. */
+    private static final int BTN_H = 64, PILL_H = 52;
 
     /** A ready button is gold; one that is not ready yet stays clearly readable (grey-green, full-strength text), never faded away. */
     private void ready(TextView b, boolean on) {
@@ -1987,7 +1989,7 @@ public class MainActivity extends Activity {
     private TextView button(String label) {
         Btn b = new Btn(this);
         b.setTypeface(medium);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 21);
         b.setTextColor(DARK);
         b.setGravity(Gravity.CENTER);
         b.setText(label);
