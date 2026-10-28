@@ -82,6 +82,38 @@ final class Adb implements AutoCloseable {
         throw new IOException("the TV did not accept the connection");
     }
 
+    /**
+     * Asks a TV who it is without ever bothering it: only a key the TV already knows is offered. When it would have to ask
+     * the person «Allow USB debugging?», this gives up and returns null, and nothing appears on the TV.
+     * The answer is «brand|model».
+     */
+    static String probe(String host, int port, File keyDir) {
+        Socket s = new Socket();
+        try {
+            s.connect(new InetSocketAddress(host, port), 1500);
+            s.setTcpNoDelay(true);
+            s.setSoTimeout(3000);
+            Adb a = new Adb(s);
+            KeyPair kp = loadOrMakeKey(keyDir);
+            a.send(A_CNXN, VERSION, MAX_DATA, "host::features=cmd,stat_v2\0".getBytes("UTF-8"));
+            Packet p = a.read();
+            if (p.cmd == A_AUTH && p.arg0 == 1) {
+                a.send(A_AUTH, 2, 0, sign(kp.getPrivate(), p.data));
+                p = a.read();
+            }
+            if (p.cmd != A_CNXN) return null;
+            a.maxData = (int) Math.min(Math.max(p.arg1, 4096), MAX_DATA);
+            String out = a.shell("getprop ro.product.manufacturer; getprop ro.product.model");
+            String[] l = out.trim().split("\\s*\\n\\s*");
+            if (l.length < 2 || l[1].isEmpty()) return null;
+            return l[0].trim() + "|" + l[1].trim();
+        } catch (Exception e) {
+            return null;
+        } finally {
+            try { s.close(); } catch (IOException ignored) { }
+        }
+    }
+
     @Override public void close() {
         try { socket.close(); } catch (IOException ignored) { }
     }

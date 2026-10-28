@@ -283,11 +283,20 @@ public class MainActivity extends Activity {
     }
 
     private void connect(final LinearLayout body, final TextView button) {
-        body.addView(text(t("found"), medium, 15, GOLD), lp(0, 0, 0, 8));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text(t("found"), medium, 15, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView refresh = ghostButton("↻  " + t("refresh"), GOLD);
+        refresh.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        refresh.setMinHeight(dp(44));
+        refresh.setSingleLine(true);
+        refresh.setPadding(dp(18), 0, dp(18), 0);
+        head.addView(refresh, new LinearLayout.LayoutParams(-2, dp(44)));
+        body.addView(head, lp(0, 0, 0, 8));
         final LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         body.addView(list);
-        list.addView(text(t("searching"), regular, 15, MUTED));
         body.addView(text(t("or_type"), medium, 15, GOLD), lp(0, 16, 0, 8));
         final EditText input = new EditText(this);
         input.setHint("192.168.1.24");
@@ -314,28 +323,55 @@ public class MainActivity extends Activity {
             connectTo(ip, button, status);
         });
         chosen = "";
-        bg.execute(() -> {
-            final List<String> tvs = Net.findTvs(5555);
-            runOnUiThread(() -> {
-                if (step != 2) return;
+        final boolean[] scanning = {false};
+        final Runnable scan = new Runnable() {
+            @Override public void run() {
+                if (scanning[0]) return;
+                scanning[0] = true;
+                chosen = "";
+                refresh.setText("…  " + t("searching_short"));
+                refresh.setAlpha(0.6f);
                 list.removeAllViews();
-                if (tvs.isEmpty()) list.addView(text(t("none_found"), regular, 14, MUTED));
-                for (final String ip : tvs) {
-                    final LinearLayout c = card(false);
-                    c.addView(text(t("tv"), medium, 18, SAND));
-                    TextView a = text(ip, regular, 14, MUTED);
-                    a.setTextDirection(View.TEXT_DIRECTION_LTR);
-                    c.addView(a);
-                    c.setOnClickListener(v -> {
-                        chosen = ip;
-                        for (int i = 0; i < list.getChildCount(); i++) list.getChildAt(i).setBackground(cardBg(false));
-                        c.setBackground(cardBg(true));
-                        input.setText("");
+                list.addView(text(t("searching"), regular, 15, MUTED));
+                bg.execute(() -> {
+                    final List<String> tvs = Net.findTvs(5555);
+                    final java.util.Map<String, String> names = new java.util.HashMap<>();
+                    final SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
+                    for (String ip : tvs) {
+                        String who = Adb.probe(ip, 5555, new File(getFilesDir(), "keys"));
+                        if (who != null) { sp.edit().putString("tv_" + ip, who).apply(); names.put(ip, who + "|known"); }
+                        else if (sp.getString("tv_" + ip, null) != null) names.put(ip, sp.getString("tv_" + ip, "") + "|seen");
+                    }
+                    runOnUiThread(() -> {
+                        scanning[0] = false;
+                        if (step != 2) return;
+                        refresh.setText("↻  " + t("refresh"));
+                        refresh.setAlpha(1f);
+                        list.removeAllViews();
+                        if (tvs.isEmpty()) list.addView(text(t("none_found"), regular, 14, MUTED));
+                        for (final String ip : tvs) {
+                            final LinearLayout c = card(false);
+                            String[] w = names.containsKey(ip) ? names.get(ip).split("\\|") : null;
+                            String title = w == null ? t("tv") : (w[0].isEmpty() ? "" : w[0] + " · ") + w[1];
+                            String state = w == null ? t("tv_first") : w[2].equals("known") ? t("tv_known") : t("tv_seen");
+                            c.addView(text(title, medium, 18, SAND));
+                            TextView a = text(ip + " · " + state, regular, 14, MUTED);
+                            a.setTextDirection(View.TEXT_DIRECTION_LTR);
+                            c.addView(a);
+                            c.setOnClickListener(v -> {
+                                chosen = ip;
+                                for (int i = 0; i < list.getChildCount(); i++) list.getChildAt(i).setBackground(cardBg(false));
+                                c.setBackground(cardBg(true));
+                                input.setText("");
+                            });
+                            list.addView(c, lp(0, 0, 0, 10));
+                        }
                     });
-                    list.addView(c, lp(0, 0, 0, 10));
-                }
-            });
-        });
+                });
+            }
+        };
+        refresh.setOnClickListener(v -> { if (!busy) scan.run(); });
+        scan.run();
     }
 
     private void connectTo(final String ip, final TextView button, final TextView status) {
@@ -362,6 +398,7 @@ public class MainActivity extends Activity {
                 model = flow.model();
                 tvModel = model;
                 try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
+                getSharedPreferences("installer", MODE_PRIVATE).edit().putString("tv_" + ip, tvBrand + "|" + model).apply();
                 runOnUiThread(() -> afterConnect(button, status));
             } catch (final Exception e) {
                 runOnUiThread(() -> {

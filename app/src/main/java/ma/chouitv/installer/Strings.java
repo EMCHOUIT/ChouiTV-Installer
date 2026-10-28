@@ -39,8 +39,13 @@ final class Strings {
         k("found", "تلفزيونات وُجدت", "Télés trouvées", "TVs found");
         k("searching", "جارٍ البحث على الواي فاي…", "Recherche en cours…", "Searching…");
         k("none_found", "لم يُعثر على تلفزيون. تأكد أن «تصحيح الشبكة» مفعّل، أو اكتب العنوان.",
-            "Aucune télé trouvée. Vérifiez que le « Débogage réseau » est activé, ou saisissez l'adresse.",
-            "No TV found. Check that \"Network debugging\" is on, or type the address.");
+            "Aucune télé trouvée. Vérifiez que le « Débogage réseau » est activé, puis touchez Actualiser, ou saisissez l'adresse.",
+            "No TV found. Check that \"Network debugging\" is on, then tap Refresh, or type the address.");
+        k("refresh", "تحديث", "Actualiser", "Refresh");
+        k("searching_short", "بحث…", "Recherche…", "Searching…");
+        k("tv_known", "مصرّح بها", "déjà autorisée", "already allowed");
+        k("tv_seen", "اتصال سابق", "déjà connectée", "connected before");
+        k("tv_first", "أول اتصال", "première connexion", "first connection");
         k("tv", "تلفزيون", "Télé", "TV");
         k("or_type", "أو اكتب العنوان", "Ou saisissez l'adresse", "Or type the address");
         k("on_tv", "على التلفزيون", "Sur la télé", "On your TV");
