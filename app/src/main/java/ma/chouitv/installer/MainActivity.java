@@ -627,7 +627,7 @@ public class MainActivity extends Activity {
         star.setOnClickListener(v -> {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/EMCHOUIT/ChouiTV"))); } catch (Exception ignored) { }
         });
-        body.addView(star, new LinearLayout.LayoutParams(-1, dp(52)));
+        body.addView(star, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         cleanNowCard(body);
         if (homeResult != null && homeResult != Flow.Home.OURS) {
             LinearLayout hw = card(false);
@@ -700,9 +700,31 @@ public class MainActivity extends Activity {
         body.addView(new Orn.Rule(this), new LinearLayout.LayoutParams(-1, dp(22)));
     }
 
+    /** The same size for every button of the same kind, on every screen: full width 56 dp, small ones in a row 48 dp. */
+    private static final int BTN_H = 56, PILL_H = 48;
+
+    /** A ready button is gold; one that is not ready yet stays clearly readable (grey-green, full-strength text), never faded away. */
+    private void ready(TextView b, boolean on) {
+        b.setAlpha(1f);
+        if (on) {
+            GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFFFFE296, 0xFFC48E3A});
+            g.setCornerRadius(dp(30));
+            b.setBackground(g);
+            b.setTextColor(DARK);
+        } else {
+            GradientDrawable g = new GradientDrawable();
+            g.setCornerRadius(dp(30));
+            g.setColor(0xFF3C4840);
+            g.setStroke(dp(2), 0xFF96A098);
+            b.setBackground(g);
+            b.setTextColor(SAND);
+        }
+    }
+
     private TextView ghostButton(String label, int color) {
-        TextView g = text(label, medium, 17, color);
+        TextView g = text(label, medium, 19, color);
         g.setGravity(Gravity.CENTER);
+        g.setMinHeight(dp(BTN_H));
         GradientDrawable d = new GradientDrawable();
         d.setCornerRadius(dp(28)); d.setColor(0xFF142C1F); d.setStroke(dp(2), color);
         g.setBackground(d);
@@ -924,7 +946,7 @@ public class MainActivity extends Activity {
             return;
         }
         button.setText(t("cl_run", n));
-        button.setAlpha(cleanConfirmed ? 1f : 0.45f);
+        ready(button, cleanConfirmed);
         button.setOnClickListener(v -> {
             if (busy) return;
             if (!cleanConfirmed) { Toast.makeText(this, t("cl_conf_needed"), Toast.LENGTH_SHORT).show(); return; }
@@ -1081,7 +1103,7 @@ public class MainActivity extends Activity {
                 } catch (Exception e) { runOnUiThread(() -> { busy = false; undoAll.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
             });
         });
-        body.addView(undoAll, new LinearLayout.LayoutParams(-1, dp(52)));
+        body.addView(undoAll, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         if (!cleanFromDone) {
             TextView home = ghostButton(t("cl_home"), MUTED);
             home.setOnClickListener(v -> show(12));
@@ -1248,7 +1270,7 @@ public class MainActivity extends Activity {
     private void updateReactButton(final TextView button) {
         final int n = reactSel.size();
         button.setText(n == 0 ? t("re_pick") : t("re_btn", n));
-        button.setAlpha(n == 0 ? 0.45f : 1f);
+        ready(button, n != 0);
         button.setOnClickListener(v -> {
             if (busy || reactSel.isEmpty()) return;
             busy = true;
@@ -1313,7 +1335,7 @@ public class MainActivity extends Activity {
                 catch (final Exception e) { runOnUiThread(() -> { busy = false; more.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
             });
         });
-        body.addView(more, new LinearLayout.LayoutParams(-1, dp(52)));
+        body.addView(more, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         button.setText(t("cl_home"));
         button.setOnClickListener(v -> show(12));
     }
@@ -1334,7 +1356,7 @@ public class MainActivity extends Activity {
                 catch (final Exception e) { runOnUiThread(() -> { busy = false; go.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
             });
         });
-        c.addView(go, new LinearLayout.LayoutParams(-1, dp(48)));
+        c.addView(go, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         body.addView(c, lp(0, 14, 0, 0));
     }
 
@@ -1354,9 +1376,10 @@ public class MainActivity extends Activity {
     }
 
     private TextView pill(String label, boolean filled) {
-        TextView p = text(label, medium, 14, filled ? DARK : GOLD);
+        TextView p = text(label, medium, 15, filled ? DARK : GOLD);
         p.setGravity(Gravity.CENTER);
-        p.setPadding(dp(10), dp(9), dp(10), dp(9));
+        p.setMinHeight(dp(PILL_H));
+        p.setPadding(dp(8), dp(4), dp(8), dp(4));
         GradientDrawable g = new GradientDrawable();
         g.setCornerRadius(dp(22));
         g.setColor(filled ? GOLD : 0xFF142C1F);
@@ -1393,11 +1416,11 @@ public class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             final TextView send = pill(t("st_send"), true), ren = pill(t("st_rename"), false), del = pill(t("st_delete"), false);
-            LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, -2, 1f);
+            LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, dp(PILL_H), 1f);
             w.setMarginEnd(dp(8));
             if (!getMode) row.addView(send, w);
             row.addView(ren, w);
-            row.addView(del, new LinearLayout.LayoutParams(0, -2, 1f));
+            row.addView(del, new LinearLayout.LayoutParams(0, dp(PILL_H), 1f));
             send.setOnClickListener(v -> startSend(p, send));
             ren.setOnClickListener(v -> askRename(p));
             del.setOnClickListener(v -> askDelete(p));
@@ -1425,7 +1448,7 @@ public class MainActivity extends Activity {
         name.setPadding(dp(16), dp(10), dp(16), dp(10));
         save.addView(name, new LinearLayout.LayoutParams(-1, dp(52)));
         final TextView saveBtn = button(t("st_save_btn"));
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, dp(52));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, dp(BTN_H));
         sp.topMargin = dp(10);
         saveBtn.setLayoutParams(sp);
         saveBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
@@ -1586,7 +1609,7 @@ public class MainActivity extends Activity {
                 }
             });
         });
-        body.addView(undo, new LinearLayout.LayoutParams(-1, dp(52)));
+        body.addView(undo, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         button.setText(t("st_back"));
         button.setOnClickListener(v -> show(17));
     }
@@ -1671,10 +1694,10 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         TextView go = pill(t("rs_go"), true), drop = pill(t("rs_drop"), false);
-        LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, -2, 1f);
+        LinearLayout.LayoutParams w = new LinearLayout.LayoutParams(0, dp(PILL_H), 1f);
         w.setMarginEnd(dp(8));
         row.addView(go, w);
-        row.addView(drop, new LinearLayout.LayoutParams(0, -2, 1f));
+        row.addView(drop, new LinearLayout.LayoutParams(0, dp(PILL_H), 1f));
         go.setOnClickListener(v -> { if (!busy) goGuided(); });
         drop.setOnClickListener(v -> { clearGuide(); show(step); });
         c.addView(row);
@@ -1922,7 +1945,7 @@ public class MainActivity extends Activity {
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xFFFFE296, 0xFFC48E3A});
         g.setCornerRadius(dp(30));
         b.setBackground(g);
-        b.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(56)));
+        b.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         return b;
     }
 
