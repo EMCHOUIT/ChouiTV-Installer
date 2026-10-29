@@ -35,7 +35,10 @@ final class Net {
 
     /** The version file, accepted only if every line of it passes Trust: our two apps, our releases, a checksum each, not older than allowed. */
     static Release latest() throws Exception {
-        JSONObject j = new JSONObject(new String(fetch(MANIFEST, Trust.MAX_MANIFEST_BYTES), "UTF-8"));
+        byte[] file = fetch(MANIFEST, Trust.MAX_MANIFEST_BYTES);
+        String signature = new String(fetch(MANIFEST + ".sig", Trust.MAX_MANIFEST_BYTES), "UTF-8");
+        if (!ManifestTrust.verify(file, signature)) throw new IOException("the version file is not signed by ChouiTV");
+        JSONObject j = new JSONObject(new String(file, "UTF-8"));
         Release r = new Release();
         r.version = j.getString("versionName");
         r.code = j.getInt("versionCode");
