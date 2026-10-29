@@ -1,0 +1,47 @@
+/* Shared look of the generated illustrations: dark green, gold, zellige. Fonts are the ones the app ships (see THIRD_PARTY_NOTICES.md). */
+@font-face { font-family: "Thm"; font-weight: 400; src: url("../../../app/src/main/assets/fonts/Thmanyah-Regular.otf"); }
+@font-face { font-family: "Thm"; font-weight: 500; src: url("../../../app/src/main/assets/fonts/Thmanyah-Medium.otf"); }
+@font-face { font-family: "Thm"; font-weight: 700; src: url("../../../app/src/main/assets/fonts/ThmanyahDisplay-Bold.otf"); }
+@font-face { font-family: "GreatVibes"; src: url("../../../app/src/main/assets/fonts/GreatVibes-Regular.ttf"); }
+@font-face { font-family: "Aref"; font-weight: 700; src: url("../../../app/src/main/assets/fonts/ArefRuqaa-Bold.ttf"); }
+
+:root {
+  --ink: #06140D; --card: #1B3325; --card2: #14281d; --line: #D6AF6B; --gold: #D1AB68; --cream: #F1E8D2;
+  --muted: #B9B39F; --green: #3F7A5C; --mint: #5DB58A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1800px; background: var(--ink); }
+body {
+  font-family: "Thm", "Segoe UI", sans-serif; color: var(--cream); position: relative; overflow: hidden;
+  background:
+    radial-gradient(900px 600px at 6% 0%, rgba(122, 100, 40, .42), transparent 70%),
+    radial-gradient(1000px 700px at 96% 100%, rgba(32, 98, 60, .42), transparent 70%),
+    linear-gradient(160deg, #0b1d13, #06140D 55%, #07170f);
+}
+/* zellige: a square and a turned square, very faint */
+body::before {
+  content: ""; position: absolute; inset: 0; opacity: .9;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><g fill='none' stroke='%23D6AF6B' stroke-opacity='.085' stroke-width='2'><rect x='40' y='40' width='80' height='80'/><rect x='40' y='40' width='80' height='80' transform='rotate(45 80 80)'/><circle cx='80' cy='80' r='8'/></g></svg>");
+  background-position: 20px 40px;
+}
+/* the row of stars along the top, as on the other images */
+body::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 60px; opacity: .55;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='60' viewBox='0 0 64 60'><g fill='%23D6AF6B' fill-opacity='.55'><path d='M32 20l2.6 5.2 5.9-1.7-1.7 5.9 5.2 2.6-5.2 2.6 1.7 5.9-5.9-1.7L32 44l-2.6-5.2-5.9 1.7 1.7-5.9-5.2-2.6 5.2-2.6-1.7-5.9 5.9 1.7z'/></g><circle cx='32' cy='32' r='5' fill='%2306140D'/></svg>");
+  background-repeat: repeat-x;
+}
+.stage { position: relative; z-index: 2; }
+[dir=rtl] { font-family: "Thm", "Segoe UI", sans-serif; }
+bdi, .ltr { unicode-bidi: isolate; direction: ltr; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 16px; padding: 14px 30px; border-radius: 999px;
+  border: 2px solid var(--line); background: #1B3325; color: var(--gold); font-size: 30px; font-weight: 500;
+}
+.star { width: 28px; height: 28px; flex: none; }
+h1 { font-weight: 700; color: var(--cream); line-height: 1.12; }
+.gold { color: var(--gold); }
+.tag {
+  display: inline-block; font-size: 20px; letter-spacing: .02em; padding: 4px 16px; border-radius: 999px;
+  border: 1.5px solid rgba(214, 175, 107, .6); color: var(--muted); background: rgba(6, 20, 13, .6);
+}
