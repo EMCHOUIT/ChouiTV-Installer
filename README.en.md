@@ -86,7 +86,7 @@ Some TVs (Xiaomi, TCL and others) ship with preinstalled apps you do not need: t
 
 Use the **Get the settings** and **Send settings** spaces (or the guided "Copy from one TV to another" path).
 
-- **Save under a name**: the settings of the connected TV (city, prayer, adhan, panels, teams, home shortcuts…) are kept on your phone, nowhere else.
+- **Save under a name**: the settings of the connected TV (city, prayer, adhan, panels, teams, home shortcuts, radios…) are kept on your phone, nowhere else.
 - **Send now or later**: if both TVs are together, send right away; otherwise take the settings with you and send them from "Send saved settings".
 - **Preview and undo**: you see the changes before applying them, and the send keeps a copy of the previous settings.
 - **Never saved**: the IP address or Wi-Fi name, the serial number, your photos and your tasks.
