@@ -23,6 +23,15 @@ final class Flow {
 
     Flow(Adb tv, File cache) { this.tv = tv; this.cache = cache; }
 
+    /** Asked before an installed app is removed because it is signed with another key; the answer of the person. */
+    interface Ask { boolean allow(String pkg); }
+
+    /** Set by the screen; without it nothing is ever removed. */
+    Ask ask;
+
+    /** The person (or the missing screen) said no: not worth trying again. */
+    static final class Declined extends IOException { Declined(String m) { super(m); } }
+
     // ---------- what the cleanup needs ----------
 
     /** The TV's shell, as the cleanup's own small interface (it is tested on a fake TV). */
@@ -88,9 +97,13 @@ final class Flow {
                 }
             }
             if (out.contains("UPDATE_INCOMPATIBLE") || out.contains("signatures do not match")) {
-                // an older build signed with another key: only then is the installed app removed
+                // an older build signed with another key: removed only when the person agrees, with the settings kept aside and put back after
+                if (ask == null || !ask.allow(pkg)) throw new Declined(pkg + ": signed with another key, left as it is");
+                String settings = null;
+                try { settings = exportSettings(); } catch (IOException noBackup) { }
                 tv.shell("pm uninstall " + pkg);
                 out = tv.install(f, up);
+                if (settings != null && out.contains("Success")) restore(settings);
             }
             if (!out.contains("Success")) throw new IOException(pkg + ": " + out);
             Thread.sleep(3000);
@@ -98,6 +111,20 @@ final class Flow {
                 throw new IOException(pkg + " was removed by this TV right after the install");
             }
         } finally { f.delete(); }
+    }
+
+    /** The settings kept before an app was removed, put back once the new one is in; a failure here never fails the install. */
+    private void restore(String settings) {
+        try {
+            Thread.sleep(2000);
+            importSettings(java.util.Base64.getEncoder().encodeToString(settings.getBytes("UTF-8")), true);
+        } catch (Exception ignored) { }
+    }
+
+    /** The version code of an app on the TV, or -1 when it is not there. */
+    int installedCode(String pkg) throws IOException {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("versionCode=(\\d+)").matcher(tv.shell("dumpsys package " + pkg + " | grep -m1 versionCode"));
+        return m.find() ? Integer.parseInt(m.group(1)) : -1;
     }
 
     /** The permissions the home app needs. */
@@ -196,6 +223,14 @@ final class Flow {
     }
 
     /** Everything is there: the three apps are installed. Returns true when the home key opens our home. */
+    boolean verify(int wantedCode) throws IOException {
+        for (String p : new String[] {SAVER, HOME}) {
+            int got = installedCode(p);
+            if (got != wantedCode) throw new IOException(p + " is version " + got + " on the TV, not " + wantedCode);
+        }
+        return verify();
+    }
+
     boolean verify() throws IOException {
         for (String p : new String[] {SAVER, CHANNELS, HOME}) {
             if (!tv.shell("pm list packages " + p).contains("package:" + p)) throw new IOException(p + " is not installed");

@@ -395,6 +395,7 @@ public class MainActivity extends Activity {
                 if (tv != null && tv != a) tv.close();
                 tv = a;
                 flow = new Flow(a, getCacheDir());
+                flow.ask = this::askRemoval;
                 model = flow.model();
                 tvModel = model;
                 try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
@@ -482,13 +483,16 @@ public class MainActivity extends Activity {
                 for (int j = 0; j < 3; j++) {
                     String url = null, sha = "";
                     for (Net.Apk a : rel.apks) if (a.pkg.equals(pk[j])) { url = a.url; sha = a.sha; }
-                    if (j == 1) { url = Net.CHANNELS; sha = ""; }
+                    if (j == 1) { url = Net.CHANNELS; sha = Trust.channelsSha(rel.channelsSha); }
                     if (url == null) throw new IOException("no link for " + pk[j]);
                     final int jj = j;
-                    files[j] = flow.download(pk[j], url, sha, (d, tt) -> {
+                    final String u = url, h = sha;
+                    // one app at a time, and one more try for it before the whole install is given up
+                    files[j] = twice(() -> flow.download(pk[jj], u, h, (d, tt) -> {
                         progress(1, (jj + (tt > 0 ? (float) d / tt : 0f)) / 3f, bar, pctV, stepV, etaV, t0);
                         sub(subV, 1, (jj + 1) + "/3 · " + mb(d) + (tt > 0 ? " / " + mb(tt) : ""));
-                    });
+                    }));
+                    if (j != 1) ApkCheck.verify(this, files[j], pk[j], rel.code);   // the right app, the right version, signed with our key
                 }
                 node(nodes, 1, Orn.Node.DONE);
                 progress(1, 1f, bar, pctV, stepV, etaV, t0);
@@ -497,10 +501,18 @@ public class MainActivity extends Activity {
                     cur = 2 + k;
                     final int s = cur;
                     node(nodes, s, Orn.Node.RUN);
-                    flow.installFile(pk[k], files[k], (d, tt) -> {
-                        float f = tt > 0 ? (float) d / tt : 0f;
-                        progress(s, f * 0.85f, bar, pctV, stepV, etaV, t0);
-                        sub(subV, s, f >= 1f ? t("sub_install") : t("sub_send", (int) (f * 100)));
+                    final int kk = k;
+                    twice(() -> {
+                        if (!files[kk].exists()) {   // a second try after a failure: the file was deleted, it is fetched and checked again
+                            files[kk] = flow.download(pk[kk], kk == 1 ? Net.CHANNELS : urlOf(rel, pk[kk]), kk == 1 ? Trust.channelsSha(rel.channelsSha) : shaOf(rel, pk[kk]), null);
+                            if (kk != 1) ApkCheck.verify(this, files[kk], pk[kk], rel.code);
+                        }
+                        flow.installFile(pk[kk], files[kk], (d, tt) -> {
+                            float f = tt > 0 ? (float) d / tt : 0f;
+                            progress(s, f * 0.85f, bar, pctV, stepV, etaV, t0);
+                            sub(subV, s, f >= 1f ? t("sub_install") : t("sub_send", (int) (f * 100)));
+                        });
+                        return files[kk];
                     });
                     if (s != 3) sub(subV, s, ver);
                     else sub(subV, s, t("ch_sub"));
@@ -525,7 +537,7 @@ public class MainActivity extends Activity {
 
                 cur = 7;
                 node(nodes, 7, Orn.Node.RUN);
-                try { flow.verify(); } catch (IOException lost) { if (homeResult != Flow.Home.UNSURE) throw lost; }
+                try { flow.verify(rel.code); } catch (IOException lost) { if (homeResult != Flow.Home.UNSURE) throw lost; }
                 sub(subV, 7, homeResult == Flow.Home.OURS ? t("home_ok") : t("home_warn"));
                 node(nodes, 7, Orn.Node.DONE);
                 progress(7, 1f, bar, pctV, stepV, etaV, t0);
@@ -545,6 +557,50 @@ public class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    private interface Attempt { java.io.File run() throws Exception; }
+
+    /** One more try after a failure of the network or of the TV; a refusal by the person or by the rules is final. */
+    private java.io.File twice(Attempt a) throws Exception {
+        try {
+            return a.run();
+        } catch (Flow.Declined | SecurityException stop) {
+            throw stop;
+        } catch (IOException first) {
+            if (String.valueOf(first.getMessage()).contains("signed with the ChouiTV key") || String.valueOf(first.getMessage()).contains("not an app")) throw first;
+            Thread.sleep(2500);
+            return a.run();
+        }
+    }
+
+    private static String urlOf(Net.Release rel, String pkg) throws IOException {
+        for (Net.Apk a : rel.apks) if (a.pkg.equals(pkg)) return a.url;
+        throw new IOException("no link for " + pkg);
+    }
+
+    private static String shaOf(Net.Release rel, String pkg) throws IOException {
+        for (Net.Apk a : rel.apks) if (a.pkg.equals(pkg)) return a.sha;
+        throw new IOException("no checksum for " + pkg);
+    }
+
+    /** Asked on the worker thread when an app of ours is signed with another key: the screen asks the person and this waits for the answer. */
+    private boolean askRemoval(final String pkg) {
+        final java.util.concurrent.CountDownLatch answered = new java.util.concurrent.CountDownLatch(1);
+        final boolean[] yes = {false};
+        runOnUiThread(() -> {
+            AlertDialog dlg = new AlertDialog.Builder(this).setTitle(t("rm_title")).setMessage(t("rm_msg", pkg))
+                .setPositiveButton(t("rm_keep"), (d, w) -> answered.countDown())
+                .setNegativeButton(t("rm_do"), (d, w) -> { yes[0] = true; answered.countDown(); })
+                .setOnCancelListener(d -> answered.countDown()).create();
+            dlg.setOnShowListener(x -> {
+                dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(0xFFB27E30);
+                dlg.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(0xFFD9573F);
+            });
+            dlg.show();
+        });
+        try { answered.await(); } catch (InterruptedException e) { return false; }
+        return yes[0];
     }
 
     private void node(final Orn.Node[] nodes, final int i, final int state) {
@@ -713,7 +769,7 @@ public class MainActivity extends Activity {
             bundled = CleanupData.parse(new String(o.toByteArray(), "UTF-8"));
         }
         try {
-            CleanupData online = CleanupData.parse(new String(Net.fetch(CLEANUP_URL), "UTF-8"));
+            CleanupData online = CleanupData.parse(new String(Net.fetch(CLEANUP_URL, Trust.MAX_MANIFEST_BYTES), "UTF-8"));
             // the published lists are the truth; the names this app was built with fill any name they do not have yet
             for (java.util.Map.Entry<String, String> e : bundled.display.entrySet()) online.display.putIfAbsent(e.getKey(), e.getValue());
             for (java.util.Map.Entry<String, String> e : bundled.namesAr.entrySet()) online.namesAr.putIfAbsent(e.getKey(), e.getValue());

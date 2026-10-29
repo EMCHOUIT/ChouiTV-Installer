@@ -74,6 +74,12 @@ final class Strings {
         k("version", "الإصدار", "Version", "Version");
         k("installing", "جارٍ التثبيت…", "Installation…", "Installing…");
         k("retry", "أعد المحاولة", "Réessayer", "Try again");
+        k("rm_title", "إزالة التطبيق القديم؟", "Retirer l'ancienne appli ?", "Remove the old app?");
+        k("rm_msg", "التطبيق %s الموجود على التلفزيون موقَّع بمفتاح آخر، فلا يمكن تحديثه فوقه. يمكن إزالته ثم تثبيت النسخة الجديدة، وستُحفظ إعداداته وتعود بعدها قدر الإمكان.",
+            "L'appli %s de la télé est signée avec une autre clé : elle ne peut pas être mise à jour par-dessus. On peut la retirer puis installer la nouvelle ; ses réglages sont gardés de côté et remis ensuite, autant que possible.",
+            "The app %s on the TV is signed with another key, so it cannot be updated over. It can be removed and the new one installed; its settings are kept aside and put back afterwards as far as possible.");
+        k("rm_keep", "إبقاؤه كما هو", "Le laisser tel quel", "Leave it as it is");
+        k("rm_do", "إزالته وتثبيت الجديد", "Retirer et installer", "Remove and install");
         k("err_install", "تعذّر التثبيت. %s", "Échec de l'installation. %s", "Install failed. %s");
         k("custom_title", "خصّصه لبيتك", "Personnalisez", "Make it yours");
         k("custom_sub", "يمكنك تغييرها لاحقًا", "Modifiable plus tard", "You can change this later");

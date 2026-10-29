@@ -31,47 +31,62 @@ final class Net {
     /** One APK of the release: package, URL and SHA-256 from latest.json. */
     static final class Apk { String pkg, url, sha; }
 
-    static final class Release { String version; List<Apk> apks = new ArrayList<>(); }
+    static final class Release { String version; int code; String channelsSha = ""; List<Apk> apks = new ArrayList<>(); }
 
+    /** The version file, accepted only if every line of it passes Trust: our two apps, our releases, a checksum each, not older than allowed. */
     static Release latest() throws Exception {
-        JSONObject j = new JSONObject(new String(fetch(MANIFEST), "UTF-8"));
+        JSONObject j = new JSONObject(new String(fetch(MANIFEST, Trust.MAX_MANIFEST_BYTES), "UTF-8"));
         Release r = new Release();
         r.version = j.getString("versionName");
+        r.code = j.getInt("versionCode");
+        Trust.requireVersion(r.code, r.version);
+        JSONObject ch = j.optJSONObject("channels");
+        if (ch != null) r.channelsSha = ch.optString("sha256", "");
         JSONArray a = j.getJSONArray("apks");
         for (int i = 0; i < a.length(); i++) {
             JSONObject o = a.getJSONObject(i);
             Apk k = new Apk();
             k.pkg = o.getString("package"); k.url = o.getString("url"); k.sha = o.optString("sha256", "");
+            Trust.requireApk(k.pkg, k.url, k.sha);
             r.apks.add(k);
+        }
+        for (String need : new String[] {Flow.SAVER, Flow.HOME}) {
+            boolean found = false;
+            for (Apk k : r.apks) if (k.pkg.equals(need)) found = true;
+            if (!found) throw new IOException("the version file has no " + need);
         }
         return r;
     }
 
-    static byte[] fetch(String url) throws IOException {
+    static byte[] fetch(String url, int max) throws IOException {
         ByteArrayOutputStream b = new ByteArrayOutputStream();
         HttpURLConnection c = open(url);
-        try (InputStream i = c.getInputStream()) { copy(i, b); } finally { c.disconnect(); }
+        try (InputStream i = c.getInputStream()) { copy(i, b, max); } finally { c.disconnect(); }
         return b.toByteArray();
     }
 
-    /** Downloads to a file; checks the SHA-256 when one is given. The progress callback gets bytes done and the total (or -1). */
+    /** Downloads to a file and checks its SHA-256, which is mandatory: a file without a published checksum is not downloaded at all. */
     static File download(String url, File to, String sha, Adb.Progress p) throws Exception {
+        if (!Trust.isSha256(sha)) throw new IOException("no checksum to check the download against");
         HttpURLConnection c = open(url);
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         long total = c.getContentLengthLong(), done = 0;
+        if (total > Trust.MAX_APK_BYTES) { c.disconnect(); throw new IOException("the file is too big"); }
         try (InputStream i = c.getInputStream(); FileOutputStream o = new FileOutputStream(to)) {
             byte[] buf = new byte[32768];
             int n;
             while ((n = i.read(buf)) > 0) {
                 o.write(buf, 0, n); md.update(buf, 0, n); done += n;
+                if (done > Trust.MAX_APK_BYTES) throw new IOException("the file is too big");
                 if (p != null) p.at(done, total);
             }
+        } catch (IOException e) {
+            to.delete();
+            throw e;
         } finally { c.disconnect(); }
-        if (sha != null && !sha.isEmpty()) {
-            StringBuilder h = new StringBuilder();
-            for (byte x : md.digest()) h.append(String.format("%02x", x));
-            if (!h.toString().equalsIgnoreCase(sha)) { to.delete(); throw new IOException("the downloaded file is not the published one (checksum)"); }
-        }
+        StringBuilder h = new StringBuilder();
+        for (byte x : md.digest()) h.append(String.format("%02x", x));
+        if (!h.toString().equalsIgnoreCase(sha)) { to.delete(); throw new IOException("the downloaded file is not the published one (checksum)"); }
         if (to.length() < 100000) { to.delete(); throw new IOException("the downloaded file is too small"); }
         return to;
     }
@@ -86,10 +101,14 @@ final class Net {
         return c;
     }
 
-    private static void copy(InputStream i, java.io.OutputStream o) throws IOException {
+    private static void copy(InputStream i, java.io.OutputStream o, int max) throws IOException {
         byte[] buf = new byte[16384];
-        int n;
-        while ((n = i.read(buf)) > 0) o.write(buf, 0, n);
+        int n, done = 0;
+        while ((n = i.read(buf)) > 0) {
+            o.write(buf, 0, n);
+            done += n;
+            if (done > max) throw new IOException("the answer is too long");
+        }
     }
 
     /** Hosts of this phone's Wi-Fi network (a /24) that answer on the ADB port, found in about two seconds. */

@@ -55,6 +55,15 @@ final class Adb implements AutoCloseable {
     /** Connects and authorises. The first time, the TV shows «Allow USB debugging?»: this waits up to 2 minutes for the answer. */
     static Adb connect(String host, int port, File keyDir) throws Exception {
         Socket s = new Socket();
+        try {
+            return connected(s, host, port, keyDir);
+        } catch (Exception e) {
+            try { s.close(); } catch (IOException ignored) { }   // a refused or timed-out try must not keep its socket open
+            throw e;
+        }
+    }
+
+    private static Adb connected(Socket s, String host, int port, File keyDir) throws Exception {
         s.connect(new InetSocketAddress(host, port), 4000);
         s.setTcpNoDelay(true);
         s.setSoTimeout(125000);
