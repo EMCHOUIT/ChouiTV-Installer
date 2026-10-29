@@ -413,8 +413,8 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** The weight of each of the eight steps in the global percentage (they add up to 100). */
-    private static final int[] W = {3, 25, 15, 12, 15, 6, 12, 12};
+    /** The weight of each of the eight steps in the global percentage (they add up to 100): check, download, Channels, home, permissions, defaults, verify, old settings. */
+    private static final int[] W = {3, 25, 17, 20, 6, 12, 9, 8};
 
     private void install(final LinearLayout body, final TextView button) {
         final int n = W.length;
@@ -432,8 +432,8 @@ public class MainActivity extends Activity {
         meta.addView(stepV, new LinearLayout.LayoutParams(0, -2, 1f));
         meta.addView(etaV, new LinearLayout.LayoutParams(0, -2, 1f));
         body.addView(meta, lp(6, 6, 6, 14));
-        final String[] titles = {t("s_check"), t("s_download", ""), t("s_saver"), t("s_channels"), t("s_home"), t("s_perms"), t("s_defaults"), t("s_verify")};
-        final String[] subs0 = {"", "", "", t("ch_sub"), "", t("sub_perms"), t("sub_defaults"), t("sub_verify")};
+        final String[] titles = {t("s_check"), t("s_download", ""), t("s_channels"), t("s_home"), t("s_perms"), t("s_defaults"), t("s_verify"), t("s_migrate")};
+        final String[] subs0 = {"", "", t("ch_sub"), "", t("sub_perms"), t("sub_defaults"), t("sub_verify"), ""};
         final Orn.Node[] nodes = new Orn.Node[n];
         final TextView[] titleV = new TextView[n], subV = new TextView[n];
         for (int i = 0; i < n; i++) {
@@ -470,6 +470,9 @@ public class MainActivity extends Activity {
                 tvModel = m;
                 try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
                 sub(subV, 0, m + " · Android " + av);
+                // a TV still on 3.x has the separate screensaver app: its settings are read now, before anything changes
+                final Migration.Store kept = Migration.fileStore(new java.io.File(getFilesDir(), "old-screensaver-settings.json"));
+                final Migration.State migration = Migration.before(flow.migrationTv(), kept);
                 node(nodes, 0, Orn.Node.DONE);
                 progress(0, 1f, bar, pctV, stepV, etaV, t0);
 
@@ -478,34 +481,34 @@ public class MainActivity extends Activity {
                 final Net.Release rel = Net.latest();
                 final String ver = rel.version;
                 runOnUiThread(() -> titleV[1].setText(t("s_download", ver)));
-                final String[] pk = {Flow.SAVER, Flow.CHANNELS, Flow.HOME};
-                final java.io.File[] files = new java.io.File[3];
-                for (int j = 0; j < 3; j++) {
+                final String[] pk = {Flow.CHANNELS, Flow.HOME};
+                final java.io.File[] files = new java.io.File[2];
+                for (int j = 0; j < 2; j++) {
                     String url = null, sha = "";
                     for (Net.Apk a : rel.apks) if (a.pkg.equals(pk[j])) { url = a.url; sha = a.sha; }
-                    if (j == 1) { url = Net.CHANNELS; sha = Trust.channelsSha(rel.channelsSha); }
+                    if (j == 0) { url = Net.CHANNELS; sha = Trust.channelsSha(rel.channelsSha); }
                     if (url == null) throw new IOException("no link for " + pk[j]);
                     final int jj = j;
                     final String u = url, h = sha;
                     // one app at a time, and one more try for it before the whole install is given up
                     files[j] = twice(() -> flow.download(pk[jj], u, h, (d, tt) -> {
-                        progress(1, (jj + (tt > 0 ? (float) d / tt : 0f)) / 3f, bar, pctV, stepV, etaV, t0);
-                        sub(subV, 1, (jj + 1) + "/3 · " + mb(d) + (tt > 0 ? " / " + mb(tt) : ""));
+                        progress(1, (jj + (tt > 0 ? (float) d / tt : 0f)) / 2f, bar, pctV, stepV, etaV, t0);
+                        sub(subV, 1, (jj + 1) + "/2 · " + mb(d) + (tt > 0 ? " / " + mb(tt) : ""));
                     }));
-                    if (j != 1) ApkCheck.verify(this, files[j], pk[j], rel.code);   // the right app, the right version, signed with our key
+                    if (j != 0) ApkCheck.verify(this, files[j], pk[j], rel.code);   // the right app, the right version, signed with our key
                 }
                 node(nodes, 1, Orn.Node.DONE);
                 progress(1, 1f, bar, pctV, stepV, etaV, t0);
 
-                for (int k = 0; k < 3; k++) {
+                for (int k = 0; k < 2; k++) {
                     cur = 2 + k;
                     final int s = cur;
                     node(nodes, s, Orn.Node.RUN);
                     final int kk = k;
                     twice(() -> {
                         if (!files[kk].exists()) {   // a second try after a failure: the file was deleted, it is fetched and checked again
-                            files[kk] = flow.download(pk[kk], kk == 1 ? Net.CHANNELS : urlOf(rel, pk[kk]), kk == 1 ? Trust.channelsSha(rel.channelsSha) : shaOf(rel, pk[kk]), null);
-                            if (kk != 1) ApkCheck.verify(this, files[kk], pk[kk], rel.code);
+                            files[kk] = flow.download(pk[kk], kk == 0 ? Net.CHANNELS : urlOf(rel, pk[kk]), kk == 0 ? Trust.channelsSha(rel.channelsSha) : shaOf(rel, pk[kk]), null);
+                            if (kk != 0) ApkCheck.verify(this, files[kk], pk[kk], rel.code);
                         }
                         flow.installFile(pk[kk], files[kk], (d, tt) -> {
                             float f = tt > 0 ? (float) d / tt : 0f;
@@ -514,31 +517,41 @@ public class MainActivity extends Activity {
                         });
                         return files[kk];
                     });
-                    if (s != 3) sub(subV, s, ver);
-                    else sub(subV, s, t("ch_sub"));
+                    if (k == 0) sub(subV, s, t("ch_sub"));
+                    else sub(subV, s, ver);
                     node(nodes, s, Orn.Node.DONE);
                     progress(s, 1f, bar, pctV, stepV, etaV, t0);
                 }
 
+                cur = 4;
+                node(nodes, 4, Orn.Node.RUN);
+                flow.grantPermissions();
+                node(nodes, 4, Orn.Node.DONE);
+                progress(4, 1f, bar, pctV, stepV, etaV, t0);
+
                 cur = 5;
                 node(nodes, 5, Orn.Node.RUN);
-                flow.grantPermissions();
+                sub(subV, 5, t("sub_switch"));
+                flow.setDefaults();
+                try { homeResult = flow.switchHome(); } catch (IOException lost) { homeResult = Flow.Home.UNSURE; }
+                sub(subV, 5, t("sub_defaults"));
                 node(nodes, 5, Orn.Node.DONE);
                 progress(5, 1f, bar, pctV, stepV, etaV, t0);
 
                 cur = 6;
                 node(nodes, 6, Orn.Node.RUN);
-                sub(subV, 6, t("sub_switch"));
-                flow.setDefaults();
-                try { homeResult = flow.switchHome(); } catch (IOException lost) { homeResult = Flow.Home.UNSURE; }
-                sub(subV, 6, t("sub_defaults"));
+                try { flow.verify(rel.code); } catch (IOException lost) { if (homeResult != Flow.Home.UNSURE) throw lost; }
+                sub(subV, 6, homeResult == Flow.Home.OURS ? t("home_ok") : t("home_warn"));
                 node(nodes, 6, Orn.Node.DONE);
                 progress(6, 1f, bar, pctV, stepV, etaV, t0);
 
+                // last, once 4.0 is confirmed: the old settings go into the merged app; the old app goes only if the person says so
                 cur = 7;
                 node(nodes, 7, Orn.Node.RUN);
-                try { flow.verify(rel.code); } catch (IOException lost) { if (homeResult != Flow.Home.UNSURE) throw lost; }
-                sub(subV, 7, homeResult == Flow.Home.OURS ? t("home_ok") : t("home_warn"));
+                flow.askOldSaver = this::askRemoveOldSaver;
+                Migration.Outcome moved = Migration.after(flow.migrationTv(), kept, migration, flow.askOldSaver);
+                sub(subV, 7, t(moved == Migration.Outcome.NOTHING ? "sub_migrate_none" : moved == Migration.Outcome.REMOVED ? "sub_migrate_removed"
+                    : moved == Migration.Outcome.KEPT ? "sub_migrate_kept" : moved == Migration.Outcome.REMOVE_FAILED ? "sub_migrate_stuck" : "sub_migrate_failed"));
                 node(nodes, 7, Orn.Node.DONE);
                 progress(7, 1f, bar, pctV, stepV, etaV, t0);
 
@@ -592,6 +605,25 @@ public class MainActivity extends Activity {
             AlertDialog dlg = new AlertDialog.Builder(this).setTitle(t("rm_title")).setMessage(t("rm_msg", pkg))
                 .setPositiveButton(t("rm_keep"), (d, w) -> answered.countDown())
                 .setNegativeButton(t("rm_do"), (d, w) -> { yes[0] = true; answered.countDown(); })
+                .setOnCancelListener(d -> answered.countDown()).create();
+            dlg.setOnShowListener(x -> {
+                dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(0xFFB27E30);
+                dlg.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(0xFFD9573F);
+            });
+            dlg.show();
+        });
+        try { answered.await(); } catch (InterruptedException e) { return false; }
+        return yes[0];
+    }
+
+    /** Asked on the worker thread once the old settings are in the new app: remove the old 3.x screensaver app? Nothing is removed unless the person says yes. */
+    private boolean askRemoveOldSaver(final String pkg) {
+        final java.util.concurrent.CountDownLatch answered = new java.util.concurrent.CountDownLatch(1);
+        final boolean[] yes = {false};
+        runOnUiThread(() -> {
+            AlertDialog dlg = new AlertDialog.Builder(this).setTitle(t("old_title")).setMessage(t("old_msg", pkg))
+                .setPositiveButton(t("old_keep"), (d, w) -> answered.countDown())
+                .setNegativeButton(t("old_do"), (d, w) -> { yes[0] = true; answered.countDown(); })
                 .setOnCancelListener(d -> answered.countDown()).create();
             dlg.setOnShowListener(x -> {
                 dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(0xFFB27E30);

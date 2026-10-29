@@ -155,7 +155,7 @@ public class UserAppsTest {
     }
 
     @Test public void neverOfferedOurOwnGoogleProtectedHomeOrKeyboardApps() throws Exception {
-        Facts f = facts("ma.chouitv.home", "ma.chouitv.installer", "com.google.android.youtube.tv", "com.keep.me", "com.my.launcher", "com.my.keyboard", "com.x.imeapp", "ok.app.one");
+        Facts f = facts("ma.chouitv.home", "ma.chouitv.screensaver", "ma.chouitv.installer", "com.google.android.youtube.tv", "com.keep.me", "com.my.launcher", "com.my.keyboard", "com.x.imeapp", "ok.app.one");
         f.sensitive.add("com.x.imeapp");
         Plan p = Planner.plan(data(), tv(f));
         Set<String> got = p.userApps.keySet();

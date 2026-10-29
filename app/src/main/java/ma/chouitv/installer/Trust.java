@@ -15,7 +15,7 @@ final class Trust {
     static final String RELEASES = "https://github.com/EMCHOUIT/ChouiTV/releases/download/";
 
     /**
-     * SHA-256 of the certificate ChouiTV's two apps are signed with (the same line as .github/signer-sha256.txt in the ChouiTV repository).
+     * SHA-256 of the certificate ChouiTV's app (and the older screensaver app, signed with the same key) is signed with (the same line as .github/signer-sha256.txt in the ChouiTV repository).
      * An app signed by anything else is not ours, whatever its name and checksum say.
      */
     static final String SIGNER_SHA256 = "af6154f7763c8a894b235341d3c6e1df34536b3f7a11b1244cd2aaa96451f242";
@@ -24,7 +24,7 @@ final class Trust {
     static final String CHANNELS_SHA256 = "af6502e7450326b1e1c02e01e3c01340e90b1742b3c127b4eac0ea6f1b46d638";
 
     /** An older version file than this is a replay: it is refused, so a TV is never taken back to a version with a known problem. */
-    static final int MIN_VERSION_CODE = 176;
+    static final int MIN_VERSION_CODE = 180;
 
     static final int MAX_MANIFEST_BYTES = 64 * 1024;
     static final long MAX_APK_BYTES = 150L * 1024 * 1024;
@@ -44,11 +44,23 @@ final class Trust {
                 && !rest.contains("\\") && !rest.contains("%2e") && !rest.contains("%2E");
     }
 
-    /** One APK line of the version file: one of our two apps, from our releases, with a checksum. */
+    /** True for the screensaver app of ChouiTV 3.x, which 4.0 merged into the home app: a version file may still list it, it is never installed. */
+    static boolean isLegacyListing(String pkg) { return Flow.OLD_SAVER.equals(pkg); }
+
+    /** One APK line of the version file: the home app, from our releases, with a checksum. (A legacy screensaver line is skipped before this is called.) */
     static void requireApk(String pkg, String url, String sha) throws IOException {
-        if (!Flow.SAVER.equals(pkg) && !Flow.HOME.equals(pkg)) throw new IOException("the version file lists an unknown app: " + pkg);
+        if (!Flow.HOME.equals(pkg)) throw new IOException("the version file lists an unknown app: " + pkg);
         if (!allowedUrl(url)) throw new IOException("the version file points outside the ChouiTV releases: " + pkg);
         if (!isSha256(sha)) throw new IOException("the version file has no checksum for " + pkg);
+    }
+
+    /** The packages the version file lists, once the legacy screensaver line is set aside: exactly what the installer may install. */
+    static java.util.List<String> installable(java.util.List<String> listed) throws IOException {
+        java.util.List<String> keep = new java.util.ArrayList<>();
+        for (String pkg : listed) if (!isLegacyListing(pkg)) keep.add(pkg);
+        if (!keep.contains(Flow.HOME)) throw new IOException("the version file has no " + Flow.HOME);
+        if (keep.indexOf(Flow.HOME) != keep.lastIndexOf(Flow.HOME)) throw new IOException("the version file lists " + Flow.HOME + " twice");
+        return keep;
     }
 
     /** The version file as a whole. */

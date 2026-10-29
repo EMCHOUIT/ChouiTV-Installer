@@ -33,7 +33,7 @@ final class Net {
 
     static final class Release { String version; int code; String channelsSha = ""; List<Apk> apks = new ArrayList<>(); }
 
-    /** The version file, accepted only if every line of it passes Trust: our two apps, our releases, a checksum each, not older than allowed. */
+    /** The version file, accepted only if every line of it passes Trust: the home app (a legacy screensaver line is ignored), our releases, a checksum each, not older than allowed. */
     static Release latest() throws Exception {
         byte[] file = fetch(MANIFEST, Trust.MAX_MANIFEST_BYTES);
         String signature = new String(fetch(MANIFEST + ".sig", Trust.MAX_MANIFEST_BYTES), "UTF-8");
@@ -46,18 +46,18 @@ final class Net {
         JSONObject ch = j.optJSONObject("channels");
         if (ch != null) r.channelsSha = ch.optString("sha256", "");
         JSONArray a = j.getJSONArray("apks");
+        List<String> listed = new ArrayList<>();
         for (int i = 0; i < a.length(); i++) {
             JSONObject o = a.getJSONObject(i);
+            String pkg = o.getString("package");
+            listed.add(pkg);
+            if (Trust.isLegacyListing(pkg)) continue;   // a 3.x version file: the old screensaver is never installed again
             Apk k = new Apk();
-            k.pkg = o.getString("package"); k.url = o.getString("url"); k.sha = o.optString("sha256", "");
+            k.pkg = pkg; k.url = o.getString("url"); k.sha = o.optString("sha256", "");
             Trust.requireApk(k.pkg, k.url, k.sha);
             r.apks.add(k);
         }
-        for (String need : new String[] {Flow.SAVER, Flow.HOME}) {
-            boolean found = false;
-            for (Apk k : r.apks) if (k.pkg.equals(need)) found = true;
-            if (!found) throw new IOException("the version file has no " + need);
-        }
+        Trust.installable(listed);   // the home app must be there
         return r;
     }
 

@@ -11,8 +11,8 @@ android {
         minSdk 26
         targetSdk 34
         // the installer has its own version: 1.0, 1.1, ... (the ChouiTV version it installs is read from latest.json)
-        versionCode 8
-        versionName "1.5"
+        versionCode 9
+        versionName "1.6"
     }
 
     buildFeatures {

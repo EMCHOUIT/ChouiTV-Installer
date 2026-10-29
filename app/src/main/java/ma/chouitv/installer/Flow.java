@@ -10,10 +10,18 @@ import java.util.Set;
 import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Shell;
+import ma.chouitv.installer.profiles.Preview;
 
 /** What the installer does to the TV, step by step. Every method blocks: call them from a worker thread. */
 final class Flow {
-    static final String SAVER = "ma.chouitv.screensaver", HOME = "ma.chouitv.home", CHANNELS = "com.majnioui.tv.channels";
+    /** From ChouiTV 4.0 the home app, the screensaver and the settings are ONE package, HOME. OLD_SAVER is the separate 3.x screensaver app: never installed again. */
+    static final String HOME = "ma.chouitv.home", CHANNELS = "com.majnioui.tv.channels", OLD_SAVER = "ma.chouitv.screensaver";
+    /** The screensaver part of the merged app keeps its class names and its broadcast actions (ma.chouitv.screensaver.GET, SET, EXPORT, IMPORT...). */
+    static final String ACTION_PREFIX = "ma.chouitv.screensaver.";
+    static final String DREAM = HOME + "/ma.chouitv.screensaver.ScreenDream";
+    static final String RECEIVER = HOME + "/ma.chouitv.screensaver.SaverReceiver";
+    /** The same receiver in the old 3.x screensaver app. */
+    static final String OLD_RECEIVER = OLD_SAVER + "/.SaverReceiver";
     static final String VERIFIER = "verifier_verify_adb_installs";
 
     private final Adb tv;
@@ -28,6 +36,9 @@ final class Flow {
 
     /** Set by the screen; without it nothing is ever removed. */
     Ask ask;
+
+    /** Asked before the old 3.x screensaver app is removed once its settings are in the new app; the answer of the person. Without it the old app stays. */
+    Ask askOldSaver;
 
     /** The person (or the missing screen) said no: not worth trying again. */
     static final class Declined extends IOException { Declined(String m) { super(m); } }
@@ -107,9 +118,10 @@ final class Flow {
             }
             if (!out.contains("Success")) throw new IOException(pkg + ": " + out);
             Thread.sleep(3000);
-            if (!tv.shell("pm list packages " + pkg).contains("package:" + pkg)) {
+            if (!packages("pm list packages " + pkg).contains(pkg)) {
                 throw new IOException(pkg + " was removed by this TV right after the install");
             }
+            receiver = null;
         } finally { f.delete(); }
     }
 
@@ -133,11 +145,21 @@ final class Flow {
         tv.shell("appops set " + HOME + " SCHEDULE_EXACT_ALARM allow");
     }
 
-    /** The screensaver, then the home role. */
+    /** The commands that make the screensaver of the merged app the TV's daydream. */
+    static String[] dreamCommands() {
+        return new String[] {
+            "settings put secure screensaver_enabled 1",
+            "settings put secure screensaver_components " + DREAM,
+            "settings put secure screensaver_default_component " + DREAM};
+    }
+
+    void setDream() throws IOException {
+        for (String c : dreamCommands()) tv.shell(c);
+    }
+
+    /** The screensaver (now a part of the home app), then the home role. */
     void setDefaults() throws IOException {
-        tv.shell("settings put secure screensaver_enabled 1");
-        tv.shell("settings put secure screensaver_components " + SAVER + "/.ScreenDream");
-        tv.shell("settings put secure screensaver_default_component " + SAVER + "/.ScreenDream");
+        setDream();
         tv.shell("cmd role add-role-holder --user 0 android.app.role.HOME " + HOME);
         tv.shell("cmd package set-home-activity --user 0 " + HOME + "/.MainActivity");
     }
@@ -222,27 +244,45 @@ final class Flow {
         return res.contains(HOME) ? Home.OURS : Home.FAILED;
     }
 
-    /** Everything is there: the three apps are installed. Returns true when the home key opens our home. */
+    /** Everything is there: the home app is the announced version and Channels is installed. Returns true when the home key opens our home. */
     boolean verify(int wantedCode) throws IOException {
-        for (String p : new String[] {SAVER, HOME}) {
-            int got = installedCode(p);
-            if (got != wantedCode) throw new IOException(p + " is version " + got + " on the TV, not " + wantedCode);
-        }
+        int got = installedCode(HOME);
+        if (got != wantedCode) throw new IOException(HOME + " is version " + got + " on the TV, not " + wantedCode);
         return verify();
     }
 
     boolean verify() throws IOException {
-        for (String p : new String[] {SAVER, CHANNELS, HOME}) {
-            if (!tv.shell("pm list packages " + p).contains("package:" + p)) throw new IOException(p + " is not installed");
+        Set<String> there = packages("pm list packages");
+        for (String p : new String[] {CHANNELS, HOME}) {
+            if (!there.contains(p)) throw new IOException(p + " is not installed");
         }
         return tv.shell("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME").contains(HOME);
     }
 
     // ---------- the screensaver's own receiver (the same one optimize/saver.sh talks to) ----------
 
-    /** One broadcast to the screensaver's receiver; the receiver's answer, or an IOException on «error:». */
-    String saver(String action, String extras) throws IOException {
-        String out = tv.shell("am broadcast -n " + SAVER + "/.SaverReceiver -a " + SAVER + "." + action + (extras.isEmpty() ? "" : " " + extras));
+    /** The broadcast that asks one receiver (component "package/class") for an action; pure, so it is tested. */
+    static String saverCommand(String component, String action, String extras) {
+        return "am broadcast -n " + component + " -a " + ACTION_PREFIX + action + (extras.isEmpty() ? "" : " " + extras);
+    }
+
+    /** The receiver that answers on a TV: the merged app's, unless the TV still has 3.x (a home without the receiver) and the old screensaver. */
+    static String receiverFor(int homeCode, boolean oldInstalled) {
+        return homeCode < Trust.MIN_VERSION_CODE && oldInstalled ? OLD_RECEIVER : RECEIVER;
+    }
+
+    private String receiver;   // looked up once per connection, again after an install
+
+    private String receiver() throws IOException {
+        if (receiver == null) receiver = receiverFor(installedCode(HOME), packages("pm list packages " + OLD_SAVER).contains(OLD_SAVER));
+        return receiver;
+    }
+
+    /** One broadcast to the screensaver's receiver; the receiver's answer, or an IOException on "error:". */
+    String saver(String action, String extras) throws IOException { return saverAt(receiver(), action, extras); }
+
+    private String saverAt(String component, String action, String extras) throws IOException {
+        String out = tv.shell(saverCommand(component, action, extras));
         int i = out.indexOf("data=\"");
         String data = i < 0 ? "" : out.substring(i + 6);
         if (data.endsWith("\"")) data = data.substring(0, data.length() - 1);
@@ -281,8 +321,10 @@ final class Flow {
     }
 
     /** The settings of this TV as one JSON export (the screensaver app answers the EXPORT broadcast). */
-    String exportSettings() throws IOException {
-        String out = saver("EXPORT", "");
+    String exportSettings() throws IOException { return exportFrom(receiver()); }
+
+    private String exportFrom(String component) throws IOException {
+        String out = saverAt(component, "EXPORT", "");
         int open = out.indexOf('{'), close = out.lastIndexOf('}');   // the broadcast adds its own quote and line ends around the JSON
         if (open < 0 || close < open) throw new IOException("the TV sent no settings");
         return out.substring(open, close + 1);
@@ -302,6 +344,28 @@ final class Flow {
     /** Puts the settings from before the last import back. */
     String undoImport() throws IOException {
         return saver("IMPORT", "--ez undo true --es apply yes");
+    }
+
+    // ---------- 3.x to 4.0: the old screensaver app's settings move into the merged app ----------
+
+    /** What the migration plan needs from this TV. */
+    Migration.Tv migrationTv() {
+        return new Migration.Tv() {
+            @Override public boolean installed(String pkg) throws IOException { return packages("pm list packages " + pkg).contains(pkg); }
+            @Override public String exportOld() throws IOException { return exportFrom(OLD_RECEIVER); }
+            @Override public void importInto(String json) throws IOException {
+                String b64 = java.util.Base64.getEncoder().encodeToString(json.getBytes("UTF-8"));
+                receiver = RECEIVER;
+                Preview p = Preview.parse(importSettings(b64, true));
+                if (p.error != null) throw new IOException(p.error);
+            }
+            @Override public void setDream() throws IOException { Flow.this.setDream(); }
+            @Override public void uninstall(String pkg) throws IOException {
+                if (!OLD_SAVER.equals(pkg)) throw new IllegalArgumentException("only the old screensaver is ever removed: " + pkg);
+                String out = tv.shell("pm uninstall " + pkg);
+                if (!out.contains("Success")) throw new IOException(pkg + ": " + out.trim());
+            }
+        };
     }
 
     void openOnTv() throws IOException {

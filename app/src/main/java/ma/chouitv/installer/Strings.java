@@ -116,7 +116,18 @@ final class Strings {
         k("mb", "م.ب", "Mo", "MB");
         k("s_check", "فحص التلفزيون", "Vérification de la télé", "Checking the TV");
         k("s_download", "تنزيل الإصدار %s", "Téléchargement de la version %s", "Downloading version %s");
-        k("s_saver", "شاشة التوقف والإعدادات", "Écran de veille et réglages", "Screensaver and settings");
+        k("s_migrate", "نقل الإعدادات القديمة", "Reprise des anciens réglages", "Carrying over the old settings");
+        k("sub_migrate_none", "لا شيء للنقل", "Rien à reprendre", "Nothing to carry over");
+        k("sub_migrate_removed", "نُقلت الإعدادات وأُزيل التطبيق القديم", "Réglages repris, ancienne appli retirée", "Settings carried over, old app removed");
+        k("sub_migrate_kept", "نُقلت الإعدادات وبقي التطبيق القديم", "Réglages repris, ancienne appli conservée", "Settings carried over, old app kept");
+        k("sub_migrate_stuck", "نُقلت الإعدادات لكن تعذّرت إزالة التطبيق القديم", "Réglages repris, mais l'ancienne appli n'a pas pu être retirée", "Settings carried over, but the old app could not be removed");
+        k("sub_migrate_failed", "تعذّر نقل الإعدادات، ويبقى التطبيق القديم", "Reprise impossible : l'ancienne appli reste en place", "Could not carry them over: the old app stays");
+        k("old_title", "إزالة شاشة التوقف القديمة؟", "Retirer l'ancien écran de veille ?", "Remove the old screensaver?");
+        k("old_msg", "نُقلت إعداداتك إلى التطبيق الجديد، ولم يعد التطبيق القديم %s ضروريًا. هل تريد إزالته؟",
+            "Vos réglages sont maintenant dans la nouvelle appli. L'ancien écran de veille (%s) ne sert plus : le retirer ?",
+            "Your settings are now in the new app. The old screensaver (%s) is no longer needed: remove it?");
+        k("old_keep", "إبقاؤه", "Le garder", "Keep it");
+        k("old_do", "إزالته", "Le retirer", "Remove it");
         k("s_channels", "تطبيق القنوات", "Application Chaînes", "Channels app");
         k("s_home", "الواجهة الرئيسية", "Écran d'accueil", "Home screen");
         k("s_perms", "الصلاحيات", "Permissions", "Permissions");
