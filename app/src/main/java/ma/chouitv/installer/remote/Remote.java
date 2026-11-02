@@ -1,0 +1,65 @@
+package ma.chouitv.installer.remote;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
+import ma.chouitv.installer.cleanup.Guard;
+import ma.chouitv.installer.cleanup.Shell;
+
+/**
+ * The remote control: the commands the phone sends to the TV, built and checked here so that they can be tested without a TV.
+ * Keys go through «input keyevent»; the buttons that open something start a known component; text of any alphabet goes onto the TV's
+ * clipboard (a small program pushed by the phone, see helper/Clip.java) and is typed with the Paste key, because «input text» can only
+ * type ASCII.
+ */
+public final class Remote {
+    private Remote() {}
+
+    public static final int UP = 19, DOWN = 20, LEFT = 21, RIGHT = 22, OK = 23, BACK = 4, HOME = 3, MENU = 82, MUTE = 164,
+        VOLUME_UP = 24, VOLUME_DOWN = 25, PASTE = 279;
+    private static final int[] KNOWN = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, MUTE, VOLUME_UP, VOLUME_DOWN, PASTE};
+
+    /** Where the helper is put on the TV, and what it is called inside the phone app. */
+    public static final String HELPER_REMOTE = "/data/local/tmp/chouitv-clip.jar";
+    public static final String HELPER_ASSET = "helper/clip.jar";
+    public static final int MAX_TEXT = 500;
+
+    public enum Target {
+        HOME("ma.chouitv.home/.MainActivity"),
+        LISTEN("ma.chouitv.home/.tilawah.MainActivity"),
+        CHANNELS("com.majnioui.tv.channels/.MainActivity"),
+        SAVER("com.android.systemui/.Somnambulator");   // the system starts the screensaver the TV is set to use
+
+        public final String component;
+        Target(String component) { this.component = component; }
+
+        /** The package to look for before offering to open it (null for the system). */
+        public String pkg() { return this == SAVER ? null : component.substring(0, component.indexOf('/')); }
+    }
+
+    public static String key(int code) {
+        for (int k : KNOWN) if (k == code) return "input keyevent " + code;
+        throw new IllegalArgumentException("not a remote key: " + code);
+    }
+
+    public static String open(Target t) { return "am start -n " + t.component; }
+
+    /** Types {@code text} into the field that has the focus on the TV. Throws when the TV refuses the clipboard: nothing is pasted then. */
+    public static void sendText(Shell tv, String text) throws IOException {
+        if (text == null || text.trim().isEmpty()) throw new IllegalArgumentException("nothing to send");
+        if (text.length() > MAX_TEXT) throw new IllegalArgumentException("too long: " + text.length() + " characters (at most " + MAX_TEXT + ")");
+        String b64 = Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8));
+        String answer = tv.run("CLASSPATH=" + HELPER_REMOTE + " app_process /system/bin Clip set " + b64);
+        if (answer == null || !answer.contains("set via")) throw new IOException("the TV did not take the text: " + (answer == null ? "" : answer.trim()));
+        tv.run(key(PASTE));
+    }
+
+    /** True when «pm list packages» lists exactly this package (not one that merely starts with its name). */
+    public static boolean installed(Shell tv, String pkg) throws IOException {
+        if (!Guard.validPackage(pkg)) throw new IllegalArgumentException("not a package name: " + pkg);
+        String out = tv.run("pm list packages " + pkg);
+        for (String line : out.split("\\r?\\n")) if (line.trim().equals("package:" + pkg)) return true;
+        return false;
+    }
+}
