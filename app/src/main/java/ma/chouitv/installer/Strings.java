@@ -395,6 +395,14 @@ final class Strings {
         k("st_undo_msg", "ستعود إعدادات هذا التلفزيون السابقة، وتزول التغييرات التي أُرسلت.", "Les réglages précédents de cette télé seront remis, et les changements envoyés disparaîtront.", "This TV's previous settings will be put back, and the changes that were sent will go away.");
         k("st_undo_keep", "أبقِ الإرسال", "Garder l'envoi", "Keep the send");
         k("st_undo_do", "تراجع عن الإرسال", "Annuler l'envoi", "Undo the send");
+        k("back", "رجوع", "Retour", "Back");
+        k("exit_again", "اضغط مرة أخرى على رجوع للخروج", "Appuyez encore sur retour pour quitter", "Press back again to exit");
+        k("up_to_date", "محدَّث بالفعل (%s)", "déjà à jour (%s)", "already up to date (%s)");
+        k("err_newer", "لدى هذا التلفزيون نسخة أحدث من ChouiTV: لا حاجة لأي إجراء.", "Cette télé a déjà une version plus récente de ChouiTV : rien à faire.", "This TV already has a newer version of ChouiTV: nothing to do.");
+        k("your_turn", "منك", "À vous", "Your turn");
+        k("at_tv", "على التلفزيون", "sur la télé", "on the TV");
+        k("at_phone", "على الهاتف", "sur le téléphone", "on the phone");
+        k("inst_ok", "إن ظهرت نافذة تثبيت: اضغط OK، أو «التثبيت على أي حال»", "Si une fenêtre d'installation s'affiche : OK, ou « Installer quand même »", "If an install window shows up: press OK, or \"Install anyway\"");
         k("sec_know", "للعلم", "À savoir", "Good to know");
         k("sec_choose", "اختياراتك", "Vos choix", "Your choices");
         k("sec_before", "قبل أن تتابع", "Avant de continuer", "Before you continue");

@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.InputType;
 import android.util.Base64;
 import android.util.TypedValue;
@@ -63,6 +64,10 @@ import static ma.chouitv.installer.Strings.t;
  */
 public class MainActivity extends Activity {
     private static final int GOLD = 0xFFD6AF6B, SAND = 0xFFF6EFE0, MUTED = 0xFFC6BBA4, DARK = 0xFF040E09;
+    // «your turn» (an action the person does) and «to know» (an indication): two families, named here so the theme can change in one place
+    private static final int ACTION_FILL = 0xFF1B3D2A, ACTION_BORDER = GOLD, ACTION_PILL = GOLD, ACTION_PILL_TEXT = DARK, ACTION_TEXT = SAND, ACTION_SUB = MUTED;
+    private static final int INFO_EDGE = 0xFF3FA58A, INFO_FILL = 0x0FFFFFFF, INFO_ICON = 0xFF7FCDB2, INFO_TEXT = 0xFFC9D3C7;
+    private static final int LINK = GOLD;
     private static final int PICK_SETTINGS = 7, AUTH_SECONDS = 120;
 
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
@@ -122,21 +127,37 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (busy) return;
-        if (step == 23) return;
-        if (step == 12) show(18);
-        else if (step == 18) show(0);
-        else if (step == 19) show(18);
-        else if (step == 20) show(19);
-        else if (step == 21) show(19);
-        else if (step == 22) show(18);
-        else if (step == 8 || step == 9 || step == 10) { if (cleanFromDone) show(5); else show(guide != null ? 19 : 12); }
-        else if (step == 11 || step == 13 || step == 14 || step == 17) show(guide != null ? 19 : 12);
-        else if (step == 15) show(17);
-        else if (step == 24) show(18);
-        else if (step == 1) show(guide != null ? 19 : 12);
-        else if (step == 2) show(1);
-        else super.onBackPressed();
+        int to = Nav.backTarget(step, busy, guide != null, cleanFromDone);
+        if (to == Nav.BLOCKED) return;
+        if (to == Nav.EXIT) {
+            // the end of the line: a second press within two seconds leaves, the first one only says so
+            long now = SystemClock.elapsedRealtime();
+            if (Nav.exitNow(lastBack, now)) { super.onBackPressed(); return; }
+            lastBack = now;
+            Toast.makeText(this, t("exit_again"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        show(to);
+    }
+
+    private long lastBack;
+
+    /** The visible «‹ Retour» at the top of a screen: it does exactly what the system Back key does there. Drawn chevron, so it follows the reading direction. */
+    private View backControl() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setClickable(true);
+        r.setContentDescription(t("back"));
+        r.addView(new Orn.Chevron(this, LINK), new LinearLayout.LayoutParams(dp(12), dp(18)));
+        TextView l = text(t("back"), medium, 16, LINK);
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
+        tp.setMarginStart(dp(8));
+        r.addView(l, tp);
+        r.setPadding(0, 0, dp(24), 0);
+        r.setOnClickListener(v -> onBackPressed());
+        return r;
     }
 
     // ---------- the six screens ----------
@@ -150,8 +171,10 @@ public class MainActivity extends Activity {
         root.addView(new Orn.Strip(this), new FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(dp(22), dp(48), dp(22), dp(18));
+        boolean back = Nav.showsBack(n, busy, guide != null, cleanFromDone);
+        col.setPadding(dp(22), dp(back ? 28 : 48), dp(22), dp(18));
         root.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        if (back) col.addView(backControl(), new LinearLayout.LayoutParams(-2, dp(48)));
         if (n >= 1 && n <= 4) {
             col.addView(dots(n));
             String[][] k = {{"prep_title", "prep_sub"}, {"conn_title", "conn_sub"}, {"install_title", "install_sub"}, {"custom_title", "custom_sub"}};
@@ -262,22 +285,7 @@ public class MainActivity extends Activity {
     }
 
     private void prepare(LinearLayout body, TextView button) {
-        String[][] s = {{"prep1a", "prep1b"}, {"prep2a", "prep2b"}, {"prep3a", "prep3b"}};
-        sectionLabel(body, t("sec_todo"));
-        for (int i = 0; i < 3; i++) {
-            LinearLayout c = card(false);
-            c.setOrientation(LinearLayout.HORIZONTAL);
-            c.setGravity(Gravity.CENTER_VERTICAL);
-            c.addView(new Orn.StarNum(this, String.valueOf(i + 1), medium), new LinearLayout.LayoutParams(dp(40), dp(40)));
-            LinearLayout tt = new LinearLayout(this);
-            tt.setOrientation(LinearLayout.VERTICAL);
-            tt.addView(text(t(s[i][0]), medium, 17, SAND));
-            tt.addView(text(t(s[i][1]), regular, 14, MUTED));
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
-            tp.setMarginStart(dp(14));
-            c.addView(tt, tp);
-            body.addView(c, lp(0, 0, 0, 12));
-        }
+        actionCard(body, true, new String[] {t("prep1a"), t("prep1b")}, new String[] {t("prep2a"), t("prep2b")}, new String[] {t("prep3a"), t("prep3b")});
         button.setText(t("next"));
         button.setOnClickListener(v -> show(2));
     }
@@ -310,8 +318,7 @@ public class MainActivity extends Activity {
         input.setBackground(cardBg(false));
         input.setPadding(dp(16), dp(12), dp(16), dp(12));
         body.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
-        sectionLabel(body, t("sec_know"));
-        infoCard(body, t("on_tv") + " : " + t("allow1") + "." + (char) 10 + t("allow2"));
+        actionCard(body, true, new String[] {t("allow1")}, new String[] {t("allow2")});
         final TextView status = text("", regular, 14, GOLD);
         body.addView(status, lp(0, 12, 0, 12));
         button.setText(t("connect"));
@@ -456,6 +463,7 @@ public class MainActivity extends Activity {
         }
         final TextView err = text("", regular, 14, 0xFFE8896B);
         body.addView(err, lp(0, 10, 0, 0));
+        actionCard(body, true, new String[] {t("inst_ok")});
         button.setText(t("installing"));
         button.setAlpha(0.6f);
         busy = true;
@@ -483,7 +491,12 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> titleV[1].setText(t("s_download", ver)));
                 final String[] pk = {Flow.CHANNELS, Flow.HOME};
                 final java.io.File[] files = new java.io.File[2];
+                // an app the TV already has at this version or newer is neither downloaded nor installed (Channels has no version in the manifest: it always goes)
+                int tvHome = -1;
+                try { tvHome = flow.installedCode(Flow.HOME); } catch (IOException unreadable) { }
+                final boolean[] skip = {false, InstallPlan.upToDate(tvHome, rel.code)};
                 for (int j = 0; j < 2; j++) {
+                    if (skip[j]) continue;
                     String url = null, sha = "";
                     for (Net.Apk a : rel.apks) if (a.pkg.equals(pk[j])) { url = a.url; sha = a.sha; }
                     if (j == 0) { url = Net.CHANNELS; sha = Trust.channelsSha(rel.channelsSha); }
@@ -497,6 +510,7 @@ public class MainActivity extends Activity {
                     }));
                     if (j != 0) ApkCheck.verify(this, files[j], pk[j], rel.code);   // the right app, the right version, signed with our key
                 }
+                if (skip[1]) sub(subV, 1, t("up_to_date", ver));
                 node(nodes, 1, Orn.Node.DONE);
                 progress(1, 1f, bar, pctV, stepV, etaV, t0);
 
@@ -505,19 +519,27 @@ public class MainActivity extends Activity {
                     final int s = cur;
                     node(nodes, s, Orn.Node.RUN);
                     final int kk = k;
+                    if (skip[kk]) {
+                        sub(subV, s, t("up_to_date", ver));
+                        node(nodes, s, Orn.Node.DONE);
+                        progress(s, 1f, bar, pctV, stepV, etaV, t0);
+                        continue;
+                    }
+                    final boolean[] did = {true};
                     twice(() -> {
                         if (!files[kk].exists()) {   // a second try after a failure: the file was deleted, it is fetched and checked again
                             files[kk] = flow.download(pk[kk], kk == 0 ? Net.CHANNELS : urlOf(rel, pk[kk]), kk == 0 ? Trust.channelsSha(rel.channelsSha) : shaOf(rel, pk[kk]), null);
                             if (kk != 0) ApkCheck.verify(this, files[kk], pk[kk], rel.code);
                         }
-                        flow.installFile(pk[kk], files[kk], (d, tt) -> {
+                        did[0] = flow.installFile(pk[kk], files[kk], (d, tt) -> {
                             float f = tt > 0 ? (float) d / tt : 0f;
                             progress(s, f * 0.85f, bar, pctV, stepV, etaV, t0);
                             sub(subV, s, f >= 1f ? t("sub_install") : t("sub_send", (int) (f * 100)));
-                        });
+                        }, kk == 0 ? 0 : rel.code);
                         return files[kk];
                     });
-                    if (k == 0) sub(subV, s, t("ch_sub"));
+                    if (!did[0]) sub(subV, s, t("up_to_date", kk == 0 ? t("ch_sub") : ver));
+                    else if (k == 0) sub(subV, s, t("ch_sub"));
                     else sub(subV, s, ver);
                     node(nodes, s, Orn.Node.DONE);
                     progress(s, 1f, bar, pctV, stepV, etaV, t0);
@@ -563,7 +585,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     busy = false;
                     nodes[failed].set(Orn.Node.FAIL);
-                    err.setText(t("err_install", friendly(e, "", false)));
+                    err.setText(e instanceof Flow.AlreadyNewer ? friendly(e, "", false) : t("err_install", friendly(e, "", false)));
                     button.setText(t("retry"));
                     button.setAlpha(1f);
                     button.setOnClickListener(v -> show(3));
@@ -578,7 +600,7 @@ public class MainActivity extends Activity {
     private java.io.File twice(Attempt a) throws Exception {
         try {
             return a.run();
-        } catch (Flow.Declined | SecurityException stop) {
+        } catch (Flow.Declined | Flow.AlreadyNewer | SecurityException stop) {
             throw stop;
         } catch (IOException first) {
             if (String.valueOf(first.getMessage()).contains("signed with the ChouiTV key") || String.valueOf(first.getMessage()).contains("not an app")) throw first;
@@ -763,19 +785,24 @@ public class MainActivity extends Activity {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/EMCHOUIT/ChouiTV"))); } catch (Exception ignored) { }
         });
         body.addView(star, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
-        cleanNowCard(body);
+        boolean offer = cleanNowCard(body, button);
         if (homeResult != null && homeResult != Flow.Home.OURS) {
             sectionLabel(body, t("sec_left"));
-            infoCard(body, homeResult == Flow.Home.UNSURE || homeResult == Flow.Home.FAILED ? t("home_unsure") : t("home_kept"));
+            infoBar(body, homeResult == Flow.Home.UNSURE || homeResult == Flow.Home.FAILED ? t("home_unsure") : t("home_kept"));
         }
         sectionLabel(body, t("sec_know"));
-        infoCard(body, t("tip") + " : " + t("tip_text"));
+        infoBar(body, t("tip") + " : " + t("tip_text"));
         TextView open = ghostButton(t("open_tv"), GOLD);
         open.setOnClickListener(v -> bg.execute(() -> { try { flow.openOnTv(); } catch (Exception ignored) { } }));
         body.addView(open, lp(0, 14, 0, 0));
-        button.setText(t("cl_home"));
-        ready(button, true);
-        button.setOnClickListener(v -> show(18));
+        if (offer) {
+            // the cleanup is the next step: it is the bottom button, and the way back to the menu sits quietly under it
+            secondaryBelow(button, t("cl_home"), () -> show(18));
+        } else {
+            button.setText(t("cl_home"));
+            ready(button, true);
+            button.setOnClickListener(v -> show(18));
+        }
     }
 
     private static String cap(String s) { return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1); }
@@ -893,7 +920,7 @@ public class MainActivity extends Activity {
         String src = p.source.equals("ours") ? t("cl_src_ours") : p.source.equals("community") ? t("cl_src_model")
             : p.why.endsWith("ambiguous") ? t("cl_src_amb") : t("cl_src_cons");
         sectionLabel(body, t("sec_know"));
-        infoCard(body, tvModelLine() + " · " + src + (p.alreadyOff > 0 ? " · " + t("cl_already", p.alreadyOff) : ""));
+        infoBar(body, tvModelLine() + " · " + src + (p.alreadyOff > 0 ? " · " + t("cl_already", p.alreadyOff) : ""));
         if (p.total() == 0) {
             LinearLayout none = card(false);
             none.addView(text(t("cl_none"), medium, 17, GOLD));
@@ -909,7 +936,7 @@ public class MainActivity extends Activity {
         addChecklist(body, button, CleanupData.Group.OPTIONAL, "cl_str_h", "cl_str_d");
         addChecklist(body, button, CleanupData.Group.USER, "cl_usr_h", "cl_usr_d");
         sectionLabel(body, t("sec_prot"));
-        infoCard(body, t("cl_protected", cleanupData.keep.size()) + " · " + t("cl_protected_d"));
+        infoBar(body, t("cl_protected", cleanupData.keep.size()) + " · " + t("cl_protected_d"));
         // the confirmation: the person is asked to look, and the button waits for it
         sectionLabel(body, t("sec_before"));
         boolean streaming = !p.groups.get(CleanupData.Group.OPTIONAL).isEmpty(), mine = !p.groups.get(CleanupData.Group.USER).isEmpty();
@@ -1271,7 +1298,7 @@ public class MainActivity extends Activity {
         }
         resumeCard(body);
         button.setText(t("hub_mode"));
-        button.setAlpha(0.9f);
+        secondaryStyle(button);   // the choices are the cards: the way back must not compete with them
         button.setOnClickListener(v -> show(18));
     }
 
@@ -1445,23 +1472,25 @@ public class MainActivity extends Activity {
 
 
     /** At the end of an install, a person who did not clean first is offered to do it now. */
-    private void cleanNowCard(LinearLayout body) {
-        if (cleanedHere) return;
+    private boolean cleanNowCard(LinearLayout body, final TextView button) {
+        if (cleanedHere) return false;
         LinearLayout c = card(false);
         c.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
         c.addView(text(t("cl_notyet_t"), medium, 17, GOLD));
-        c.addView(text(t("cl_notyet_d"), regular, 13, SAND), lp(0, 4, 0, 10));
-        final TextView go = ghostButton(t("cl_notyet_btn"), GOLD);
-        go.setOnClickListener(v -> {
+        c.addView(text(t("cl_notyet_d"), regular, 13, SAND), lp(0, 4, 0, 0));
+        // the action itself is the bottom button of the screen
+        button.setText(t("cl_notyet_btn"));
+        ready(button, true);
+        button.setOnClickListener(v -> {
             if (busy) return;
-            busy = true; go.setAlpha(0.6f);
+            busy = true; button.setAlpha(0.6f);
             bg.execute(() -> {
                 try { loadCleanupPlan(); runOnUiThread(() -> { busy = false; cleanFromDone = true; space = SPACE_CLEAN; show(8); }); }
-                catch (final Exception e) { runOnUiThread(() -> { busy = false; go.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
+                catch (final Exception e) { runOnUiThread(() -> { busy = false; button.setAlpha(1f); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); }); }
             });
         });
-        c.addView(go, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
         body.addView(c, lp(0, 14, 0, 0));
+        return true;
     }
 
     // ---------- my settings: named profiles, saved from a TV and sent to another ----------
@@ -1495,7 +1524,7 @@ public class MainActivity extends Activity {
     /** The list of saved settings: from «get» it only manages them; from «send» each one can be sent to the connected TV. */
     private void profilesScreen(final LinearLayout body, TextView button, final boolean getMode) {
         titleBlock(body, t(getMode ? "g_title" : "s_title"), t(getMode ? "g_sub" : "s_sub"));
-        if (getMode) addSaveCard(body); else addTarget(body);
+        if (getMode) addSaveCard(body, button); else addTarget(body);
         java.util.List<Profile> every = store().list();
         if (!getMode && guide != null && guide.path == Guide.Path.COPY && !guide.profile.isEmpty()) {
             java.util.List<Profile> mine = new ArrayList<>();
@@ -1531,11 +1560,16 @@ public class MainActivity extends Activity {
             c.addView(row);
             body.addView(c, lp(0, 0, 0, 8));
         }
-        button.setText(t("cl_home"));
-        button.setOnClickListener(v -> show(12));
+        if (getMode) {
+            secondaryBelow(button, t("cl_home"), () -> show(12));
+        } else {
+            button.setText(t("cl_home"));
+            secondaryStyle(button);   // each saved setting has its own «send»: the way back must not compete with them
+            button.setOnClickListener(v -> show(12));
+        }
     }
 
-    private void addSaveCard(final LinearLayout body) {
+    private void addSaveCard(final LinearLayout body, final TextView button) {
         sectionLabel(body, t("sec_save"));
         LinearLayout save = card(false);
         save.setBackground(cardBg(false, 0x333F7A5C, 0xFF3F7A5C));
@@ -1552,12 +1586,10 @@ public class MainActivity extends Activity {
         name.setBackground(cardBg(false));
         name.setPadding(dp(16), dp(10), dp(16), dp(10));
         save.addView(name, new LinearLayout.LayoutParams(-1, dp(52)));
-        final TextView saveBtn = button(t("st_save_btn"));
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, dp(BTN_H));
-        sp.topMargin = dp(10);
-        saveBtn.setLayoutParams(sp);
-        saveBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        saveBtn.setOnClickListener(v -> {
+        // saving is the point of this screen: it is the bottom button, the name field above it
+        button.setText(t("st_save_btn"));
+        ready(button, true);
+        button.setOnClickListener(v -> {
             if (busy) return;
             final String typed = name.getText().toString();
             final String[] json = new String[1];
@@ -1577,14 +1609,13 @@ public class MainActivity extends Activity {
                 }
             });
         });
-        save.addView(saveBtn);
         body.addView(save, lp(0, 10, 0, 8));
     }
 
     /** On «send», the banner says which TV the settings will go to. */
     private void addTarget(LinearLayout body) {
         sectionLabel(body, t("sec_know"));
-        infoCard(body, t("st_to", tvModelLine()) + ". " + t("s_choose"));
+        infoBar(body, t("st_to", tvModelLine()) + ". " + t("s_choose"));
     }
 
     private void askRename(final Profile p) {
@@ -1629,7 +1660,7 @@ public class MainActivity extends Activity {
         final Preview pv = sendPreview;
         titleBlock(body, t("st_send_title", p.name), t("st_send_sub"));
         sectionLabel(body, t("sec_know"));
-        infoCard(body, t("st_to", tvModelLine()) + (pv.error != null ? "" : ". " + (pv.nothing ? t("st_nothing") : t("st_count", pv.count))));
+        infoBar(body, t("st_to", tvModelLine()) + (pv.error != null ? "" : ". " + (pv.nothing ? t("st_nothing") : t("st_count", pv.count))));
         if (pv.error != null) {
             LinearLayout e = card(false);
             e.setBackground(cardBg(false, 0x33E8896B, 0xFFE8896B));
@@ -1654,7 +1685,7 @@ public class MainActivity extends Activity {
             c.addView(tv);
             body.addView(c, lp(0, 0, 0, 6));
         }
-        infoCard(body, t("st_keep"));
+        infoBar(body, t("st_keep"));
         button.setText(t("st_apply", pv.count));
         button.setOnClickListener(v -> {
             if (busy) return;
@@ -1748,6 +1779,7 @@ public class MainActivity extends Activity {
             body.addView(card, lp(0, 12, 0, 0));
         }
         button.setText(t("hub_lang"));
+        secondaryStyle(button);
         button.setOnClickListener(v -> show(0));
     }
 
@@ -1769,6 +1801,7 @@ public class MainActivity extends Activity {
             body.addView(card, lp(0, 12, 0, 0));
         }
         button.setText(t("pt_back"));
+        secondaryStyle(button);
         button.setOnClickListener(v -> show(18));
     }
 
@@ -1819,20 +1852,21 @@ public class MainActivity extends Activity {
             bar.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
         }
         body.addView(bar, lp(0, 4, 0, 8));
-        LinearLayout c = card(false);
-        c.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
-        c.addView(chip(t("gl_now"), GOLD, DARK, 0));
-        c.addView(text(t(g.key('n')), medium, 18, GOLD), lp(0, 6, 0, 0));
-        c.addView(text(g.profile.isEmpty() ? t(g.key('d')) : t(g.key('d'), g.profile), regular, 14, SAND), lp(0, 4, 0, 8));
+        // where you are is something to know, not something to do: the calm bar, not the gold-bordered card
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.addView(chip(t("gl_now"), 0, INFO_ICON, INFO_EDGE));
+        c.addView(text(t(g.key('n')), medium, 18, SAND), lp(0, 6, 0, 0));
+        c.addView(text(g.profile.isEmpty() ? t(g.key('d')) : t(g.key('d'), g.profile), regular, 14, INFO_TEXT), lp(0, 4, 0, 8));
         c.addView(text(t("gl_next") + "  " + t(g.key('x')), regular, 13, MUTED));
-        body.addView(c, lp(0, 0, 0, 10));
+        body.addView(flatBar(c), lp(0, 0, 0, 10));
     }
 
     /** After the save in the copy path: send now (both TVs are here) or later (the settings stay on the phone). */
     private void nowOrLater(LinearLayout body, TextView button) {
         titleBlock(body, t("cp_h"), t("cp_sub"));
         sectionLabel(body, t("sec_know"));
-        infoCard(body, t("cp_saved") + " : " + (guide != null ? guide.profile : ""));
+        infoBar(body, t("cp_saved") + " : " + (guide != null ? guide.profile : ""));
         sectionLabel(body, t("sec_choose"));
         LinearLayout now = card(true);
         now.addView(text(t("cp_now_t"), display, 22, SAND));
@@ -1867,21 +1901,9 @@ public class MainActivity extends Activity {
         titleBlock(body, t("sw_title"), t("sw_sub"));
         if (guide != null && !guide.profile.isEmpty()) {
             sectionLabel(body, t("sec_know"));
-            infoCard(body, t("sw_saved") + " : " + guide.profile);
+            infoBar(body, t("sw_saved") + " : " + guide.profile);
         }
-        sectionLabel(body, t("sec_todo"));
-        String[] items = {"prep2a", "prep3a", "prep3b"};
-        for (int i = 0; i < items.length; i++) {
-            LinearLayout row = card(false);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.addView(new Orn.StarNum(this, String.valueOf(i + 1), medium), new LinearLayout.LayoutParams(dp(36), dp(36)));
-            TextView tt = text(t(items[i]), regular, 15, SAND);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            p.setMarginStart(dp(12));
-            row.addView(tt, p);
-            body.addView(row, lp(0, 0, 0, 8));
-        }
+        actionCard(body, true, new String[] {t("prep2a")}, new String[] {t("prep3a")}, new String[] {t("prep3b")});
         button.setText(t("sw_btn"));
         button.setOnClickListener(v -> {
             if (busy) return;
@@ -1925,24 +1947,131 @@ public class MainActivity extends Activity {
         body.addView(box, lp(4, 16, 4, 8));
     }
 
-    /** An indication: calm, never clickable, with an (i) on the reading side. */
-    private void infoCard(LinearLayout body, String message) {
-        LinearLayout c = new LinearLayout(this);
-        c.setOrientation(LinearLayout.HORIZONTAL);
-        c.setGravity(Gravity.CENTER_VERTICAL);
-        c.setPadding(dp(16), dp(12), dp(16), dp(12));
-        c.setBackground(cardBg(false, 0x243F7A5C, 0xFF3F7A5C));
-        TextView i = text("i", medium, 15, 0xFF96D2AF);
+    /** «To know»: a calm flat bar with a 3 dp teal-green edge on the reading side, no border box, never clickable. Content goes inside. */
+    private LinearLayout flatBar(View content) {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        GradientDrawable fill = new GradientDrawable();
+        fill.setColor(INFO_FILL);
+        fill.setCornerRadius(dp(6));
+        bar.setBackground(fill);
+        View edge = new View(this);
+        edge.setBackgroundColor(INFO_EDGE);
+        bar.addView(edge, new LinearLayout.LayoutParams(dp(3), -1));
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+        cp.setMargins(dp(12), dp(8), dp(12), dp(8));
+        bar.addView(content, cp);
+        return bar;
+    }
+
+    /** «To know»: the flat bar with a small (i) and a muted text. */
+    private void infoBar(LinearLayout body, String message) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        TextView i = text("i", medium, 12, INFO_ICON);
         i.setGravity(Gravity.CENTER);
         GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.OVAL); ring.setColor(0); ring.setStroke(dp(2), 0xFF3F7A5C);
+        ring.setShape(GradientDrawable.OVAL); ring.setColor(0); ring.setStroke(dp(1), INFO_ICON);
         i.setBackground(ring);
-        c.addView(i, new LinearLayout.LayoutParams(dp(28), dp(28)));
-        TextView m = text(message, regular, 14, SAND);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(20), dp(20));
+        ip.topMargin = dp(2);
+        row.addView(i, ip);
+        TextView m = text(message, regular, 14, INFO_TEXT);
         LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(0, -2, 1f);
-        mp.setMarginStart(dp(12));
-        c.addView(m, mp);
-        body.addView(c, lp(0, 0, 0, 8));
+        mp.setMarginStart(dp(10));
+        row.addView(m, mp);
+        body.addView(flatBar(row), lp(0, 0, 0, 8));
+    }
+
+    private int dpf(float v) { return Math.round(v * getResources().getDisplayMetrics().density); }
+
+    /** A gold circle with a number: the steps of an action card. */
+    private TextView numCircle(int n) {
+        TextView c = text(String.valueOf(n), medium, 15, ACTION_PILL_TEXT);
+        c.setGravity(Gravity.CENTER);
+        c.setTextDirection(View.TEXT_DIRECTION_LTR);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(ACTION_PILL);
+        c.setBackground(g);
+        return c;
+    }
+
+    /**
+     * «Your turn»: something the person does. A card with a gold border and a lighter green fill, a gold pill at its top («Your turn» with a hand, and where: on the TV or on the phone),
+     * then numbered steps. Each step is {main text} or {main text, detail}.
+     */
+    private void actionCard(LinearLayout body, boolean onTv, String[]... steps) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(dp(16), dp(14), dp(16), dp(10));
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(16));
+        g.setColor(ACTION_FILL);
+        g.setStroke(dpf(1.5f), ACTION_BORDER);
+        c.setBackground(g);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout pill = new LinearLayout(this);
+        pill.setOrientation(LinearLayout.HORIZONTAL);
+        pill.setGravity(Gravity.CENTER_VERTICAL);
+        pill.setPadding(dp(10), dp(4), dp(12), dp(4));
+        GradientDrawable pg = new GradientDrawable();
+        pg.setCornerRadius(dp(14));
+        pg.setColor(ACTION_PILL);
+        pill.setBackground(pg);
+        pill.addView(new Orn.Hand(this, ACTION_PILL_TEXT), new LinearLayout.LayoutParams(dp(18), dp(18)));
+        TextView pt = text(t("your_turn"), medium, 14, ACTION_PILL_TEXT);
+        LinearLayout.LayoutParams ptp = new LinearLayout.LayoutParams(-2, -2);
+        ptp.setMarginStart(dp(6));
+        pill.addView(pt, ptp);
+        head.addView(pill, new LinearLayout.LayoutParams(-2, -2));
+        TextView where = text(t(onTv ? "at_tv" : "at_phone"), medium, 14, ACTION_TEXT);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(0, -2, 1f);
+        wp.setMarginStart(dp(10));
+        head.addView(where, wp);
+        c.addView(head, new LinearLayout.LayoutParams(-1, -2));
+        for (int i = 0; i < steps.length; i++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(dp(28), dp(28));
+            np.topMargin = dp(2);
+            row.addView(numCircle(i + 1), np);
+            LinearLayout tt = new LinearLayout(this);
+            tt.setOrientation(LinearLayout.VERTICAL);
+            tt.addView(text(steps[i][0], medium, 16, ACTION_TEXT));
+            if (steps[i].length > 1) tt.addView(text(steps[i][1], regular, 14, ACTION_SUB));
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
+            tp.setMarginStart(dp(12));
+            row.addView(tt, tp);
+            c.addView(row, lp(0, 12, 0, 0));
+        }
+        body.addView(c, lp(0, 4, 0, 12));
+    }
+
+    /** The main button turned into a quiet ghost (a way back or out that must not compete with the choices above it). */
+    private void secondaryStyle(TextView b) {
+        b.setAlpha(1f);
+        b.setTextColor(LINK);
+        b.setElevation(0);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(30));
+        g.setColor(0);
+        g.setStroke(dp(2), 0x99D6AF6B);
+        b.setBackground(g);
+        if (b instanceof Btn) ((Btn) b).arrow(false);
+    }
+
+    /** A quiet text link (at least 48 dp tall) placed in the bottom area, right under the main button. */
+    private void secondaryBelow(TextView button, String label, final Runnable run) {
+        ViewGroup col = (ViewGroup) button.getParent();
+        TextView g = text(label, medium, 16, LINK);
+        g.setGravity(Gravity.CENTER);
+        g.setPaintFlags(g.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+        g.setClickable(true);
+        g.setOnClickListener(v -> { if (!busy) run.run(); });
+        col.addView(g, col.indexOfChild(button) + 1, new LinearLayout.LayoutParams(-1, dp(48)));
     }
 
     private void endScreen(LinearLayout body, TextView button) {
@@ -1983,14 +2112,7 @@ public class MainActivity extends Activity {
         }
         if (!endInfo.isEmpty()) {
             sectionLabel(list, t("sec_know"));
-            infoCard(list, endInfo);
-        }
-        if (endNext != null) {
-            sectionLabel(list, t("sec_next"));
-            TextView go = ghostButton(endNextLabel, GOLD);
-            final Runnable run = endNext;
-            go.setOnClickListener(v -> { if (!busy) run.run(); });
-            list.addView(go, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
+            infoBar(list, endInfo);
         }
         if (endUndo != null) {
             TextView u = dangerLink(endUndoLabel);
@@ -1998,10 +2120,18 @@ public class MainActivity extends Activity {
             u.setOnClickListener(v -> { if (!busy) run.run(); });
             list.addView(u, new LinearLayout.LayoutParams(-1, -2));
         }
-        // the way home is always the bottom button
-        button.setText(t("cl_home"));
-        ready(button, true);
-        button.setOnClickListener(v -> { if (!busy) show(18); });
+        if (endNext != null) {
+            // the next step is THE bottom button; the way back to the menu is a quiet link just under it
+            final Runnable run = endNext;
+            button.setText(endNextLabel);
+            ready(button, true);
+            button.setOnClickListener(v -> { if (!busy) run.run(); });
+            secondaryBelow(button, t("cl_home"), () -> show(18));
+        } else {
+            button.setText(t("cl_home"));
+            ready(button, true);
+            button.setOnClickListener(v -> { if (!busy) show(18); });
+        }
     }
 
     // ---------- a run of steps, shown with a bar, a percentage and the state of each step ----------
@@ -2047,7 +2177,7 @@ public class MainActivity extends Activity {
             body.addView(c, lp(0, 0, 0, 8));
         }
         sectionLabel(body, t("sec_know"));
-        infoCard(body, t("pg_info"));
+        infoBar(body, t("pg_info"));
         button.setText(t("pg_running"));
         ready(button, false);
         button.setOnClickListener(null);
@@ -2125,6 +2255,7 @@ public class MainActivity extends Activity {
     // ---------- errors in plain words ----------
 
     private String friendly(Exception e, String ip, boolean connecting) {
+        if (e instanceof Flow.AlreadyNewer) return t("err_newer");
         String m = e.getMessage() == null ? "" : e.getMessage();
         if (e instanceof UnknownHostException || m.startsWith("HTTP ") || m.contains("checksum") || m.contains("too small")) return t("err_net");
         if (e instanceof ConnectException || e instanceof NoRouteToHostException || m.contains("failed to connect") || m.contains("Network is unreachable")) {

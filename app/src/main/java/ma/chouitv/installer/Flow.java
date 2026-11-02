@@ -43,6 +43,9 @@ final class Flow {
     /** The person (or the missing screen) said no: not worth trying again. */
     static final class Declined extends IOException { Declined(String m) { super(m); } }
 
+    /** The TV refused the install because it already has a newer version of the app and nothing says that is fine: told to the person in plain words, not retried. */
+    static final class AlreadyNewer extends IOException { AlreadyNewer(String m) { super(m); } }
+
     // ---------- what the cleanup needs ----------
 
     /** The TV's shell, as the cleanup's own small interface (it is tested on a fake TV). */
@@ -92,8 +95,12 @@ final class Flow {
         return Net.download(url, new File(cache, pkg + ".apk"), sha, p);
     }
 
-    /** Sends a downloaded APK and installs it; the same recovery as optimize/install.sh (Play Protect, another signing key). */
-    void installFile(String pkg, File f, Adb.Progress up) throws Exception {
+    /**
+     * Sends a downloaded APK and installs it; the same recovery as optimize/install.sh (Play Protect, another signing key).
+     * Returns false when the TV refused because it already has this version or a newer one (nothing to do), true when the app was installed.
+     * announcedCode is the version code the manifest announces for this app, or 0 when it announces none (Channels).
+     */
+    boolean installFile(String pkg, File f, Adb.Progress up, int announcedCode) throws Exception {
         try {
             String out = tv.install(f, up);
             if (out.contains("INSTALL_FAILED_VERIFICATION_FAILURE")) {
@@ -116,12 +123,18 @@ final class Flow {
                 out = tv.install(f, up);
                 if (settings != null && out.contains("Success")) restore(settings);
             }
+            if (InstallPlan.isDowngrade(out)) {
+                // the TV is already at this version or beyond: fine when it is not behind the announced one (or when nothing is announced)
+                if (announcedCode <= 0 || InstallPlan.harmlessDowngrade(out, installedCode(pkg), announcedCode)) return false;
+                throw new AlreadyNewer(pkg + ": " + out.trim());
+            }
             if (!out.contains("Success")) throw new IOException(pkg + ": " + out);
             Thread.sleep(3000);
             if (!packages("pm list packages " + pkg).contains(pkg)) {
                 throw new IOException(pkg + " was removed by this TV right after the install");
             }
             receiver = null;
+            return true;
         } finally { f.delete(); }
     }
 
@@ -247,7 +260,7 @@ final class Flow {
     /** Everything is there: the home app is the announced version and Channels is installed. Returns true when the home key opens our home. */
     boolean verify(int wantedCode) throws IOException {
         int got = installedCode(HOME);
-        if (got != wantedCode) throw new IOException(HOME + " is version " + got + " on the TV, not " + wantedCode);
+        if (!InstallPlan.upToDate(got, wantedCode)) throw new IOException(HOME + " is version " + got + " on the TV, not " + wantedCode);
         return verify();
     }
 

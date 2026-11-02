@@ -112,6 +112,52 @@ final class Orn {
         }
     }
 
+    /** A chevron that points BACK: to the left when the screen reads left to right, to the right in Arabic. Drawn, so no font decides which way it faces. */
+    static final class Chevron extends View {
+        private final Paint p;
+
+        Chevron(Context c, int color) {
+            super(c);
+            p = line(color, dp(c, 2.4f));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        @Override protected void onDraw(Canvas cv) {
+            boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
+            float w = getWidth(), h = getHeight(), pad = p.getStrokeWidth();
+            float tip = rtl ? w - pad : pad, tail = rtl ? pad + w * 0.2f : w - pad - w * 0.2f;
+            Path a = new Path();
+            a.moveTo(tail, pad);
+            a.lineTo(tip, h / 2f);
+            a.lineTo(tail, h - pad);
+            cv.drawPath(a, p);
+        }
+    }
+
+    /** A small open hand («your turn»), drawn on a 24-unit grid: a palm, four fingers and a thumb. */
+    static final class Hand extends View {
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG), stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        Hand(Context c, int color) {
+            super(c);
+            fill.setColor(color);
+            stroke.setColor(color);
+            stroke.setStyle(Paint.Style.STROKE);
+            stroke.setStrokeCap(Paint.Cap.ROUND);
+        }
+
+        @Override protected void onDraw(Canvas cv) {
+            float u = Math.min(getWidth(), getHeight()) / 24f;
+            cv.drawRoundRect(new RectF(7.6f * u, 10f * u, 18.8f * u, 21f * u), 3.2f * u, 3.2f * u, fill);
+            stroke.setStrokeWidth(2.3f * u);
+            float[][] fingers = {{9.4f, 7f}, {12.1f, 4.2f}, {14.8f, 4.8f}, {17.5f, 7.6f}};   // x, top y (the base is inside the palm)
+            for (float[] f : fingers) cv.drawLine(f[0] * u, 12f * u, f[0] * u, f[1] * u, stroke);
+            stroke.setStrokeWidth(2.4f * u);
+            cv.drawLine(8.6f * u, 16.5f * u, 4.8f * u, 12.6f * u, stroke);
+        }
+    }
+
     /** A horseshoe arch (the door of a medina): two gold outlines, the inner one fainter, a star at the crown. Its children sit inside. */
     static final class Arch extends FrameLayout {
         private final Paint outer, inner, fill, crownFill;
