@@ -1324,6 +1324,9 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    /** An empty cell of the pad: no frame. */
+    private TextView rcGap() { TextView g = text("", regular, 17, SAND); g.setPadding(dp(6), dp(14), dp(6), dp(14)); return g; }
+
     private LinearLayout rcRow(TextView... cells) {
         LinearLayout r = new LinearLayout(this);
         r.setOrientation(LinearLayout.HORIZONTAL);
@@ -1348,7 +1351,10 @@ public class MainActivity extends Activity {
             try {
                 String pkg = target.pkg();
                 if (pkg != null && !Remote.installed(flow.shell(), pkg)) { runOnUiThread(() -> rcMissing(target)); return; }
-                flow.shell().run(Remote.open(target));
+                if (Remote.start(flow.shell(), target) == Remote.Started.NOT_OPENABLE) {
+                    runOnUiThread(() -> Toast.makeText(this, t("rc_need_update"), Toast.LENGTH_LONG).show());
+                    flow.shell().run(Remote.open(Remote.Target.HOME));   // at least the home opens
+                }
             } catch (Exception e) { rcFail(e); }
         });
     }
@@ -1374,9 +1380,9 @@ public class MainActivity extends Activity {
     private void remoteScreen(LinearLayout body, final TextView button) {
         titleBlock(body, t("rc_title"), t("rc_sub"));
         final int fill = 0xFF12331F;
-        body.addView(rcRow(rcBtn("", 0, SAND, () -> { }), rcBtn("▲", fill, SAND, () -> rcKey(Remote.UP)), rcBtn("", 0, SAND, () -> { })), lp(40, 8, 40, 0));
+        body.addView(rcRow(rcGap(), rcBtn("▲", fill, SAND, () -> rcKey(Remote.UP)), rcGap()), lp(40, 8, 40, 0));
         body.addView(rcRow(rcBtn("◀", fill, SAND, () -> rcKey(Remote.LEFT)), rcBtn("OK", GOLD, DARK, () -> rcKey(Remote.OK)), rcBtn("▶", fill, SAND, () -> rcKey(Remote.RIGHT))), lp(40, 0, 40, 0));
-        body.addView(rcRow(rcBtn("", 0, SAND, () -> { }), rcBtn("▼", fill, SAND, () -> rcKey(Remote.DOWN)), rcBtn("", 0, SAND, () -> { })), lp(40, 0, 40, 8));
+        body.addView(rcRow(rcGap(), rcBtn("▼", fill, SAND, () -> rcKey(Remote.DOWN)), rcGap()), lp(40, 0, 40, 8));
         body.addView(rcRow(rcBtn(t("rc_back"), fill, SAND, () -> rcKey(Remote.BACK)), rcBtn(t("rc_tvhome"), fill, SAND, () -> rcKey(Remote.HOME)), rcBtn(t("rc_menu"), fill, SAND, () -> rcKey(Remote.MENU))), lp(0, 4, 0, 0));
         body.addView(rcRow(rcBtn(t("rc_mute"), fill, SAND, () -> rcKey(Remote.MUTE)), rcBtn(t("rc_vdown"), fill, SAND, () -> rcKey(Remote.VOLUME_DOWN)), rcBtn(t("rc_vup"), fill, SAND, () -> rcKey(Remote.VOLUME_UP))));
 

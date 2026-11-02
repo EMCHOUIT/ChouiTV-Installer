@@ -52,7 +52,7 @@ final class Flow {
     Shell shell() { return tv::shell; }
 
     /** Puts a file on the TV (the remote control's helper). */
-    void pushFile(File f, String remote) throws IOException { tv.push(f, remote, null); }
+    void pushFile(File f, String remote) throws IOException { tv.pushShell(f, remote, null); }   // the sync: service is refused by some TVs (MiTV-MSSP3); the shell upload works on any adbd
 
     private Set<String> packages(String cmd) throws IOException {
         Set<String> s = new HashSet<>();

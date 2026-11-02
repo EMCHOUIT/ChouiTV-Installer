@@ -470,6 +470,7 @@ final class Strings {
         k("rc_nochan_msg", "ليس في هذا التلفزيون تطبيق Channels. هل تثبّته الآن من هذا التطبيق؟", "Cette télé n\u2019a pas Channels. L\u2019installer maintenant depuis cette appli ?", "This TV does not have Channels. Install it now from this app?");
         k("rc_nohome_q", "ChouiTV غير مثبّت", "ChouiTV n\u2019est pas installé", "ChouiTV is not installed");
         k("rc_nohome_msg", "ليس في هذا التلفزيون ChouiTV. هل تثبّته الآن من هذا التطبيق؟", "Cette télé n\u2019a pas ChouiTV. L\u2019installer maintenant depuis cette appli ?", "This TV does not have ChouiTV. Install it now from this app?");
+        k("rc_need_update", "هذه النسخة من ChouiTV على التلفزيون لا تفتح هذه الشاشة مباشرة: حدّثها إلى 4.2. فُتحت الرئيسية بدلًا منها.", "Ce ChouiTV ne sait pas encore ouvrir cet écran directement : mettez-le à jour (4.2). L’accueil s’est ouvert à la place.", "This ChouiTV cannot open that screen directly yet: update it (4.2). The home opened instead.");
         k("rc_install", "ثبّت", "Installer", "Install");
         k("rc_later", "لاحقًا", "Plus tard", "Later");
         k("re_check_h", "بعد إعادة التشغيل", "Après un redémarrage", "After a restart");

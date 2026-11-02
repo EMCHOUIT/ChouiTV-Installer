@@ -19,11 +19,13 @@ public class RemoteTest {
     private static final class Tv implements Shell {
         final List<String> log = new ArrayList<>();
         String clipAnswer = "set via 3 params";
+        String startAnswer = "Starting: Intent { cmp=x }";
         String packages = "";
         @Override public String run(String c) throws IOException {
             log.add(c);
             if (c.contains("app_process")) return clipAnswer;
             if (c.startsWith("pm list packages")) return packages;
+            if (c.startsWith("am start")) return startAnswer;
             return "";
         }
     }
@@ -84,5 +86,14 @@ public class RemoteTest {
         tv.packages = "package:com.majnioui.tv.channels\n";
         assertTrue(Remote.installed(tv, "com.majnioui.tv.channels"));
         try { Remote.installed(tv, "bad; reboot"); fail("a package name must be checked"); } catch (IllegalArgumentException expected) { }
+    }
+
+    @Test public void aStartIsReportedAsDoneRefusedOrNotOpenable() throws Exception {
+        Tv tv = new Tv();
+        assertEquals(Remote.Started.OK, Remote.start(tv, Remote.Target.HOME));
+        tv.startAnswer = "Starting: Intent { cmp=x }\nException occurred while executing start:\njava.lang.SecurityException: Permission Denial: starting Intent ... not exported from uid 10117";
+        assertEquals(Remote.Started.NOT_OPENABLE, Remote.start(tv, Remote.Target.LISTEN));
+        tv.startAnswer = "Error: Activity class {a/b} does not exist.";
+        assertEquals(Remote.Started.NOT_OPENABLE, Remote.start(tv, Remote.Target.CHANNELS));
     }
 }

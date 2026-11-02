@@ -38,6 +38,15 @@ public final class Remote {
         public String pkg() { return this == SAVER ? null : component.substring(0, component.indexOf('/')); }
     }
 
+    public enum Started { OK, NOT_OPENABLE }
+
+    /** Opens the component and reads the answer: a TV whose ChouiTV does not open that screen to other apps (before 4.2) says so, and nothing else is claimed. */
+    public static Started start(Shell tv, Target t) throws IOException {
+        String out = tv.run(open(t));
+        if (out != null && (out.contains("SecurityException") || out.contains("Error:") || out.contains("does not exist"))) return Started.NOT_OPENABLE;
+        return Started.OK;
+    }
+
     public static String key(int code) {
         for (int k : KNOWN) if (k == code) return "input keyevent " + code;
         throw new IllegalArgumentException("not a remote key: " + code);
