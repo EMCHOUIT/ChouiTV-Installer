@@ -220,7 +220,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 108 tests sur la JVM
 ```
 
-Version actuelle : **1.6** (`versionCode 9`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **1.6.1** (`versionCode 10`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -230,6 +230,7 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **1.6.1** | Un bouton « ‹ Retour » sur chaque écran (la touche retour du téléphone ne quitte plus d'un coup) ; l'action principale est le grand bouton du bas ; « À vous » (doré, sur la télé ou sur le téléphone) se distingue de « À savoir » ; une appli déjà à jour sur la télé est sautée au lieu d'échouer |
 | **1.6** | ChouiTV 4.0 est une seule appli : l'installateur pose une appli + Chaînes ; reprise des réglages de l'ancien écran de veille, retrait seulement après un « oui » ; les radios font partie des réglages enregistrés |
 | **1.5** | le fichier de version doit être signé par le propriétaire (`latest.json.sig`) |
 | **1.4** | confiance : empreinte obligatoire, adresses ChouiTV seulement, chaque appli contrôlée sur le téléphone (appli, version, clé) puis sur la télé, une seule nouvelle tentative, question avant de retirer une appli signée avec une autre clé |

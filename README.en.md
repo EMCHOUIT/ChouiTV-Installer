@@ -220,7 +220,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 108 tests on the JVM
 ```
 
-Current version: **1.6** (`versionCode 9`), for Android 8 or newer (`minSdk 26`).
+Current version: **1.6.1** (`versionCode 10`), for Android 8 or newer (`minSdk 26`).
 
 The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram, the version number on the banner, the QR code) are rebuilt with `python docs/media/build_media.py` (needs Pillow and Edge or Chrome); the phone screenshots are real and are not generated.
 
@@ -230,6 +230,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 
 | Version | What changed |
 |---|---|
+| **1.6.1** | A «‹ Back» button on every screen (the phone's back key no longer quits at once); the main action is the big bottom button; «Your turn» (gold, on the TV or on the phone) is told apart from «Good to know»; an app already up to date on the TV is skipped instead of failing |
 | **1.6** | ChouiTV 4.0 is a single app: the installer puts one app + Channels; carry-over of the old screensaver's settings, removal only after a "yes"; radios are part of the saved settings |
 | **1.5** | the version file must be signed by the owner (`latest.json.sig`) |
 | **1.4** | trust: mandatory checksum, ChouiTV addresses only, each app checked on the phone (app, version, key) then on the TV, one retry, a question before removing an app signed with another key |
