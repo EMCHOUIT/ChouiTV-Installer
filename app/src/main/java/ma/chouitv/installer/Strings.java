@@ -442,6 +442,12 @@ final class Strings {
         k("cl_back_part_t", "إعادة ناقصة", "Remise en place incomplète", "Put back incompletely");
         k("cl_back_info", "يمكنك إعادة التنظيف لاحقًا.", "Vous pourrez refaire un nettoyage plus tard.", "You can clean up again later.");
         k("re_end_sub", "أُعيد %d من %d", "%d sur %d applis réactivées", "%d of %d apps turned back on");
+        k("re_check_h", "بعد إعادة التشغيل", "Après un redémarrage", "After a restart");
+        k("re_check_off", "%d ما زالت مطفأة", "%d restent éteintes", "%d are still off");
+        k("re_check_on", "%d أعادها التلفزيون إلى العمل", "%d remises en marche par la TV", "%d turned back on by the TV");
+        k("re_check_on_d", "هذا التلفزيون يعيد تشغيلها عند كل إقلاع: التعطيل لا يكفي. تبقى مثبّتة وتُفتح بشكل عادي.", "Cette TV les réactive à chaque démarrage : les désactiver ne suffit pas. Elles restent installées et s\u2019ouvrent normalement.", "This TV turns them on at every start: disabling is not enough. They stay installed and open normally.");
+        k("re_check_sus", "إن تعطّلت ميزة في التلفزيون (مثل قائمة الصورة) فأعد هذه أولًا:", "Si une fonction de la TV ne marche plus (le menu Image par exemple), remettez d\u2019abord :", "If a TV feature stops working (the picture menu for instance), put these back first:");
+        k("cl_restart_tv", "أعِد تشغيل التلفزيون ليعمل كل شيء من جديد (عادت خدمة نظام).", "Redémarrez la TV pour que tout reprenne (un service système est revenu).", "Restart the TV so everything works again (a system service is back).");
         k("re_end_info", "تجدها في قائمة تطبيقات التلفزيون.", "Vous les retrouvez dans la liste des applis de la télé.", "You find them in the TV's app list.");
         k("re_part_t", "إعادة تفعيل ناقصة", "Réactivation incomplète", "Turning back on incomplete");
         k("re_none_t", "لم يُفعَّل أي تطبيق", "Aucune appli réactivée", "No app turned back on");

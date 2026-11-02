@@ -222,7 +222,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 108 tests sur la JVM
 ```
 
-Version actuelle : **1.6.2** (`versionCode 11`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **1.7** (`versionCode 12`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -232,6 +232,7 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **1.7** | Nettoyage plus sûr : les listes de nettoyage sont signées et la liste protégée ne peut que grandir ; les applis inconnues sont montrées mais pas cochées ; la liste protégée est revérifiée juste avant chaque changement ; une carte « Après un redémarrage » dit ce qui est resté éteint et ce que la TV a remis en marche toute seule ; après avoir rallumé un service système, l'appli dit de redémarrer la TV |
 | **1.6.2** | Le nettoyage ne désactive plus le service TV de Xiaomi ni le Mi TV Manager (Réglages > TV > Image en a besoin) |
 | **1.6.1** | Un bouton « ‹ Retour » sur chaque écran (la touche retour du téléphone ne quitte plus d'un coup) ; l'action principale est le grand bouton du bas ; « À vous » (doré, sur la télé ou sur le téléphone) se distingue de « À savoir » ; une appli déjà à jour sur la télé est sautée au lieu d'échouer |
 | **1.6** | ChouiTV 4.0 est une seule appli : l'installateur pose une appli + Chaînes ; reprise des réglages de l'ancien écran de veille, retrait seulement après un « oui » ; les radios font partie des réglages enregistrés |

@@ -47,6 +47,7 @@ import ma.chouitv.installer.cleanup.Executor;
 import ma.chouitv.installer.cleanup.Facts;
 import ma.chouitv.installer.cleanup.Planner;
 import ma.chouitv.installer.cleanup.Reactivation;
+import ma.chouitv.installer.cleanup.Recheck;
 import ma.chouitv.installer.guide.Guide;
 import ma.chouitv.installer.guide.Outcome;
 import ma.chouitv.installer.profiles.Preview;
@@ -1193,7 +1194,9 @@ public class MainActivity extends Activity {
         final String date = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).format(new java.util.Date());
         bg.execute(() -> {
             try {
-                Restore point = new Restore(tvModel, date, planned);   // saved BEFORE the first change
+                java.util.Set<String> active = new java.util.HashSet<>();   // the services running now: if a TV feature fails after a restart, these are the suspects
+                try { active = Facts.activeServicePackages(flow.shell().run("dumpsys activity services")); } catch (IOException ignored) { }
+                Restore point = new Restore(tvModel, date, planned).withServices(active);   // saved BEFORE the first change
                 saveRestore(point);
                 pushRestoreToTv(point);
                 Executor ex = new Executor(flow.shell(), Thread::sleep, newToken());
@@ -1204,7 +1207,7 @@ public class MainActivity extends Activity {
                     }
                     public void groupDone(CleanupData.Group g, boolean healthy) { }
                 });
-                Restore real = new Restore(tvModel, date, cleanResult.disabled);   // what was really turned off
+                Restore real = new Restore(tvModel, date, cleanResult.disabled).withServices(active);   // what was really turned off
                 saveRestore(real);
                 pushRestoreToTv(real);
                 runOnUiThread(() -> { busy = false; getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); show(10); });
@@ -1248,10 +1251,11 @@ public class MainActivity extends Activity {
                     Restore r = loadRestore();
                     java.util.List<String> back = r == null ? new ArrayList<String>() : Restore.apply(flow.shell(), r.packages);
                     final int total = r == null ? 0 : r.packages.size(), ok = back.size();
+                    final boolean restart = r != null && Recheck.needsRestartAfterEnable(r, back);
                     runOnUiThread(() -> {
                         busy = false;
                         Outcome.Status st = Outcome.of(total, ok, false);
-                        showEnd(st, t(st == Outcome.Status.SUCCESS ? "cl_back_ok_t" : "cl_back_part_t"), t("re_end_sub", ok, total), lines(t("re_done_d", ok)), new ArrayList<String>(), t("cl_back_info"));
+                        showEnd(st, t(st == Outcome.Status.SUCCESS ? "cl_back_ok_t" : "cl_back_part_t"), t("re_end_sub", ok, total), lines(t("re_done_d", ok)), new ArrayList<String>(), restart ? t("cl_restart_tv") + "\n" + t("cl_back_info") : t("cl_back_info"));
                     });
                 } catch (final Exception e) {
                     runOnUiThread(() -> { busy = false; Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
@@ -1267,6 +1271,8 @@ public class MainActivity extends Activity {
     private int space = SPACE_INSTALL;
     private boolean cleanedHere, cleanFromDone;
     private Reactivation.Plan reactPlan;
+    private Recheck reactRecheck;      // what the last cleanup turned off, compared with what is off now (null: no restore point)
+    private boolean reactNeedsRestart;  // a system service was put back: the TV must restart
     private final java.util.Set<String> reactSel = new java.util.LinkedHashSet<>();
     private java.util.List<String> reactBack = new ArrayList<>();
     private int reactAsked;
@@ -1332,7 +1338,9 @@ public class MainActivity extends Activity {
         Restore r = loadRestore();
         if (r != null) ours.addAll(r.packages);
         try { ours.addAll(Reactivation.parseRestoreText(flow.shell().run("cat /data/local/tmp/chouitv-restore.txt 2> /dev/null"))); } catch (IOException ignored) { }
-        reactPlan = Reactivation.plan(Reactivation.disabledNow(flow.shell()), ours, cleanupData);
+        java.util.Set<String> offNow = Reactivation.disabledNow(flow.shell());
+        reactPlan = Reactivation.plan(offNow, ours, cleanupData);
+        reactRecheck = r == null || r.packages.isEmpty() ? null : Recheck.compare(r, offNow);
         reactSel.clear();
     }
 
@@ -1354,6 +1362,7 @@ public class MainActivity extends Activity {
 
     private void reactivate(LinearLayout body, final TextView button) {
         titleBlock(body, t("re_title"), t("re_sub"));
+        recheckCard(body);
         final Reactivation.Plan p = reactPlan;
         if (p.total() == 0) {
             LinearLayout none = card(false);
@@ -1367,6 +1376,25 @@ public class MainActivity extends Activity {
         reactSection(body, button, p.ours, "re_ours_h", "re_ours_d");
         reactSection(body, button, p.others, "re_oth_h", "re_oth_d");
         updateReactButton(button);
+    }
+
+    /** «After a restart»: what a cleanup turned off and is still off, and what the TV turned back on by itself (nothing is claimed off that is not). */
+    private void recheckCard(LinearLayout body) {
+        final Recheck c = reactRecheck;
+        if (c == null) return;
+        LinearLayout card = card(false);
+        card.addView(text(t("re_check_h"), medium, 17, GOLD));
+        card.addView(text(t("re_check_off", c.stillOff.size()), regular, 14, SAND), lp(0, 4, 0, 0));
+        if (!c.backOn.isEmpty()) {
+            card.addView(text(t("re_check_on", c.backOn.size()), medium, 14, GOLD), lp(0, 8, 0, 0));
+            for (String p : c.backOn) card.addView(text(cleanupData.label(p, Strings.lang), regular, 13, SAND), lp(8, 2, 0, 0));
+            card.addView(text(t("re_check_on_d"), regular, 13, MUTED), lp(0, 6, 0, 0));
+        }
+        if (!c.suspects.isEmpty()) {
+            card.addView(text(t("re_check_sus"), regular, 13, MUTED), lp(0, 8, 0, 0));
+            for (String p : c.suspects) card.addView(text(cleanupData.label(p, Strings.lang), medium, 13, SAND), lp(8, 2, 0, 0));
+        }
+        body.addView(card, lp(0, 10, 0, 6));
     }
 
     private void reactSection(LinearLayout body, final TextView button, final java.util.List<String> pkgs, String titleKey, String descKey) {
@@ -1431,10 +1459,11 @@ public class MainActivity extends Activity {
                 try {
                     java.util.List<String> back = Reactivation.apply(flow.shell(), asked);
                     Restore r = loadRestore();
+                    reactNeedsRestart = r != null && Recheck.needsRestartAfterEnable(r, back);
                     if (r != null) {   // the restore point forgets what is on again
                         java.util.List<String> left = new ArrayList<>(r.packages);
                         left.removeAll(back);
-                        Restore now = new Restore(r.tvModel, r.date, left);
+                        Restore now = new Restore(r.tvModel, r.date, left).withServices(new java.util.HashSet<>(r.servicesBefore));
                         saveRestore(now);
                         pushRestoreToTv(now);
                     }
@@ -1455,7 +1484,7 @@ public class MainActivity extends Activity {
         for (String p : reactBack) did.add(cleanupData.label(p, Strings.lang));
         java.util.List<String> left = new ArrayList<>();
         if (done < asked) left.add(t("re_fail", asked - done));
-        setEnd(st, t(st == Outcome.Status.SUCCESS ? "re_done_t" : st == Outcome.Status.PARTIAL ? "re_part_t" : "re_none_t"), t("re_end_sub", done, asked), did, left, t("re_end_info"));
+        setEnd(st, t(st == Outcome.Status.SUCCESS ? "re_done_t" : st == Outcome.Status.PARTIAL ? "re_part_t" : "re_none_t"), t("re_end_sub", done, asked), did, left, reactNeedsRestart ? t("cl_restart_tv") + "\n" + t("re_end_info") : t("re_end_info"));
         endNextLabel = t("re_more");
         endNext = () -> {
             busy = true;
