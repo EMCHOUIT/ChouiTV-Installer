@@ -55,6 +55,7 @@ import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
+import ma.chouitv.installer.remote.Remote;
 
 import static ma.chouitv.installer.Strings.t;
 
@@ -227,6 +228,7 @@ public class MainActivity extends Activity {
             case 15: sendScreen(body, button); break;
             case 23: progressScreen(body, button); break;
             case 24: endScreen(body, button); break;
+            case 25: remoteScreen(body, button); break;
             default: done(body, button); break;
         }
     }
@@ -1281,9 +1283,9 @@ public class MainActivity extends Activity {
         cleanedHere = false;
         cleanFromDone = false;
         titleBlock(body, t("hub_title"), t("hub_sub"));
-        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}};
+        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}, {"6", "hub_rc_t", "hub_rc_d", "hub_rc_tag"}};
         for (int i = 0; i < cards.length; i++) {
-            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : SPACE_REACT;
+            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : i == 4 ? SPACE_REACT : SPACE_REMOTE;
             LinearLayout c = card(i == 0);
             c.setOrientation(LinearLayout.HORIZONTAL);
             c.setGravity(Gravity.CENTER_VERTICAL);
@@ -1305,11 +1307,125 @@ public class MainActivity extends Activity {
         button.setOnClickListener(v -> show(18));
     }
 
+
+    // ---------- the remote control ----------
+
+    private TextView rcBtn(String label, int fill, int color, final Runnable act) {
+        TextView b = text(label, medium, 17, color);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(6), dp(14), dp(6), dp(14));
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(14));
+        g.setColor(fill);
+        g.setStroke(dp(1), 0x66D6AF6B);
+        b.setBackground(g);
+        b.setClickable(true);
+        b.setOnClickListener(v -> act.run());
+        return b;
+    }
+
+    private LinearLayout rcRow(TextView... cells) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        for (TextView c : cells) {
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
+            p.setMargins(dp(4), dp(4), dp(4), dp(4));
+            r.addView(c, p);
+        }
+        return r;
+    }
+
+    private void rcFail(final Exception e) {
+        runOnUiThread(() -> Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_SHORT).show());
+    }
+
+    private void rcKey(final int code) {
+        bg.execute(() -> { try { flow.shell().run(Remote.key(code)); } catch (Exception e) { rcFail(e); } });
+    }
+
+    private void rcOpen(final Remote.Target target) {
+        bg.execute(() -> {
+            try {
+                String pkg = target.pkg();
+                if (pkg != null && !Remote.installed(flow.shell(), pkg)) { runOnUiThread(() -> rcMissing(target)); return; }
+                flow.shell().run(Remote.open(target));
+            } catch (Exception e) { rcFail(e); }
+        });
+    }
+
+    /** The app is not on the TV: say so, and offer to install it from here. */
+    private void rcMissing(Remote.Target target) {
+        final boolean channels = target == Remote.Target.CHANNELS;
+        confirmGrave(t(channels ? "rc_nochan_q" : "rc_nohome_q"), t(channels ? "rc_nochan_msg" : "rc_nohome_msg"), t("rc_later"), t("rc_install"),
+            () -> { clearGuide(); space = SPACE_INSTALL; show(3); });
+    }
+
+    /** The helper that puts text on the TV's clipboard is pushed once (and again when its size is not the one of the app's copy). */
+    private void rcEnsureHelper() throws IOException {
+        java.io.File f = new java.io.File(getCacheDir(), "chouitv-clip.jar");
+        try (InputStream in = getAssets().open(Remote.HELPER_ASSET); java.io.FileOutputStream o = new java.io.FileOutputStream(f)) {
+            byte[] b = new byte[4096]; int n;
+            while ((n = in.read(b)) > 0) o.write(b, 0, n);
+        }
+        String size = flow.shell().run("wc -c < " + Remote.HELPER_REMOTE + " 2> /dev/null").trim();
+        if (!size.equals(String.valueOf(f.length()))) flow.pushFile(f, Remote.HELPER_REMOTE);
+    }
+
+    private void remoteScreen(LinearLayout body, final TextView button) {
+        titleBlock(body, t("rc_title"), t("rc_sub"));
+        final int fill = 0xFF12331F;
+        body.addView(rcRow(rcBtn("", 0, SAND, () -> { }), rcBtn("▲", fill, SAND, () -> rcKey(Remote.UP)), rcBtn("", 0, SAND, () -> { })), lp(40, 8, 40, 0));
+        body.addView(rcRow(rcBtn("◀", fill, SAND, () -> rcKey(Remote.LEFT)), rcBtn("OK", GOLD, DARK, () -> rcKey(Remote.OK)), rcBtn("▶", fill, SAND, () -> rcKey(Remote.RIGHT))), lp(40, 0, 40, 0));
+        body.addView(rcRow(rcBtn("", 0, SAND, () -> { }), rcBtn("▼", fill, SAND, () -> rcKey(Remote.DOWN)), rcBtn("", 0, SAND, () -> { })), lp(40, 0, 40, 8));
+        body.addView(rcRow(rcBtn(t("rc_back"), fill, SAND, () -> rcKey(Remote.BACK)), rcBtn(t("rc_tvhome"), fill, SAND, () -> rcKey(Remote.HOME)), rcBtn(t("rc_menu"), fill, SAND, () -> rcKey(Remote.MENU))), lp(0, 4, 0, 0));
+        body.addView(rcRow(rcBtn(t("rc_mute"), fill, SAND, () -> rcKey(Remote.MUTE)), rcBtn(t("rc_vdown"), fill, SAND, () -> rcKey(Remote.VOLUME_DOWN)), rcBtn(t("rc_vup"), fill, SAND, () -> rcKey(Remote.VOLUME_UP))));
+
+        sectionLabel(body, t("rc_open_h"));
+        body.addView(rcRow(rcBtn(t("rc_home"), fill, GOLD, () -> rcOpen(Remote.Target.HOME)), rcBtn(t("rc_saver"), fill, GOLD, () -> rcOpen(Remote.Target.SAVER))));
+        body.addView(rcRow(rcBtn(t("rc_listen"), fill, GOLD, () -> rcOpen(Remote.Target.LISTEN)), rcBtn(t("rc_channels"), fill, GOLD, () -> rcOpen(Remote.Target.CHANNELS))));
+
+        sectionLabel(body, t("rc_text_h"));
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setHint(t("rc_text_hint"));
+        et.setHintTextColor(MUTED);
+        et.setTextColor(SAND);
+        et.setTextSize(17);
+        et.setMinLines(2);
+        et.setGravity(Gravity.TOP | Gravity.START);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(12));
+        g.setColor(0xFF0F2A1B);
+        g.setStroke(dp(1), 0x66D6AF6B);
+        et.setBackground(g);
+        et.setPadding(dp(12), dp(10), dp(12), dp(10));
+        body.addView(et, lp(4, 4, 4, 0));
+        body.addView(text(t("rc_text_tip"), regular, 12, MUTED), lp(6, 4, 6, 0));
+        body.addView(rcBtn(t("rc_send"), GOLD, DARK, () -> {
+            final String s = et.getText().toString();
+            if (s.trim().isEmpty()) { Toast.makeText(this, t("rc_empty"), Toast.LENGTH_SHORT).show(); return; }
+            bg.execute(() -> {
+                try {
+                    rcEnsureHelper();
+                    Remote.sendText(flow.shell(), s);
+                    runOnUiThread(() -> { et.setText(""); Toast.makeText(this, t("rc_sent"), Toast.LENGTH_SHORT).show(); });
+                } catch (IllegalArgumentException e) {
+                    runOnUiThread(() -> Toast.makeText(this, t("rc_too_long", Remote.MAX_TEXT), Toast.LENGTH_SHORT).show());
+                } catch (Exception e) {
+                    runOnUiThread(() -> Toast.makeText(this, t("rc_text_fail", friendly(e, "", false)), Toast.LENGTH_LONG).show());
+                }
+            });
+        }), lp(4, 8, 4, 0));
+
+        button.setText(t("cl_home"));
+        button.setOnClickListener(v -> show(12));
+    }
+
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
     private void afterConnect(final TextView button, final TextView status) {
         if (space == SPACE_INSTALL) { busy = false; show(3); return; }
         if (space == SPACE_GET) { busy = false; show(14); return; }
         if (space == SPACE_SEND) { busy = false; show(17); return; }
+        if (space == SPACE_REMOTE) { busy = false; show(25); return; }
         stopTicker();
         status.setTextColor(GOLD);
         status.setText(t(space == SPACE_CLEAN ? "cl_loading" : "re_loading"));
@@ -1521,7 +1637,7 @@ public class MainActivity extends Activity {
 
     // ---------- my settings: named profiles, saved from a TV and sent to another ----------
 
-    private static final int SPACE_GET = 3, SPACE_SEND = 4;
+    private static final int SPACE_GET = 3, SPACE_SEND = 4, SPACE_REMOTE = 5;
     private Profile sendProfile;
     private Preview sendPreview, sentResult;
 

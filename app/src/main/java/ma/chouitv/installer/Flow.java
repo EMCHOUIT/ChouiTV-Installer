@@ -51,6 +51,9 @@ final class Flow {
     /** The TV's shell, as the cleanup's own small interface (it is tested on a fake TV). */
     Shell shell() { return tv::shell; }
 
+    /** Puts a file on the TV (the remote control's helper). */
+    void pushFile(File f, String remote) throws IOException { tv.push(f, remote, null); }
+
     private Set<String> packages(String cmd) throws IOException {
         Set<String> s = new HashSet<>();
         for (String line : tv.shell(cmd).split("\n")) {
