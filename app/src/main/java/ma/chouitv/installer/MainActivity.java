@@ -828,12 +828,9 @@ public class MainActivity extends Activity {
             bundled = CleanupData.parse(new String(o.toByteArray(), "UTF-8"));
         }
         try {
-            CleanupData online = CleanupData.parse(new String(Net.fetch(CLEANUP_URL, Trust.MAX_MANIFEST_BYTES), "UTF-8"));
-            // the published lists are the truth; the names this app was built with fill any name they do not have yet
-            for (java.util.Map.Entry<String, String> e : bundled.display.entrySet()) online.display.putIfAbsent(e.getKey(), e.getValue());
-            for (java.util.Map.Entry<String, String> e : bundled.namesAr.entrySet()) online.namesAr.putIfAbsent(e.getKey(), e.getValue());
-            for (java.util.Map.Entry<String, String> e : bundled.namesFr.entrySet()) online.namesFr.putIfAbsent(e.getKey(), e.getValue());
-            return online;
+            byte[] online = Net.fetch(CLEANUP_URL, Trust.MAX_MANIFEST_BYTES);
+            String sig = new String(Net.fetch(CLEANUP_URL + ".sig", Trust.MAX_MANIFEST_BYTES), "UTF-8");
+            return CleanupSource.choose(bundled, online, sig);   // unsigned or changed: the lists built into the app
         } catch (Exception offline) {
             return bundled;
         }

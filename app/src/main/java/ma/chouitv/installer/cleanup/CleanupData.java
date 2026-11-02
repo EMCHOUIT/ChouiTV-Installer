@@ -17,8 +17,8 @@ public final class CleanupData {
             switch (s) {
                 case "tracking": return TRACKING;
                 case "ads": return ADS;
-                case "optional": return OPTIONAL;
-                default: return PREINSTALLED;
+                case "preinstalled": return PREINSTALLED;
+                default: return OPTIONAL;   // a label this app does not know (a newer list): shown, never ticked
             }
         }
     }

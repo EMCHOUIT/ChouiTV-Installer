@@ -62,6 +62,7 @@ public final class Planner {
         public final String listId, source, why;
         public final Map<Group, List<Item>> groups = new EnumMap<>(Group.class);
         public final Map<String, UserApp> userApps = new LinkedHashMap<>();
+        public final Set<String> keep = new LinkedHashSet<>();   // the protected list the plan was made with: the run checks it again
         public int alreadyOff, protectedCount;
         Plan(String listId, String source, String why) { this.listId = listId; this.source = source; this.why = why; }
         public int total() { int n = 0; for (List<Item> l : groups.values()) n += l.size(); return n; }
@@ -122,6 +123,7 @@ public final class Planner {
         CleanupData.Entry list = choose(d, tv, why);
         Plan p = new Plan(list == null ? "" : list.id, list == null ? "none" : list.source, why[0]);
         for (Group g : Group.values()) p.groups.put(g, new ArrayList<Item>());
+        p.keep.addAll(d.keep);
         Set<String> seen = new LinkedHashSet<>();
         if (list != null) fromList(d, tv, list, p, seen);
         xiaomiHome(d, tv, p, seen);
@@ -137,7 +139,7 @@ public final class Planner {
             if (d.homes.contains(pkg) || NOT_FOR_US.matcher(pkg).find() || !Guard.validPackage(pkg)) continue;
             if (!tv.installed.contains(pkg)) continue;
             if (tv.disabled.contains(pkg)) { p.alreadyOff++; continue; }
-            Group g = d.group.containsKey(pkg) ? d.group.get(pkg) : Group.PREINSTALLED;
+            Group g = d.group.containsKey(pkg) ? d.group.get(pkg) : Group.OPTIONAL;   // a package we never classified is shown, not ticked
             p.groups.get(g).add(new Item(pkg, g));
         }
     }

@@ -275,4 +275,34 @@ public class CleanupTest {
         try { Deadman.script("../../x", Arrays.asList("com.tcl.bi"), 300); fail(); } catch (IllegalArgumentException expected) { }
         try { Deadman.script(TOKEN, Arrays.asList("com.tcl.bi; reboot"), 300); fail(); } catch (IllegalArgumentException expected) { }
     }
+
+    // ---------- 1.7: unknown packages, the protected list at the door, the real asset ----------
+    @Test public void aPackageWeNeverClassifiedIsShownButNotTicked() throws Exception {
+        String j = "{\"schema\":1,\"consensusMin\":20,\"keep\":[],\"homes\":[],\"genericModels\":[],\"genericDevices\":[],"
+            + "\"packages\":[\"com.acme.sponsor\",\"com.acme.mystery\"],\"groups\":[\"ads\",\"mystery\"],\"names\":{\"ar\":{}},"
+            + "\"lists\":[{\"id\":\"tcl\",\"source\":\"ours\",\"brands\":[\"TCL\"],\"models\":[],\"devices\":[],\"p\":[0,1]}]}";
+        Plan p = Planner.plan(CleanupData.parse(j), tv("TCL", "43S5400A", "C06", "com.acme.sponsor", "com.acme.mystery"));
+        assertTrue(p.defaultSelection().contains("com.acme.sponsor"));
+        assertFalse(p.defaultSelection().contains("com.acme.mystery"));
+        boolean shown = false;
+        for (Item i : p.groups.get(Group.OPTIONAL)) shown |= i.pkg.equals("com.acme.mystery");
+        assertTrue(shown);
+    }
+
+    @Test public void theRunDropsAProtectedPackageEvenIfTheScreenTickedIt() throws Exception {
+        Plan p = Planner.plan(small(), tv("TCL", "43S5400A", "C06", "com.tcl.bi", "com.google.android.feedback"));
+        p.keep.add("com.tcl.bi");   // the protected list grew after the plan was made
+        FakeTv f = new FakeTv();
+        new Executor(f, NO_SLEEP, TOKEN).runSelected(p, new java.util.HashSet<>(java.util.Arrays.asList("com.tcl.bi", "com.google.android.feedback")), QUIET);
+        assertFalse(f.disabled.contains("com.tcl.bi"));
+        assertTrue(f.disabled.contains("com.google.android.feedback"));
+    }
+
+    @Test public void theShippedListsProtectTheXiaomiTvServiceAndNoXiaomiPlanTouchesIt() throws Exception {
+        String raw = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("src/main/assets/cleanup.json")), "UTF-8");
+        CleanupData d = CleanupData.parse(raw);
+        assertTrue(d.keep.contains("mitv.service"));   // Settings > TV > Picture does not open without it (MiTV-MSSP3)
+        Plan p = Planner.plan(d, tv("Xiaomi", "MiTV-MSSP3", "", "mitv.service", "com.xm.webcontent"));
+        for (Group g : Group.values()) for (Item i : p.groups.get(g)) assertFalse(i.pkg, i.pkg.equals("mitv.service"));
+    }
 }

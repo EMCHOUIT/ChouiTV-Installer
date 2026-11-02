@@ -63,6 +63,8 @@ public final class Executor {
     /** A run of exactly the ticked packages, still group by group (the least risky first) with a health check between the groups. */
     public Result runSelected(Plan plan, Set<String> selected, Listener l) throws IOException {
         Result r = new Result();
+        selected = new java.util.LinkedHashSet<>(selected);
+        selected.removeAll(plan.keep);   // the protected list is checked again at the door: whatever the screen ticked, these are never disabled
         List<Item> all = new ArrayList<>();
         for (Group g : EnumSet.allOf(Group.class)) for (Item i : plan.groups.get(g)) if (selected.contains(i.pkg)) all.add(i);
         if (all.isEmpty()) return r;
