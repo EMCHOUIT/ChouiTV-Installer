@@ -17,6 +17,8 @@ A small app on your phone that finds your TV, cleans it if you want, downloads t
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
 
+> 🛡️ **If Google shows a security message** (Play Protect) when you open the file, that is normal: the app is new and Google does not know it yet. Choose **"Install without scanning"**. It asks for no sensitive permission and installs nothing on your phone: it only sends ChouiTV to your TV.
+
 <a id="new"></a>
 
 ## 🆕 What's new in 1.6

@@ -17,6 +17,8 @@ Une petite appli sur votre téléphone qui trouve votre télé, la nettoie si vo
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Télécharger%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>Pour téléphone Android 8 ou plus · environ 1 Mo</sub></p>
 
+> 🛡️ **Si Google affiche un message de sécurité** (Play Protect) quand vous ouvrez le fichier, c'est normal : l'appli est récente et Google ne la connaît pas encore. Choisissez **« Installer sans analyser »**. Elle ne demande aucune permission sensible et n'installe rien sur votre téléphone : elle envoie seulement ChouiTV à votre télé.
+
 <a id="new"></a>
 
 ## 🆕 Nouveau dans la 1.6

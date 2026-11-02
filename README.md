@@ -19,6 +19,8 @@
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20نزّل%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>لهاتف أندرويد 8 أو أحدث · الملف نحو 1 ميغابايت</sub></p>
 
+> 🛡️ **إن عرضت غوغل رسالة أمان** (Play Protect) عند فتح الملف فهذا طبيعي: التطبيق جديد وغير معروف عندها بعد. اختر **«التثبيت بدون فحص»**. التطبيق لا يطلب أي إذن حساس ولا يثبّت شيئًا على هاتفك، وإنما يرسل ChouiTV إلى تلفزيونك فقط.
+
 <a id="new"></a>
 
 ## 🆕 الجديد في الإصدار 1.6
