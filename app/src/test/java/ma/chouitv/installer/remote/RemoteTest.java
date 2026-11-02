@@ -34,6 +34,7 @@ public class RemoteTest {
         assertEquals("input keyevent 19", Remote.key(Remote.UP));
         assertEquals("input keyevent 23", Remote.key(Remote.OK));
         assertEquals("input keyevent 164", Remote.key(Remote.MUTE));
+        assertEquals("input keyevent 26", Remote.key(Remote.POWER));   // puts the TV to sleep or wakes it
         try { Remote.key(9999); fail("an unknown key must be refused"); } catch (IllegalArgumentException expected) { }
     }
 

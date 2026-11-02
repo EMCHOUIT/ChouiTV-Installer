@@ -56,6 +56,7 @@ import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
 import ma.chouitv.installer.remote.Remote;
+import ma.chouitv.installer.remote.RemoteView;
 
 import static ma.chouitv.installer.Strings.t;
 
@@ -1378,13 +1379,13 @@ public class MainActivity extends Activity {
     }
 
     private void remoteScreen(LinearLayout body, final TextView button) {
-        titleBlock(body, t("rc_title"), t("rc_sub"));
         final int fill = 0xFF12331F;
-        body.addView(rcRow(rcGap(), rcBtn("▲", fill, SAND, () -> rcKey(Remote.UP)), rcGap()), lp(40, 8, 40, 0));
-        body.addView(rcRow(rcBtn("◀", fill, SAND, () -> rcKey(Remote.LEFT)), rcBtn("OK", GOLD, DARK, () -> rcKey(Remote.OK)), rcBtn("▶", fill, SAND, () -> rcKey(Remote.RIGHT))), lp(40, 0, 40, 0));
-        body.addView(rcRow(rcGap(), rcBtn("▼", fill, SAND, () -> rcKey(Remote.DOWN)), rcGap()), lp(40, 0, 40, 8));
-        body.addView(rcRow(rcBtn(t("rc_back"), fill, SAND, () -> rcKey(Remote.BACK)), rcBtn(t("rc_tvhome"), fill, SAND, () -> rcKey(Remote.HOME)), rcBtn(t("rc_menu"), fill, SAND, () -> rcKey(Remote.MENU))), lp(0, 4, 0, 0));
-        body.addView(rcRow(rcBtn(t("rc_mute"), fill, SAND, () -> rcKey(Remote.MUTE)), rcBtn(t("rc_vdown"), fill, SAND, () -> rcKey(Remote.VOLUME_DOWN)), rcBtn(t("rc_vup"), fill, SAND, () -> rcKey(Remote.VOLUME_UP))));
+        titleBlock(body, t("rc_title"), t("rc_sub"));
+        final RemoteView pad = new RemoteView(this);
+        pad.setListener(code -> rcKey(code));
+        LinearLayout.LayoutParams padLp = lp(0, 8, 0, 8);
+        padLp.gravity = Gravity.CENTER_HORIZONTAL;
+        body.addView(pad, padLp);
 
         sectionLabel(body, t("rc_open_h"));
         body.addView(rcRow(rcBtn(t("rc_home"), fill, GOLD, () -> rcOpen(Remote.Target.HOME)), rcBtn(t("rc_saver"), fill, GOLD, () -> rcOpen(Remote.Target.SAVER))));

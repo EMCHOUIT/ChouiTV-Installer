@@ -17,8 +17,8 @@ public final class Remote {
     private Remote() {}
 
     public static final int UP = 19, DOWN = 20, LEFT = 21, RIGHT = 22, OK = 23, BACK = 4, HOME = 3, MENU = 82, MUTE = 164,
-        VOLUME_UP = 24, VOLUME_DOWN = 25, PASTE = 279;
-    private static final int[] KNOWN = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, MUTE, VOLUME_UP, VOLUME_DOWN, PASTE};
+        VOLUME_UP = 24, VOLUME_DOWN = 25, POWER = 26, PASTE = 279;
+    private static final int[] KNOWN = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, MUTE, VOLUME_UP, VOLUME_DOWN, POWER, PASTE};
 
     /** Where the helper is put on the TV, and what it is called inside the phone app. */
     public static final String HELPER_REMOTE = "/data/local/tmp/chouitv-clip.jar";
