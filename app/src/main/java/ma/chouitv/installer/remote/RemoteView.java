@@ -17,7 +17,7 @@ import android.view.View;
 public final class RemoteView extends View {
     public interface Listener { void onKey(int code); }
 
-    private static final float W = 220f, H = 420f;
+    private static final float W = 220f, H = 444f;
     private static final int BODY = 0xFFD8D3C8, FACE = 0xFFF3F0E8, INK = 0xFF444444, RED = 0xFFC0392B, PRESSED = 0xFFC9C3B6;
     private static final int NONE = -1, POWER = 0, UP = 1, DOWN = 2, LEFT = 3, RIGHT = 4, OK = 5, BACK = 6, HOME = 7, VOL_UP = 8, VOL_DOWN = 9, MUTE = 10;
 
@@ -74,10 +74,10 @@ public final class RemoteView extends View {
         if (d <= 34f) return OK;
         if (d <= 88f) return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? LEFT : RIGHT) : (dy < 0 ? UP : DOWN);
         if (Math.hypot(x - 110f, y - 46f) <= 22f) return POWER;
-        if (Math.hypot(x - 68f, y - 270f) <= 30f) return BACK;
-        if (Math.hypot(x - 152f, y - 270f) <= 30f) return HOME;
-        if (Math.hypot(x - 152f, y - 350f) <= 30f) return MUTE;
-        if (x >= 38f && x <= 98f && y >= 296f && y <= 404f) return y < 350f ? VOL_UP : VOL_DOWN;
+        if (Math.hypot(x - 68f, y - 268f) <= 28f) return BACK;
+        if (Math.hypot(x - 152f, y - 268f) <= 28f) return HOME;
+        if (Math.hypot(x - 152f, y - 370f) <= 28f) return MUTE;
+        if (x >= 38f && x <= 98f && y >= 316f && y <= 424f) return y < 370f ? VOL_UP : VOL_DOWN;
         return NONE;
     }
 
@@ -147,45 +147,45 @@ public final class RemoteView extends View {
         chevron(c, 60f, 150f, -1f, 0f);
         chevron(c, 160f, 150f, 1f, 0f);
 
-        disc(c, 68f, 270f, 26f, BACK, FACE);
+        disc(c, 68f, 268f, 24f, BACK, FACE);
         line.setColor(INK);
         path.reset();
-        path.moveTo(62f, 264f); path.lineTo(56f, 270f); path.lineTo(62f, 276f);
-        path.moveTo(56f, 270f); path.lineTo(70f, 270f); path.quadTo(80f, 270f, 80f, 280f);
+        path.moveTo(62f, 262f); path.lineTo(56f, 268f); path.lineTo(62f, 274f);
+        path.moveTo(56f, 268f); path.lineTo(70f, 268f); path.quadTo(80f, 268f, 80f, 278f);
         c.drawPath(path, line);
 
-        disc(c, 152f, 270f, 26f, HOME, FACE);
+        disc(c, 152f, 268f, 24f, HOME, FACE);
         path.reset();
-        path.moveTo(142f, 271f); path.lineTo(152f, 262f); path.lineTo(162f, 271f);
-        path.moveTo(145f, 269f); path.lineTo(145f, 280f); path.lineTo(159f, 280f); path.lineTo(159f, 269f);
+        path.moveTo(142f, 269f); path.lineTo(152f, 260f); path.lineTo(162f, 269f);
+        path.moveTo(145f, 267f); path.lineTo(145f, 278f); path.lineTo(159f, 278f); path.lineTo(159f, 267f);
         c.drawPath(path, line);
 
         fill.setColor(FACE);
-        box.set(38f, 296f, 98f, 404f);
+        box.set(38f, 316f, 98f, 424f);
         c.drawRoundRect(box, 30f, 30f, fill);
         if (pressed == VOL_UP || pressed == VOL_DOWN) {
             fill.setColor(PRESSED);
             c.save();
-            c.clipRect(38f, pressed == VOL_UP ? 296f : 350f, 98f, pressed == VOL_UP ? 350f : 404f);
+            c.clipRect(38f, pressed == VOL_UP ? 316f : 370f, 98f, pressed == VOL_UP ? 370f : 424f);
             c.drawRoundRect(box, 30f, 30f, fill);
             c.restore();
         }
         line.setColor(INK);
-        c.drawLine(58f, 323f, 78f, 323f, line);
-        c.drawLine(68f, 313f, 68f, 333f, line);
-        c.drawLine(58f, 377f, 78f, 377f, line);
+        c.drawLine(58f, 343f, 78f, 343f, line);
+        c.drawLine(68f, 333f, 68f, 353f, line);
+        c.drawLine(58f, 397f, 78f, 397f, line);
         fill.setColor(BODY);
-        c.drawRect(44f, 349f, 92f, 351f, fill);
+        c.drawRect(44f, 369f, 92f, 371f, fill);
 
-        disc(c, 152f, 350f, 26f, MUTE, FACE);
+        disc(c, 152f, 370f, 24f, MUTE, FACE);
         line.setColor(INK);
         line.setStrokeWidth(2.5f);
         path.reset();
-        path.moveTo(139f, 346f); path.lineTo(144f, 346f); path.lineTo(151f, 340f); path.lineTo(151f, 360f);
-        path.lineTo(144f, 354f); path.lineTo(139f, 354f); path.close();
+        path.moveTo(139f, 366f); path.lineTo(144f, 366f); path.lineTo(151f, 360f); path.lineTo(151f, 380f);
+        path.lineTo(144f, 374f); path.lineTo(139f, 374f); path.close();
         c.drawPath(path, line);
-        c.drawLine(156f, 345f, 166f, 355f, line);
-        c.drawLine(166f, 345f, 156f, 355f, line);
+        c.drawLine(156f, 365f, 166f, 375f, line);
+        c.drawLine(166f, 365f, 156f, 375f, line);
         c.restore();
     }
 

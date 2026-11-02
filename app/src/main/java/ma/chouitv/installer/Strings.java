@@ -456,7 +456,7 @@ final class Strings {
         k("rc_open_h", "افتح على التلفزيون", "Ouvrir sur la télé", "Open on the TV");
         k("rc_home", "الرئيسية", "Accueil", "Home");
         k("rc_saver", "شاشة التوقف", "Écran de veille", "Screensaver");
-        k("rc_listen", "الاستماع", "الاستماع", "الاستماع");
+        k("rc_listen", "Quran/Radio", "Quran/Radio", "Quran/Radio");
         k("rc_channels", "Channels", "Channels", "Channels");
         k("rc_text_h", "أرسل نصًا إلى التلفزيون", "Envoyer du texte à la télé", "Send text to the TV");
         k("rc_text_hint", "اكتب هنا…", "Écrivez ici…", "Type here…");

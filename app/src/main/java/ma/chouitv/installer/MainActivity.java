@@ -1333,7 +1333,7 @@ public class MainActivity extends Activity {
         r.setOrientation(LinearLayout.HORIZONTAL);
         for (TextView c : cells) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            p.setMargins(dp(4), dp(4), dp(4), dp(4));
+            p.setMargins(dp(4), dp(8), dp(4), dp(8));   // room to put the finger on the button that is meant
             r.addView(c, p);
         }
         return r;
@@ -1388,8 +1388,9 @@ public class MainActivity extends Activity {
         body.addView(pad, padLp);
 
         sectionLabel(body, t("rc_open_h"));
-        body.addView(rcRow(rcBtn(t("rc_home"), fill, GOLD, () -> rcOpen(Remote.Target.HOME)), rcBtn(t("rc_saver"), fill, GOLD, () -> rcOpen(Remote.Target.SAVER))));
-        body.addView(rcRow(rcBtn(t("rc_listen"), fill, GOLD, () -> rcOpen(Remote.Target.LISTEN)), rcBtn(t("rc_channels"), fill, GOLD, () -> rcOpen(Remote.Target.CHANNELS))));
+        body.addView(rcRow(rcBtn(t("rc_saver"), fill, GOLD, () -> rcOpen(Remote.Target.SAVER))));
+        body.addView(rcRow(rcBtn(t("rc_listen"), fill, GOLD, () -> rcOpen(Remote.Target.LISTEN))));
+        body.addView(rcRow(rcBtn(t("rc_channels"), fill, GOLD, () -> rcOpen(Remote.Target.CHANNELS))));
 
         sectionLabel(body, t("rc_text_h"));
         final android.widget.EditText et = new android.widget.EditText(this);
@@ -1407,7 +1408,9 @@ public class MainActivity extends Activity {
         et.setPadding(dp(12), dp(10), dp(12), dp(10));
         body.addView(et, lp(4, 4, 4, 0));
         body.addView(text(t("rc_text_tip"), regular, 12, MUTED), lp(6, 4, 6, 0));
-        body.addView(rcBtn(t("rc_send"), GOLD, DARK, () -> {
+        // Send is the main button of the bottom area, so it rides just above the phone keyboard; the way back is the quiet link under it
+        button.setText(t("rc_send"));
+        button.setOnClickListener(v -> {
             final String s = et.getText().toString();
             if (s.trim().isEmpty()) { Toast.makeText(this, t("rc_empty"), Toast.LENGTH_SHORT).show(); return; }
             bg.execute(() -> {
@@ -1421,10 +1424,8 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> Toast.makeText(this, t("rc_text_fail", friendly(e, "", false)), Toast.LENGTH_LONG).show());
                 }
             });
-        }), lp(4, 8, 4, 0));
-
-        button.setText(t("cl_home"));
-        button.setOnClickListener(v -> show(12));
+        });
+        secondaryBelow(button, t("cl_home"), () -> show(12));
     }
 
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */

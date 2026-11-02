@@ -21,11 +21,11 @@ public class RemoteViewTest {
 
     @Test public void theRoundButtonsAndTheVolumePillSendTheirKeys() {
         assertEquals(Remote.POWER, key(110, 46));
-        assertEquals(Remote.BACK, key(68, 270));
-        assertEquals(Remote.HOME, key(152, 270));
-        assertEquals(Remote.MUTE, key(152, 350));
-        assertEquals(Remote.VOLUME_UP, key(68, 322));
-        assertEquals(Remote.VOLUME_DOWN, key(68, 378));
+        assertEquals(Remote.BACK, key(68, 268));
+        assertEquals(Remote.HOME, key(152, 268));
+        assertEquals(Remote.MUTE, key(152, 370));
+        assertEquals(Remote.VOLUME_UP, key(68, 340));
+        assertEquals(Remote.VOLUME_DOWN, key(68, 398));
     }
 
     @Test public void theBodyBetweenTheButtonsSendsNothing() {
