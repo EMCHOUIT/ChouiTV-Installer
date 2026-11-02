@@ -11,6 +11,8 @@ import java.util.List;
 public final class Restore {
     public final String tvModel, date;
     public final List<String> packages = new ArrayList<>();
+    /** Of those, the ones that had a service running when the cleanup began: if a TV feature (the picture menu) fails after a restart, they are the first suspects. */
+    public final List<String> servicesBefore = new ArrayList<>();
 
     public Restore(String tvModel, String date, List<String> packages) {
         this.tvModel = tvModel == null ? "" : tvModel;
@@ -20,8 +22,14 @@ public final class Restore {
 
     public String toJson() throws Exception {
         JSONObject o = new JSONObject();
-        o.put("schema", 1).put("tv", tvModel).put("date", date).put("packages", new JSONArray(packages));
+        o.put("schema", 1).put("tv", tvModel).put("date", date).put("packages", new JSONArray(packages)).put("services", new JSONArray(servicesBefore));
         return o.toString();
+    }
+
+    /** Remembers which of the turned-off packages had a service running (read from dumpsys before the first change). */
+    public Restore withServices(java.util.Set<String> activeServicePackages) {
+        for (String p : packages) if (activeServicePackages.contains(p) && !servicesBefore.contains(p)) servicesBefore.add(p);
+        return this;
     }
 
     public static Restore fromJson(String s) throws Exception {
@@ -29,7 +37,10 @@ public final class Restore {
         List<String> p = new ArrayList<>();
         JSONArray a = o.getJSONArray("packages");
         for (int i = 0; i < a.length(); i++) p.add(a.getString(i));
-        return new Restore(o.optString("tv"), o.optString("date"), p);
+        Restore r = new Restore(o.optString("tv"), o.optString("date"), p);
+        JSONArray sv = o.optJSONArray("services");   // absent in the restore points of 1.6 and before
+        if (sv != null) for (int i = 0; i < sv.length(); i++) if (r.packages.contains(sv.getString(i))) r.servicesBefore.add(sv.getString(i));
+        return r;
     }
 
     /** The commands that undo it: one «pm enable» per package. */

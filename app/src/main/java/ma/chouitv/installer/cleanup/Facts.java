@@ -120,4 +120,24 @@ public final class Facts {
         long doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
         return era * 146097 + doe - 719468;
     }
+
+    /**
+     * The packages that have a service running right now, from «dumpsys activity services»: the «packageName=» lines of the records
+     * under «active services» (the connection bindings further down are not read).
+     */
+    public static java.util.Set<String> activeServicePackages(String dump) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        if (dump == null) return out;
+        boolean in = false;
+        for (String line : dump.split("\r?\n")) {
+            String t = line.trim();
+            if (t.endsWith("active services:")) { in = true; continue; }
+            if (in && t.endsWith(":") && !t.startsWith("*") && !t.contains("=")) in = false;   // the next section header
+            if (in && t.startsWith("packageName=")) {
+                String pkg = t.substring("packageName=".length()).trim();
+                if (Guard.validPackage(pkg)) out.add(pkg);
+            }
+        }
+        return out;
+    }
 }
