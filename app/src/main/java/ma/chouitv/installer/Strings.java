@@ -530,8 +530,8 @@ final class Strings {
         k("tvs_forget", "انسَ هذا التلفاز", "Oublier cette télé", "Forget this TV");
         k("tvs_name_hint", "الاسم، مثل الصالون", "Nom (ex. Salon)", "Name (e.g. Living room)");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
-        k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
-        k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");
+        k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
+        k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");
         k("rc_mute2", "كتم الصوت", "Couper le son", "Mute");
         k("rc_unmute2", "إرجاع الصوت", "Remettre le son", "Unmute");
         k("rc_sound", "الصوت", "Son", "Sound");

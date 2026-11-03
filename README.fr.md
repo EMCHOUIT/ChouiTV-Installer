@@ -28,8 +28,8 @@ Une petite appli sur votre téléphone (**ChouiTV Companion**) qui trouve votre 
 L'appli s'appelle désormais **ChouiTV Companion** (elle s'appelait ChouiTV Installer jusqu'à la 1.7) : elle installe et nettoie toujours, et **elle pilote aussi la télé**.
 
 - **Une vraie télécommande dans votre poche** : un pavé à quatre secteurs autour d'un grand OK, Retour, Accueil, Muet, volume et veille, avec des touches en relief qui s'enfoncent sous le doigt. Gardez le doigt sur une flèche ou sur le volume pour répéter.
-- **Six raccourcis** : Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la télé, Réglages de la télé.
-- **Écrire sur la télé, même en arabe** : tapez sur le clavier du téléphone, puis « Envoyer » ou « Effacer ».
+- **Six raccourcis** : Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la TV, Réglages de la TV.
+- **Écrire sur la TV, même en arabe** : tapez sur le clavier du téléphone, puis « Envoyer » ou « Effacer ».
 - **Vos applis sur six boutons** : choisissez parmi les applis de la télé, avec leur vrai nom et leur icône, et lancez-les d'un appui. Les boutons sont gardés sur votre téléphone.
 - **La télé est retenue** : à l'ouverture, une carte « Dernière télé » ouvre la télécommande d'un seul appui (ou directement, si vous le choisissez), et l'appli se reconnecte toute seule si le Wi-Fi ou la télé décroche.
 - **Éteindre** demande confirmation : une télé éteinte ainsi ne se rallume qu'avec sa télécommande d'origine.
@@ -37,6 +37,7 @@ L'appli s'appelle désormais **ChouiTV Companion** (elle s'appelait ChouiTV Inst
 - **Un volume rapide et précis** (1.8.1) : un curseur règle le niveau de 0 à 100 en une seule commande, le niveau est lu sur la télé, et une limite « Volume maximum » protège les oreilles de la famille.
 - **Le volume suit chaque télé** (1.8.2) : échelle lue sur la télé ou saisie à la main, pas réglable pour les touches + et −, barre de volume de la télé affichée à chaque réglage.
 - **Une appli plus simple** (1.9) : trois onglets en bas (Télécommande, Ma télé, Plus), des tâches qui vont directement à la dernière télé, et « À propos et mise à jour » dans Plus.
+- **La télécommande d'abord** (2.0) : l'appli s'ouvre sur la télécommande, « Mes télés » gère plusieurs télés nommées, chaque télé a sa page, et « Options » regroupe langue, volume et aide.
 
 La télécommande a besoin que le « Débogage réseau » soit activé sur la télé, comme le reste de l'appli.
 
@@ -247,7 +248,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 181 tests sur la JVM
 ```
 
-Version actuelle : **1.9** (`versionCode 16`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **2.0** (`versionCode 17`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -257,10 +258,11 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **2.0** | La télécommande d'abord : l'appli s'ouvre sur la télécommande de votre télé, plein écran ; toucher le nom de la télé ouvre « Mes télés » (plusieurs télés nommées, à renommer ou oublier) ; chaque télé a sa page (nettoyer, ChouiTV, réglages, dépannage) ; « Options » regroupe langue, volume et aide ; un appui sur une télé trouvée la connecte ; plus d'écran « Mode » ; la langue n'est demandée qu'une fois ; boutons « Écrire sur la TV » et « Réglages de la TV » |
 | **1.9** | Une appli plus simple : trois onglets (Télécommande, Ma télé, Plus) ; les tâches vont directement à la dernière télé, sans préparation ni recherche ; une fenêtre « La télé ne répond pas » avec Réessayer ou Autre télé ; touches − et + du volume plus grandes ; « À propos et mise à jour » dans Plus ; la langue n'est demandée qu'au premier lancement ; le conseil sur le « Débogage réseau » ne contredit plus la télécommande |
 | **1.8.2** | Volume sur toutes les télés : l'appli lit l'échelle de la télé (15, 30 ou 100 niveaux) ou la prend à la main, un pas réglable pour les touches + et −, la barre de volume de la télé s'affiche à chaque réglage, les touches de télécommande prennent le relais si la télé ignore la commande rapide, la limite de volume est en pourcentage ; bulle du curseur toujours entière ; icônes des applis arrondies |
 | **1.8.1** | Volume : un curseur qui règle le niveau en une seule commande (environ 12 fois plus vite qu'une touche), le niveau lu sur la télé, des touches − et + qui s'arrêtent dès que le doigt se lève, un muet qui se souvient du niveau, et un « Volume maximum » au choix de la famille |
-| **1.8** | **ChouiTV Companion** : une télécommande en relief (pavé à quatre secteurs, Retour, Accueil, Muet, volume, veille avec confirmation), six raccourcis (Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la télé, Réglages de la télé), écriture sur la télé en arabe aussi, six boutons d'applis avec nom et icône réels, dernière télé retenue avec reconnexion automatique, TalkBack, arabe de droite à gauche |
+| **1.8** | **ChouiTV Companion** : une télécommande en relief (pavé à quatre secteurs, Retour, Accueil, Muet, volume, veille avec confirmation), six raccourcis (Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la TV, Réglages de la TV), écriture sur la télé en arabe aussi, six boutons d'applis avec nom et icône réels, dernière télé retenue avec reconnexion automatique, TalkBack, arabe de droite à gauche |
 | **1.7** | Nettoyage plus sûr : les listes de nettoyage sont signées et la liste protégée ne peut que grandir ; les applis inconnues sont montrées mais pas cochées ; la liste protégée est revérifiée juste avant chaque changement ; une carte « Après un redémarrage » dit ce qui est resté éteint et ce que la TV a remis en marche toute seule ; après avoir rallumé un service système, l'appli dit de redémarrer la TV |
 | **1.6.2** | Le nettoyage ne désactive plus le service TV de Xiaomi ni le Mi TV Manager (Réglages > TV > Image en a besoin) |
 | **1.6.1** | Un bouton « ‹ Retour » sur chaque écran (la touche retour du téléphone ne quitte plus d'un coup) ; l'action principale est le grand bouton du bas ; « À vous » (doré, sur la télé ou sur le téléphone) se distingue de « À savoir » ; une appli déjà à jour sur la télé est sautée au lieu d'échouer |
