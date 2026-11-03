@@ -1721,7 +1721,11 @@ public class MainActivity extends Activity {
             android.widget.ImageView iv = new android.widget.ImageView(this);
             iv.setImageBitmap(bm);
             iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-            iv.setPadding(dp(2), dp(2), dp(2), dp(2));
+            // rounded corners, like the icons of a phone (the TV's icons are square with sharp corners)
+            iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View v, android.graphics.Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), v.getWidth() * 0.26f); }
+            });
+            iv.setClipToOutline(true);
             return iv;
         }
         TextView initial = text(pkg == null ? "+" : rcLabel(pkg).substring(0, 1).toUpperCase(), display, 22, GOLD);
