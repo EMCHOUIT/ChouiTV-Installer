@@ -1442,33 +1442,41 @@ public class MainActivity extends Activity {
     private java.util.List<String> reactBack = new ArrayList<>();
     private int reactAsked;
 
+    /** The page of a TV: its name, a way back to its remote, and what can be done with it (no steps and no «new» tags: nothing here is a sequence). */
     private void hub(LinearLayout body, TextView button) {
         cleanedHere = false;
         cleanFromDone = false;
         titleBlock(body, curName(), t("hub_sub"));
-        final LastTv lastTv = null;
-        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}};
-        for (int i = 0; i < cards.length; i++) {
-            final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : i == 4 ? SPACE_REACT : SPACE_REMOTE;
-            LinearLayout c = card(i == 0);
+        LinearLayout remote = card(true);
+        remote.setOrientation(LinearLayout.HORIZONTAL);
+        remote.setGravity(Gravity.CENTER_VERTICAL);
+        remote.addView(new RcIcon(this, RcIcon.REMOTE, GOLD), new LinearLayout.LayoutParams(dp(34), dp(34)));
+        TextView rt = text(t("hub_rc_t"), display, 21, SAND);
+        LinearLayout.LayoutParams rtp = new LinearLayout.LayoutParams(0, -2, 1f);
+        rtp.setMarginStart(dp(14));
+        remote.addView(rt, rtp);
+        remote.setOnClickListener(v -> { if (!busy) quickRemote(); });
+        body.addView(remote, lp(0, 4, 0, 0));
+        Object[][] cards = {
+            {RcIcon.APPS, "hub_clean_t", "hub_clean_d", SPACE_CLEAN}, {RcIcon.TV, "hub_inst_t", "hub_inst_d", SPACE_INSTALL},
+            {RcIcon.BOOK, "hub_get_t", "hub_get_d", SPACE_GET}, {RcIcon.KEYBOARD, "hub_send_t", "hub_send_d", SPACE_SEND}, {RcIcon.GEAR, "hub_react_t", "hub_react_d", SPACE_REACT}};
+        for (Object[] cd : cards) {
+            final int sp = (Integer) cd[3];
+            LinearLayout c = card(false);
             c.setOrientation(LinearLayout.HORIZONTAL);
             c.setGravity(Gravity.CENTER_VERTICAL);
-            c.addView(new Orn.StarNum(this, cards[i][0], medium), new LinearLayout.LayoutParams(dp(42), dp(42)));
+            c.addView(new RcIcon(this, (Integer) cd[0], GOLD), new LinearLayout.LayoutParams(dp(34), dp(34)));
             LinearLayout col = new LinearLayout(this);
             col.setOrientation(LinearLayout.VERTICAL);
-            col.addView(chip(t(cards[i][3]), i == 0 ? GOLD : 0, i == 0 ? DARK : SAND, i == 0 ? 0 : 0xFF96A098));
-            col.addView(text(t(cards[i][1]), display, 21, SAND), lp(0, 4, 0, 0));
-            col.addView(text(t(cards[i][2]), regular, 13, MUTED), lp(0, 2, 0, 0));
+            col.addView(text(t((String) cd[1]), display, 21, SAND));
+            col.addView(text(t((String) cd[2]), regular, 13, MUTED), lp(0, 2, 0, 0));
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
             cp.setMarginStart(dp(14));
             c.addView(col, cp);
-            c.setOnClickListener(v -> { if (!busy) { clearGuide(); startSpace(sp); } });   // choosing a space yourself leaves any guided path
+            c.setOnClickListener(v -> { if (!busy) { clearGuide(); startSpace(sp); } });   // choosing a task yourself leaves any guided path
             body.addView(c, lp(0, 12, 0, 0));
         }
         resumeCard(body);
-        button.setText(t("hub_mode"));
-        secondaryStyle(button);   // the choices are the cards: the way back must not compete with them
-        button.setOnClickListener(v -> show(18));
     }
 
 
