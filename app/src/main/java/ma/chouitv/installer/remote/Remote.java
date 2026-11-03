@@ -60,6 +60,16 @@ public final class Remote {
         return "monkey -p " + pkg + " -c android.intent.category.LEANBACK_LAUNCHER 1";
     }
 
+    /** The helper's command that tells the real name and the icon of these apps, as the TV shows them. */
+    public static String appInfo(java.util.List<String> pkgs) {
+        StringBuilder b = new StringBuilder("CLASSPATH=" + HELPER_REMOTE + " app_process /system/bin AppInfo");
+        for (String p : pkgs) {
+            if (!Guard.validPackage(p)) throw new IllegalArgumentException("not a package name: " + p);
+            b.append(' ').append(p);
+        }
+        return b.toString();
+    }
+
     /** The settings of the TV. */
     public static String settings() { return "am start -a android.settings.SETTINGS"; }
 

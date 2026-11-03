@@ -29,6 +29,30 @@ public final class Apps {
         return r;
     }
 
+    /** What the TV shows for an app: its real name and its icon (PNG bytes, may be absent). */
+    public static final class Info {
+        public final String label;
+        public final byte[] icon;
+        Info(String label, byte[] icon) { this.label = label; this.icon = icon; }
+    }
+
+    /** Reads the lines «package|name(base64)|icon(base64)» of the helper; a line with no usable name is left out. */
+    public static java.util.Map<String, Info> parseInfo(String out) {
+        java.util.Map<String, Info> r = new java.util.LinkedHashMap<>();
+        if (out == null) return r;
+        for (String line : out.split("\\r?\\n")) {
+            String[] p = line.split("\\|", -1);
+            if (p.length != 3 || !Guard.validPackage(p[0]) || p[1].isEmpty()) continue;
+            try {
+                String label = new String(java.util.Base64.getDecoder().decode(p[1]), java.nio.charset.StandardCharsets.UTF_8).trim();
+                if (label.isEmpty()) continue;
+                byte[] icon = p[2].isEmpty() ? null : java.util.Base64.getDecoder().decode(p[2]);
+                r.put(p[0], new Info(label, icon));
+            } catch (IllegalArgumentException badBase64) { /* skipped */ }
+        }
+        return r;
+    }
+
     /** The apps worth offering: not the system, and not ChouiTV (which has its own buttons). */
     public static List<String> choices(List<String> all) {
         List<String> r = new ArrayList<>();

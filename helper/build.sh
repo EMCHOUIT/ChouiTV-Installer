@@ -7,7 +7,7 @@ SDK="${ANDROID_HOME:-$HOME/android}"
 AJ="$SDK/platforms/android-34/android.jar"
 D8="$(ls "$SDK"/build-tools/*/d8 | tail -1)"
 OUT="$(mktemp -d)"
-javac -source 8 -target 8 -cp "$AJ" -d "$OUT/classes" Clip.java 2> /dev/null
+javac -source 8 -target 8 -cp "$AJ" -d "$OUT/classes" Clip.java AppInfo.java 2>&1 | tail -5
 "$D8" --lib "$AJ" --output "$OUT/clip.jar" "$OUT"/classes/*.class
 mkdir -p ../app/src/main/assets/helper
 cp "$OUT/clip.jar" ../app/src/main/assets/helper/clip.jar

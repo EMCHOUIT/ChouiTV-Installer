@@ -100,6 +100,26 @@ public class RemoteV4Test {
         assertEquals("Quranplayer", Apps.label("org.example.quranplayer"));
     }
 
+    @Test public void theNameAndIconTheTvShowsAreReadFromTheHelperAnswer() {
+        String oscar = java.util.Base64.getEncoder().encodeToString("Oscar TV".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String arabic = java.util.Base64.getEncoder().encodeToString("القرآن".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String png = java.util.Base64.getEncoder().encodeToString(new byte[] {(byte) 0x89, 'P', 'N', 'G'});
+        String out = "com.drama.mp4|" + oscar + "|" + png + "\r\norg.example.quran|" + arabic + "|\nxyz.unknown||\nnot a line\n";
+        Map<String, Apps.Info> m = Apps.parseInfo(out);
+        assertEquals("Oscar TV", m.get("com.drama.mp4").label);
+        assertEquals(4, m.get("com.drama.mp4").icon.length);
+        assertEquals("القرآن", m.get("org.example.quran").label);
+        assertNull(m.get("org.example.quran").icon);
+        assertNull(m.get("xyz.unknown"));   // nothing usable: the caller falls back to its own naming
+        assertEquals(2, m.size());
+    }
+
+    @Test public void theNameCommandAsksOnlyForValidPackages() {
+        String c = Remote.appInfo(Arrays.asList("com.drama.mp4", "com.netflix.ninja"));
+        assertEquals("CLASSPATH=/data/local/tmp/chouitv-clip.jar app_process /system/bin AppInfo com.drama.mp4 com.netflix.ninja", c);
+        try { Remote.appInfo(Arrays.asList("com.ok.app", "bad; reboot")); fail("not a package"); } catch (IllegalArgumentException expected) { }
+    }
+
     @Test public void theRealAnswerOfAnAndroid11TvIsUnderstood() {
         String out = "21 activities found:\n  Activity #0:\n    priority=3 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\n"
             + "    com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.ShellActivity\n  Activity #3:\n"

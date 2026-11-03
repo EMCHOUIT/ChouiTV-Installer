@@ -1664,15 +1664,12 @@ public class MainActivity extends Activity {
                 cell.setGravity(Gravity.CENTER);
                 cell.setBackground(pkg == null ? rcShape(0x00000000, 16, true) : rcStates(TILE_FILL, 16, true));
                 cell.setClickable(true);
-                TextView initial = text(pkg == null ? "+" : Apps.label(pkg).substring(0, 1).toUpperCase(), display, 22, GOLD);
-                initial.setGravity(Gravity.CENTER);
-                initial.setBackground(rcShape(0xFF0E2418, 22, true));
-                cell.addView(initial, new LinearLayout.LayoutParams(dp(44), dp(44)));
-                TextView name = text(pkg == null ? t("rc_add") : Apps.label(pkg) + (edit ? " ✎" : ""), medium, 13, pkg == null ? MUTED : SAND);
+                cell.addView(rcMark(pkg, 48), new LinearLayout.LayoutParams(dp(48), dp(48)));
+                TextView name = text(pkg == null ? t("rc_add") : rcLabel(pkg) + (edit ? " ✎" : ""), medium, 13, pkg == null ? MUTED : SAND);
                 name.setGravity(Gravity.CENTER);
                 name.setMaxLines(2);
                 cell.addView(name, lp(4, 6, 4, 0));
-                cell.setContentDescription(pkg == null ? t("rc_add") : Apps.label(pkg));
+                cell.setContentDescription(pkg == null ? t("rc_add") : rcLabel(pkg));
                 cell.setOnClickListener(v -> {
                     if (pkg == null || edit) { d.dismiss(); rcPick(i); return; }
                     d.dismiss();
@@ -1696,6 +1693,57 @@ public class MainActivity extends Activity {
         d.show();
     }
 
+    /** What the TV calls an app (kept on the phone once the TV has told it); the end of the package name only as a last resort. */
+    private String rcLabel(String pkg) {
+        String l = getSharedPreferences("installer", MODE_PRIVATE).getString("applabel_" + pkg, null);
+        return l != null ? l : Apps.label(pkg);
+    }
+
+    private File rcIconFile(String pkg) { return new File(new File(getFilesDir(), "app_icons"), pkg + ".png"); }
+
+    private android.graphics.Bitmap rcIcon(String pkg) {
+        File f = rcIconFile(pkg);
+        return f.isFile() ? android.graphics.BitmapFactory.decodeFile(f.getPath()) : null;
+    }
+
+    /** The icon of an app in a round medallion, or its first letter when the TV gave none. */
+    private View rcMark(String pkg, int sizeDp) {
+        android.graphics.Bitmap bm = pkg == null ? null : rcIcon(pkg);
+        if (bm != null) {
+            android.widget.ImageView iv = new android.widget.ImageView(this);
+            iv.setImageBitmap(bm);
+            iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+            iv.setPadding(dp(2), dp(2), dp(2), dp(2));
+            return iv;
+        }
+        TextView initial = text(pkg == null ? "+" : rcLabel(pkg).substring(0, 1).toUpperCase(), display, 22, GOLD);
+        initial.setGravity(Gravity.CENTER);
+        initial.setBackground(rcShape(0xFF0E2418, sizeDp / 2, true));
+        return initial;
+    }
+
+    /** Asks the TV for the names and icons of the apps we know nothing about yet (a few at a time), and keeps the answers on the phone. */
+    private void rcLoadInfo(List<String> pkgs) throws Exception {
+        final SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
+        List<String> missing = new ArrayList<>();
+        for (String p : pkgs) if (sp.getString("applabel_" + p, null) == null) missing.add(p);
+        if (missing.isEmpty()) return;
+        rcEnsureHelper();
+        new File(getFilesDir(), "app_icons").mkdirs();
+        for (int i = 0; i < missing.size(); i += 8) {
+            List<String> part = missing.subList(i, Math.min(i + 8, missing.size()));
+            java.util.Map<String, Apps.Info> got = Apps.parseInfo(flow.shell().run(Remote.appInfo(part)));
+            SharedPreferences.Editor ed = sp.edit();
+            for (java.util.Map.Entry<String, Apps.Info> e : got.entrySet()) {
+                ed.putString("applabel_" + e.getKey(), e.getValue().label);
+                if (e.getValue().icon != null) {
+                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(rcIconFile(e.getKey()))) { o.write(e.getValue().icon); }
+                }
+            }
+            ed.apply();
+        }
+    }
+
     /** The list of the TV's apps, to put one on slot {@code slot}. */
     private void rcPick(final int slot) {
         final Toast wait = Toast.makeText(this, t("rc_apps_wait"), Toast.LENGTH_SHORT);
@@ -1703,6 +1751,7 @@ public class MainActivity extends Activity {
         bg.execute(() -> {
             try {
                 if (rcTvApps == null) rcTvApps = Apps.choices(Apps.parse(flow.shell().run(Apps.LIST_COMMAND)));
+                rcLoadInfo(rcTvApps);
             } catch (Exception e) { rcFail(e); }
             runOnUiThread(() -> showPicker(slot));
         });
@@ -1720,13 +1769,20 @@ public class MainActivity extends Activity {
         list.setOrientation(LinearLayout.VERTICAL);
         for (final String pkg : apps) {
             LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.VERTICAL);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
             row.setBackground(rcStates(pkg.equals(rcSlots.get(slot)) ? KEY_PRESSED : TILE_FILL, 12, true));
-            row.setPadding(dp(14), dp(8), dp(14), dp(8));
+            row.setPadding(dp(12), dp(8), dp(14), dp(8));
             row.setClickable(true);
-            row.addView(text(Apps.label(pkg), medium, 17, SAND));
+            row.addView(rcMark(pkg, 44), new LinearLayout.LayoutParams(dp(44), dp(44)));
+            LinearLayout names = new LinearLayout(this);
+            names.setOrientation(LinearLayout.VERTICAL);
+            names.addView(text(rcLabel(pkg), medium, 17, SAND));
             int other = rcSlots.slotOf(pkg);
-            row.addView(text(other >= 0 && other != slot ? t("rc_in_slot", other + 1) : pkg, regular, 12, MUTED));
+            if (other >= 0 && other != slot) names.addView(text(t("rc_in_slot", other + 1), regular, 12, MUTED));
+            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1f);
+            np.setMarginStart(dp(12));
+            row.addView(names, np);
             row.setOnClickListener(v -> {
                 AppSlots next = rcSlots;
                 int was = next.slotOf(pkg);
