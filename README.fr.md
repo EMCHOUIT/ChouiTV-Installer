@@ -13,7 +13,7 @@
 
 <p align="center"><a href="#new">🆕 Nouveau</a> · <a href="#why">✨ Pourquoi</a> · <a href="#journey">🚀 Le parcours</a> · <a href="#installs">📦 Installé</a> · <a href="#safety">🛡️ Sécurité</a> · <a href="#cleanup">🧹 Nettoyage</a> · <a href="#settings">🔁 Réglages</a> · <a href="#migration">🔄 Vers la 4.0</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Compiler</a> · <a href="#versions">📜 Versions</a> · <a href="#download">⬇️ Téléchargement</a></p>
 
-Une petite appli sur votre téléphone qui trouve votre télé, la nettoie si vous le voulez, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle, puis copie vos réglages sur une autre télé. **Elle vous guide pas à pas, ou vous choisissez vous-même. Sans ordinateur, sans commande.**
+Une petite appli sur votre téléphone (**ChouiTV Companion**) qui trouve votre télé, la pilote comme une télécommande, la nettoie si vous le voulez, télécharge la **dernière version** de [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), l'installe et la règle, puis copie vos réglages sur une autre télé. **Elle vous guide pas à pas, ou vous choisissez vous-même. Sans ordinateur, sans commande.**
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Télécharger%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>Pour téléphone Android 8 ou plus · environ 1 Mo</sub></p>
 
@@ -21,14 +21,21 @@ Une petite appli sur votre téléphone qui trouve votre télé, la nettoie si vo
 
 <a id="new"></a>
 
-## 🆕 Nouveau dans la 1.6
+## 🆕 Nouveau dans la 1.8 : ChouiTV Companion
 
-<img src="docs/media/whatsnew-fr.png" alt="Nouveau dans la 1.6 : une seule appli, vos réglages repris, rien n'est retiré sans votre accord (schéma)" width="100%">
+<img src="docs/media/remote-fr.png" alt="La télécommande de ChouiTV Companion et son pop-up d'applications, sur un téléphone connecté à la télé" width="100%">
 
-- **ChouiTV 4.0 tient en une seule appli** : accueil, écran de veille et réglages. L'installateur pose donc **une appli + Chaînes** (2 fichiers au lieu de 3).
-- **Si votre télé a encore l'ancien écran de veille**, ses réglages sont gardés puis repris dans la 4.0, et l'ancienne appli n'est retirée qu'après votre « oui » ([détails](#migration)).
-- **Une confiance plus stricte** (1.4 et 1.5) : contrôle obligatoire de chaque fichier, et fichier de version signé par le propriétaire ([Sécurité](#safety)).
-- **Les radios** voyagent avec les autres réglages : pays, stations décochées et favorites.
+L'appli s'appelle désormais **ChouiTV Companion** (elle s'appelait ChouiTV Installer jusqu'à la 1.7) : elle installe et nettoie toujours, et **elle pilote aussi la télé**.
+
+- **Une vraie télécommande dans votre poche** : un pavé à quatre secteurs autour d'un grand OK, Retour, Accueil, Muet, volume et veille, avec des touches en relief qui s'enfoncent sous le doigt. Gardez le doigt sur une flèche ou sur le volume pour répéter.
+- **Six raccourcis** : Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la télé, Réglages de la télé.
+- **Écrire sur la télé, même en arabe** : tapez sur le clavier du téléphone, puis « Envoyer » ou « Effacer ».
+- **Vos applis sur six boutons** : choisissez parmi les applis de la télé, avec leur vrai nom et leur icône, et lancez-les d'un appui. Les boutons sont gardés sur votre téléphone.
+- **La télé est retenue** : à l'ouverture, une carte « Dernière télé » ouvre la télécommande d'un seul appui (ou directement, si vous le choisissez), et l'appli se reconnecte toute seule si le Wi-Fi ou la télé décroche.
+- **Éteindre** demande confirmation : une télé éteinte ainsi ne se rallume qu'avec sa télécommande d'origine.
+- **Accessible** : l'anneau est lu par TalkBack comme cinq boutons, et l'écran passe en arabe de droite à gauche.
+
+La télécommande a besoin que le « Débogage réseau » soit activé sur la télé, comme le reste de l'appli.
 
 <a id="why"></a>
 
@@ -209,6 +216,21 @@ Elle reste en place avec ses réglages, et il ne vous est même pas proposé de 
 Depuis la 4.0, l'écran d'accueil, l'écran de veille et les réglages forment une seule appli (`ma.chouitv.home`), et l'installateur ne pose que celle-ci et l'appli Chaînes. L'écran de veille est dans l'appli : choisissez-le dans les réglages de la télé, rubrique Écran de veille, si l'installateur ne l'a pas fait.
 </details>
 
+<details><summary><b>Comment la télécommande retient-elle ma télé ?</b></summary>
+
+Après une première connexion, l'appli garde l'adresse et le nom de la télé. À l'ouverture, la carte « Dernière télé » ouvre la télécommande d'un appui, sans nouvelle recherche. Si la connexion tombe, l'appli réessaie cinq fois avec des attentes de plus en plus longues, puis affiche « Télé éteinte ou hors Wi-Fi » : un appui sur le nom de la télé relance. Si l'adresse de la télé a changé, passez par « Changer de télé ».
+</details>
+
+<details><summary><b>J'ai éteint la télé depuis l'appli et elle ne se rallume pas</b></summary>
+
+C'est voulu et annoncé par la confirmation : une télé en veille coupe son réseau, l'appli ne peut donc pas la rallumer. Utilisez la télécommande d'origine, puis vérifiez que le « Débogage réseau » est toujours activé.
+</details>
+
+<details><summary><b>Comment mettre mes applis sur les six boutons ?</b></summary>
+
+Ouvrez « Applications », touchez une case vide (ou « Modifier », ou un appui long sur une case) et choisissez une appli dans la liste de celles de la télé, avec son nom et son icône. Une appli ne tient que sur un seul bouton. Les boutons sont gardés sur votre téléphone, pour l'adresse de cette télé.
+</details>
+
 <a id="build"></a>
 
 ## 🛠️ Compiler
@@ -219,10 +241,10 @@ JDK 17 et Android SDK (plateforme 34) :
 git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease      # le fichier est dans app/build/outputs/apk/release
-./gradlew :app:testDebugUnitTest    # 108 tests sur la JVM
+./gradlew :app:testDebugUnitTest    # 159 tests sur la JVM
 ```
 
-Version actuelle : **1.7** (`versionCode 12`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **1.8** (`versionCode 13`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -232,6 +254,7 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **1.8** | **ChouiTV Companion** : une télécommande en relief (pavé à quatre secteurs, Retour, Accueil, Muet, volume, veille avec confirmation), six raccourcis (Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la télé, Réglages de la télé), écriture sur la télé en arabe aussi, six boutons d'applis avec nom et icône réels, dernière télé retenue avec reconnexion automatique, TalkBack, arabe de droite à gauche |
 | **1.7** | Nettoyage plus sûr : les listes de nettoyage sont signées et la liste protégée ne peut que grandir ; les applis inconnues sont montrées mais pas cochées ; la liste protégée est revérifiée juste avant chaque changement ; une carte « Après un redémarrage » dit ce qui est resté éteint et ce que la TV a remis en marche toute seule ; après avoir rallumé un service système, l'appli dit de redémarrer la TV |
 | **1.6.2** | Le nettoyage ne désactive plus le service TV de Xiaomi ni le Mi TV Manager (Réglages > TV > Image en a besoin) |
 | **1.6.1** | Un bouton « ‹ Retour » sur chaque écran (la touche retour du téléphone ne quitte plus d'un coup) ; l'action principale est le grand bouton du bas ; « À vous » (doré, sur la télé ou sur le téléphone) se distingue de « À savoir » ; une appli déjà à jour sur la télé est sautée au lieu d'échouer |

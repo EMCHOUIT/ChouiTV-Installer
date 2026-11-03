@@ -13,7 +13,7 @@
 
 <p align="center"><a href="#new">🆕 What's new</a> · <a href="#why">✨ Why</a> · <a href="#journey">🚀 The journey</a> · <a href="#installs">📦 Installed</a> · <a href="#safety">🛡️ Safety</a> · <a href="#cleanup">🧹 Cleanup</a> · <a href="#settings">🔁 Settings</a> · <a href="#migration">🔄 To 4.0</a> · <a href="#faq">❓ FAQ</a> · <a href="#build">🛠️ Build</a> · <a href="#versions">📜 Versions</a> · <a href="#download">⬇️ Download</a></p>
 
-A small app on your phone that finds your TV, cleans it if you want, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs and sets it up, then copies your settings to another TV. **It guides you step by step, or you choose yourself. No computer, no commands.**
+A small app on your phone (**ChouiTV Companion**) that finds your TV, drives it like a remote, cleans it if you want, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs and sets it up, then copies your settings to another TV. **It guides you step by step, or you choose yourself. No computer, no commands.**
 
 <p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
 
@@ -21,14 +21,21 @@ A small app on your phone that finds your TV, cleans it if you want, downloads t
 
 <a id="new"></a>
 
-## 🆕 What's new in 1.6
+## 🆕 What's new in 1.8: ChouiTV Companion
 
-<img src="docs/media/whatsnew-en.png" alt="What's new in 1.6: one app, your settings carried over, nothing removed without your say (diagram)" width="100%">
+<img src="docs/media/remote-en.png" alt="The ChouiTV Companion remote and its apps pop-up, on a phone connected to the TV" width="100%">
 
-- **ChouiTV 4.0 is a single app**: home, screensaver and settings together. The installer now puts **one app + Channels** on the TV (2 files instead of 3).
-- **If your TV still has the old screensaver**, its settings are kept, then carried into 4.0, and the old app is removed only after your "yes" ([details](#migration)).
-- **Stricter trust** (1.4 and 1.5): every file is checked, and the version file must be signed by the owner ([Safety](#safety)).
-- **Radios** travel with the other settings: countries, unticked stations and favourites.
+The app is now called **ChouiTV Companion** (it was ChouiTV Installer up to 1.7): it still installs and cleans, and **it also drives the TV**.
+
+- **A real remote in your pocket**: a pad of four wedges around a big OK, Back, Home, Mute, volume and power, with raised keys that sink under your finger. Hold an arrow or the volume to repeat.
+- **Six shortcuts**: Quran & Radio, Channels, Apps, Screensaver, Type on TV, TV settings.
+- **Type on the TV, Arabic included**: type on the phone's keyboard, then "Send" or "Clear".
+- **Your apps on six buttons**: pick from the TV's apps, with their real name and icon, and open them with one tap. The buttons are kept on your phone.
+- **The TV is remembered**: on opening, a "Last TV" card opens the remote with one tap (or straight away, if you choose), and the app reconnects by itself if the Wi-Fi or the TV drops.
+- **Turn off** asks first: a TV switched off this way only comes back with its original remote.
+- **Accessible**: TalkBack reads the pad as five buttons, and the screen mirrors right to left in Arabic.
+
+The remote needs "Network debugging" turned on on the TV, like the rest of the app.
 
 <a id="why"></a>
 
@@ -209,6 +216,21 @@ It stays in place with its settings, and you are not even offered to remove it: 
 Since 4.0, the home screen, the screensaver and the settings are one app (`ma.chouitv.home`), and the installer only puts that one and the Channels app on the TV. The screensaver is inside the app: pick it in the TV's settings, under Screensaver, if the installer has not done it.
 </details>
 
+<details><summary><b>How does the remote remember my TV?</b></summary>
+
+After a first connection, the app keeps the TV's address and name. On opening, the "Last TV" card opens the remote with one tap, with no new search. If the connection drops, the app retries five times with growing waits, then shows "TV off or not on Wi-Fi": tapping the TV's name tries again. If the TV's address has changed, use "Change TV".
+</details>
+
+<details><summary><b>I turned the TV off from the app and it will not switch back on</b></summary>
+
+That is expected, and the confirmation says so: a TV in standby shuts its network down, so the app cannot switch it on. Use its original remote, then check that "Network debugging" is still on.
+</details>
+
+<details><summary><b>How do I put my apps on the six buttons?</b></summary>
+
+Open "Apps", tap an empty slot (or "Edit", or long-press a slot) and pick an app from the list of the TV's apps, with its name and icon. An app sits on one button only. The buttons are kept on your phone, for this TV's address.
+</details>
+
 <a id="build"></a>
 
 ## 🛠️ Build
@@ -219,10 +241,10 @@ JDK 17 and the Android SDK (platform 34):
 git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease      # the file is in app/build/outputs/apk/release
-./gradlew :app:testDebugUnitTest    # 108 tests on the JVM
+./gradlew :app:testDebugUnitTest    # 159 tests on the JVM
 ```
 
-Current version: **1.7** (`versionCode 12`), for Android 8 or newer (`minSdk 26`).
+Current version: **1.8** (`versionCode 13`), for Android 8 or newer (`minSdk 26`).
 
 The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram, the version number on the banner, the QR code) are rebuilt with `python docs/media/build_media.py` (needs Pillow and Edge or Chrome); the phone screenshots are real and are not generated.
 
@@ -232,6 +254,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 
 | Version | What changed |
 |---|---|
+| **1.8** | **ChouiTV Companion**: a raised-key remote (four-wedge pad, Back, Home, Mute, volume, power with a confirmation), six shortcuts (Quran & Radio, Channels, Apps, Screensaver, Type on TV, TV settings), typing on the TV in Arabic too, six app buttons with real names and icons, the last TV remembered with automatic reconnection, TalkBack, right-to-left Arabic |
 | **1.7** | Safer cleanup: the cleanup lists are signed and the protected list can only grow; apps we do not know are shown but not ticked; the protected list is checked again just before each change; a «After a restart» card tells what stayed off and what the TV turned back on by itself; after putting a system service back, the app says to restart the TV |
 | **1.6.2** | The cleanup never turns off the Xiaomi TV service and Mi TV Manager any more (Settings > TV > Picture needs them) |
 | **1.6.1** | A «‹ Back» button on every screen (the phone's back key no longer quits at once); the main action is the big bottom button; «Your turn» (gold, on the TV or on the phone) is told apart from «Good to know»; an app already up to date on the TV is skipped instead of failing |
