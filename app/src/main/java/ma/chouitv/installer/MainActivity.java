@@ -64,6 +64,8 @@ import ma.chouitv.installer.remote.RcIcon;
 import ma.chouitv.installer.remote.RemoteBody;
 import ma.chouitv.installer.remote.Socket;
 import ma.chouitv.installer.remote.RcRing;
+import ma.chouitv.installer.remote.RcSlider;
+import ma.chouitv.installer.remote.Volume;
 import ma.chouitv.installer.remote.Reconnect;
 
 import static ma.chouitv.installer.Strings.t;
@@ -1588,9 +1590,10 @@ public class MainActivity extends Activity {
     }
 
     private void rcMoreMenu() {
-        String[] items = {t("rc_menu"), t("rc_switch")};
+        String[] items = {t("rc_menu"), t("rc_vol_limit"), t("rc_switch")};
         new AlertDialog.Builder(this).setTitle(t("rc_more")).setItems(items, (d, which) -> {
             if (which == 0) rcKey(Remote.MENU);
+            else if (which == 1) rcLimitDialog();
             else { space = SPACE_REMOTE; show(2); }
         }).show();
     }
@@ -1832,6 +1835,109 @@ public class MainActivity extends Activity {
         });
     }
 
+    // ---- volume: a level set in one command, a step at a time when held, a maximum chosen by the family ----
+
+    private RcSlider rcSlider;
+    private volatile int volLevel = -1, volPrev = 0;
+    private final java.util.concurrent.atomic.AtomicBoolean volBusy = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    private int volLimit() { return getSharedPreferences("installer", MODE_PRIVATE).getInt("vol_limit", 0); }
+
+    /** Reads the level the TV reports and shows it; "?" when the TV never answers. */
+    private void rcVolRefresh() {
+        bg.execute(() -> {
+            int l = -1;
+            try {
+                l = Volume.parseLevel(flow.shell().run(Volume.READ));
+                if (l < 0) l = Volume.parseLevel(flow.shell().run(Volume.READ_DUMP));
+            } catch (Exception ignored) { }
+            final int lv = l;
+            volLevel = lv;
+            runOnUiThread(() -> { if (rcSlider != null) rcSlider.setLevel(lv, true); });
+        });
+    }
+
+    /** Sets a level in one command (the keys in one batch when the TV does not know the command), then reads it back. */
+    private void rcVolSet(final int wanted) {
+        final int level = Volume.capped(wanted, volLimit());
+        final int from = volLevel;
+        rcRun(() -> {
+            String out = flow.shell().run(Volume.set(level));
+            if (Volume.failed(out)) {
+                String keys = Volume.keys(from, level);
+                if (keys != null) flow.shell().run(keys);
+            }
+            // the TV's setting is slow to follow: trust what was set now, and read it back a little later
+            volLevel = level;
+            runOnUiThread(() -> {
+                if (rcSlider != null) rcSlider.setLevel(level, false);
+                ui.postDelayed(this::rcVolRefresh, 1500);
+            });
+        });
+    }
+
+    /** One step up or down; a new step is not started while the last one is still running, so nothing piles up and nothing goes on after the finger leaves. */
+    private void rcVolStep(final boolean up) {
+        final int now = volLevel, lim = volLimit();
+        if (up && lim > 0 && now >= lim) return;
+        if (!volBusy.compareAndSet(false, true)) return;
+        final int target = now < 0 ? -1 : Volume.capped(now + (up ? 1 : -1), lim);
+        if (target >= 0) { volLevel = target; if (rcSlider != null) rcSlider.setLevel(target, false); }
+        rcRun(() -> {
+            try {
+                String out = flow.shell().run(Volume.adj(up));
+                if (Volume.failed(out)) flow.shell().run(Remote.key(up ? Remote.VOLUME_UP : Remote.VOLUME_DOWN));
+            } finally { volBusy.set(false); }
+        });
+    }
+
+    /** The - and + keys: a tap is one step, a finger kept down repeats (0.4 s, then every 0.15 s) and stops the moment it lifts; the level is read back at the end. */
+    private void rcHoldStep(final View v, final boolean up) {
+        final Runnable again = new Runnable() { @Override public void run() { rcVolStep(up); ui.postDelayed(this, 150); } };
+        v.setOnTouchListener((x, e) -> {
+            switch (e.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    x.setPressed(true);
+                    x.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                    rcVolStep(up);
+                    ui.postDelayed(again, 400);
+                    return true;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    x.setPressed(false);
+                    ui.removeCallbacks(again);
+                    ui.postDelayed(this::rcVolRefresh, 600);
+                    return true;
+                default:
+                    return true;
+            }
+        });
+    }
+
+    /** Mute remembers the level: silent when there is sound, the remembered level back when it is silent. */
+    private void rcMuteToggle() {
+        final int now = volLevel;
+        if (now < 0) { rcKey(Remote.MUTE); return; }   // the level is not known: the TV's own mute key
+        if (now > 0) volPrev = now;
+        final int target = Volume.muteTarget(now, volPrev);
+        if (rcSlider != null) rcSlider.setLevel(target, false);
+        rcVolSet(target);
+    }
+
+    /** The maximum volume the family chooses (a level, or off). */
+    private void rcLimitDialog() {
+        final int[] levels = {0, 30, 50, 70, 90};
+        String[] names = new String[levels.length];
+        for (int i = 0; i < levels.length; i++) names[i] = levels[i] == 0 ? t("rc_vol_off") : String.valueOf(levels[i]);
+        int cur = volLimit(), checked = 0;
+        for (int i = 0; i < levels.length; i++) if (levels[i] == cur) checked = i;
+        new AlertDialog.Builder(this).setTitle(t("rc_vol_limit")).setSingleChoiceItems(names, checked, (dlg, which) -> {
+            getSharedPreferences("installer", MODE_PRIVATE).edit().putInt("vol_limit", levels[which]).apply();
+            if (rcSlider != null) rcSlider.setLimit(levels[which]);
+            dlg.dismiss();
+        }).show();
+    }
+
     /** A key sunk in a dark well, like the sockets of a real remote. */
     private LinearLayout rcWell(View inner, int radiusDp, int padDp) {
         LinearLayout w = new LinearLayout(this);
@@ -1988,28 +2094,32 @@ public class MainActivity extends Activity {
         round.setGravity(Gravity.CENTER);
         LinearLayout back = rcRoundWithWord(RcIcon.BACK, t("rc_back"), 60, () -> rcKey(Remote.BACK));
         LinearLayout home = rcRoundWithWord(RcIcon.HOME, t("rc_home"), 60, () -> rcKey(Remote.HOME));
-        LinearLayout mute = rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), 60, () -> rcKey(Remote.MUTE));
+        LinearLayout mute = rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), 60, this::rcMuteToggle);
         for (LinearLayout col : new LinearLayout[] {back, home, mute}) round.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
         panel.addView(round, lp(0, 10, 0, 0));
 
-        // volume: one bar, minus on the left, plus on the right, VOL between
+        // volume: a - key, the slider (it shows the level the TV reports), a + key
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout vd = rcHalfKey(RcIcon.VOL_DOWN, true, t("rc_vdown"));
-        LinearLayout vu = rcHalfKey(RcIcon.VOL_UP, false, t("rc_vup"));
-        TextView vol = rcPrinted("VOL");
-        vol.setBackgroundColor(0xFF081A10);
-        vol.setGravity(Gravity.CENTER);
-        bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);   // minus stays on the left and plus on the right, whatever the language
-        bar.setBackground(Keycap.hard(density, 30));
-        bar.setPadding(0, 0, 0, dp(3));
-        bar.addView(vd, new LinearLayout.LayoutParams(0, dp(60), 1f));
-        bar.addView(vol, new LinearLayout.LayoutParams(dp(56), dp(60)));
-        bar.addView(vu, new LinearLayout.LayoutParams(0, dp(60), 1f));
-        rcHold(vd, Remote.VOLUME_DOWN);
-        rcHold(vu, Remote.VOLUME_UP);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setClipChildren(false);
+        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, 54, 54, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
+        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, 54, 54, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        rcSlider = new RcSlider(this, display);
+        rcSlider.setWords(t("rc_vol_w"), t("rc_vol_read"), t("rc_vol_release"), t("rc_vol_a11y"));
+        rcSlider.setLimit(volLimit());
+        rcSlider.setListener(level -> rcVolSet(level));
+        rcHoldStep(vd, false);
+        rcHoldStep(vu, true);
+        bar.addView(vd, new LinearLayout.LayoutParams(dp(54), dp(57)));
+        bar.addView(rcSlider, new LinearLayout.LayoutParams(0, -2, 1f));
+        bar.addView(vu, new LinearLayout.LayoutParams(dp(54), dp(57)));
         bar.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
-        panel.addView(rcWell(bar, 34, 4), lp(0, 8, 0, 0));
+        LinearLayout volWell = rcWell(bar, 34, 4);
+        volWell.setClipChildren(false);
+        panel.setClipChildren(false);
+        panel.addView(volWell, lp(0, 8, 0, 0));
+        rcVolRefresh();
 
         body.addView(panel, lp(0, 4, 0, 8));
 

@@ -478,6 +478,13 @@ final class Strings {
         k("rc_a_down", "السهم لأسفل", "Flèche bas", "Down arrow");
         k("rc_a_left", "السهم لليسار", "Flèche gauche", "Left arrow");
         k("rc_a_ok", "موافق", "OK", "OK");
+        k("rc_vol_w", "الصوت", "VOL", "VOL");
+        k("rc_vol_read", "جارٍ القراءة…", "Lecture…", "Reading…");
+        k("rc_vol_release", "اترك للضبط", "Relâchez pour régler", "Release to set");
+        k("rc_vol_a11y", "الصوت", "Volume", "Volume");
+        k("rc_vol_limit", "الحد الأقصى للصوت", "Volume maximum", "Maximum volume");
+        k("rc_vol_off", "معطّل", "Désactivé", "Off");
+        k("rc_vol_limit_hit", "الحد الأقصى %d", "Limite %d", "Limit %d");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");
