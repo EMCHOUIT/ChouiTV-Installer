@@ -24,11 +24,11 @@ public final class Volume {
     private static final Pattern MAXIMUM = Pattern.compile("Max:\\s*(\\d{1,3})");
 
     public static String set(int level, int max) {
-        return "cmd media_session volume --stream 3 --set " + Math.max(0, Math.min(max, level));
+        return "cmd media_session volume --stream 3 --show --set " + Math.max(0, Math.min(max, level));   // --show: the TV draws its own volume bar
     }
 
     public static String adj(boolean up) {
-        return "cmd media_session volume --stream 3 --adj " + (up ? "raise" : "lower");
+        return "cmd media_session volume --stream 3 --show --adj " + (up ? "raise" : "lower");
     }
 
     /** The level in the TV's answer, or -1 when there is none (null, «null», an error, a number above the maximum). */

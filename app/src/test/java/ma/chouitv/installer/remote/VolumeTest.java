@@ -9,15 +9,15 @@ import org.junit.Test;
 
 public class VolumeTest {
     @Test public void aLevelIsSetInOneCommandAndKeptBetweenZeroAndTheMaximumOfTheTv() {
-        assertEquals("cmd media_session volume --stream 3 --set 35", Volume.set(35, 100));
-        assertEquals("cmd media_session volume --stream 3 --set 0", Volume.set(-8, 100));
-        assertEquals("cmd media_session volume --stream 3 --set 100", Volume.set(250, 100));
-        assertEquals("cmd media_session volume --stream 3 --set 15", Volume.set(40, 15));   // a TV with 15 steps
+        assertEquals("cmd media_session volume --stream 3 --show --set 35", Volume.set(35, 100));
+        assertEquals("cmd media_session volume --stream 3 --show --set 0", Volume.set(-8, 100));
+        assertEquals("cmd media_session volume --stream 3 --show --set 100", Volume.set(250, 100));
+        assertEquals("cmd media_session volume --stream 3 --show --set 15", Volume.set(40, 15));   // a TV with 15 steps
     }
 
     @Test public void aStepIsOneAdjustment() {
-        assertEquals("cmd media_session volume --stream 3 --adj raise", Volume.adj(true));
-        assertEquals("cmd media_session volume --stream 3 --adj lower", Volume.adj(false));
+        assertEquals("cmd media_session volume --stream 3 --show --adj raise", Volume.adj(true));
+        assertEquals("cmd media_session volume --stream 3 --show --adj lower", Volume.adj(false));
     }
 
     @Test public void theMaximumIsReadFromTheTvAndTheDefaultScaleIsUsedOtherwise() {
