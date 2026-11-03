@@ -5,14 +5,20 @@ import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityManager;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeProvider;
 
 /**
  * The pad of the remote, drawn like a real one with layers (no flat fills): a dark plate holding four raised wedges (up, right, down, left) with parallel
@@ -198,5 +204,113 @@ public final class RcRing extends View {
         c.drawText("OK", 150f, 160.5f, label);
         c.restore();
         c.restore();
+    }
+
+    // ---- TalkBack: the pad is five buttons (four arrows and OK), not one picture ----
+
+    private final String[] names = {"Up", "Right", "Down", "Left", "OK"};
+    private int a11yFocus = View.NO_ID, hover = View.NO_ID;
+
+    /** What a screen reader says for each button. */
+    public void setNames(String up, String right, String down, String left, String ok) {
+        names[0] = up; names[1] = right; names[2] = down; names[3] = left; names[4] = ok;
+    }
+
+    /** The area of a button, in the pixels of this view: a box around each wedge (on the 300-unit grid) and around the dish for OK. */
+    private Rect boundsOf(int zone) {
+        float[][] box = {{52f, 10f, 248f, 100f}, {200f, 52f, 290f, 248f}, {52f, 200f, 248f, 290f}, {10f, 52f, 100f, 248f}, {93.5f, 93.5f, 206.5f, 206.5f}};
+        float[] b = box[zone];
+        return new Rect((int) (b[0] * scale), (int) (b[1] * scale), (int) (b[2] * scale), (int) (b[3] * scale));
+    }
+
+    private void sendFor(int id, int type) {
+        AccessibilityManager am = (AccessibilityManager) getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
+        if (am == null || !am.isEnabled() || getParent() == null || id < 1 || id > 5) return;
+        AccessibilityEvent e = AccessibilityEvent.obtain(type);
+        e.setPackageName(getContext().getPackageName());
+        e.setClassName("android.widget.Button");
+        e.setSource(this, id);
+        e.getText().add(names[id - 1]);
+        getParent().requestSendAccessibilityEvent(this, e);
+    }
+
+    private final AccessibilityNodeProvider provider = new AccessibilityNodeProvider() {
+        @Override public AccessibilityNodeInfo createAccessibilityNodeInfo(int id) {
+            if (id == HOST_VIEW_ID) {
+                AccessibilityNodeInfo host = AccessibilityNodeInfo.obtain(RcRing.this);
+                onInitializeAccessibilityNodeInfo(host);
+                for (int i = 1; i <= 5; i++) host.addChild(RcRing.this, i);
+                return host;
+            }
+            if (id < 1 || id > 5) return null;
+            AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
+            info.setSource(RcRing.this, id);
+            info.setParent(RcRing.this);
+            info.setPackageName(getContext().getPackageName());
+            info.setClassName("android.widget.Button");
+            info.setContentDescription(names[id - 1]);
+            info.setClickable(true);
+            info.setEnabled(true);
+            info.setVisibleToUser(true);
+            Rect b = boundsOf(id - 1);
+            info.setBoundsInParent(b);
+            int[] at = new int[2];
+            getLocationOnScreen(at);
+            Rect screen = new Rect(b);
+            screen.offset(at[0], at[1]);
+            info.setBoundsInScreen(screen);
+            info.addAction(AccessibilityNodeInfo.ACTION_CLICK);
+            info.setAccessibilityFocused(a11yFocus == id);
+            info.addAction(a11yFocus == id ? AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS : AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS);
+            return info;
+        }
+
+        @Override public boolean performAction(int id, int action, Bundle args) {
+            if (id == HOST_VIEW_ID) return performAccessibilityAction(action, args);
+            if (id < 1 || id > 5) return false;
+            switch (action) {
+                case AccessibilityNodeInfo.ACTION_CLICK: {
+                    Integer k = RingGeometry.keyOf(id - 1);
+                    if (k != null && listener != null) listener.onKey(k);
+                    sendFor(id, AccessibilityEvent.TYPE_VIEW_CLICKED);
+                    return true;
+                }
+                case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
+                    if (a11yFocus != id) { a11yFocus = id; sendFor(id, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED); }
+                    return true;
+                case AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS:
+                    if (a11yFocus == id) { a11yFocus = View.NO_ID; sendFor(id, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED); }
+                    return true;
+                default:
+                    return false;
+            }
+        }
+    };
+
+    @Override public AccessibilityNodeProvider getAccessibilityNodeProvider() { return provider; }
+
+    /** With touch exploration on, tells the screen reader which button is under the finger, so that it can name it. */
+    @Override public boolean onHoverEvent(MotionEvent e) {
+        AccessibilityManager am = (AccessibilityManager) getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
+        if (am == null || !am.isEnabled() || !am.isTouchExplorationEnabled()) return super.onHoverEvent(e);
+        switch (e.getActionMasked()) {
+            case MotionEvent.ACTION_HOVER_ENTER:
+            case MotionEvent.ACTION_HOVER_MOVE: {
+                int zone = RingGeometry.zoneAt(e.getX() / scale, e.getY() / scale);
+                int id = zone == RingGeometry.NONE ? View.NO_ID : zone + 1;
+                if (id != hover) {
+                    if (hover != View.NO_ID) sendFor(hover, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
+                    hover = id;
+                    if (id != View.NO_ID) sendFor(id, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER);
+                }
+                return true;
+            }
+            case MotionEvent.ACTION_HOVER_EXIT:
+                if (hover != View.NO_ID) sendFor(hover, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
+                hover = View.NO_ID;
+                return true;
+            default:
+                return super.onHoverEvent(e);
+        }
     }
 }

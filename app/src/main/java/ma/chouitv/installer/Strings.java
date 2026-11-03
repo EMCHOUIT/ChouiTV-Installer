@@ -473,6 +473,11 @@ final class Strings {
         k("rc_need_update", "هذه النسخة من ChouiTV على التلفزيون لا تفتح هذه الشاشة مباشرة: حدّثها إلى 4.2. فُتحت الرئيسية بدلًا منها.", "Ce ChouiTV ne sait pas encore ouvrir cet écran directement : mettez-le à jour (4.2). L’accueil s’est ouvert à la place.", "This ChouiTV cannot open that screen directly yet: update it (4.2). The home opened instead.");
         k("rc_install", "ثبّت", "Installer", "Install");
         k("rc_later", "لاحقًا", "Plus tard", "Later");
+        k("rc_a_up", "السهم لأعلى", "Flèche haut", "Up arrow");
+        k("rc_a_right", "السهم لليمين", "Flèche droite", "Right arrow");
+        k("rc_a_down", "السهم لأسفل", "Flèche bas", "Down arrow");
+        k("rc_a_left", "السهم لليسار", "Flèche gauche", "Left arrow");
+        k("rc_a_ok", "موافق", "OK", "OK");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");

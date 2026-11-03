@@ -1977,6 +1977,7 @@ public class MainActivity extends Activity {
         // the pad: four wedges around OK
         RcRing ring = new RcRing(this, display);
         ring.setListener(code -> rcKey(code));
+        ring.setNames(t("rc_a_up"), t("rc_a_right"), t("rc_a_down"), t("rc_a_left"), t("rc_a_ok"));
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
         rp.topMargin = dp(12);
         panel.addView(ring, rp);
