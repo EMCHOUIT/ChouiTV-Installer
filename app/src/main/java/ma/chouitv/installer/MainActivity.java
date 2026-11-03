@@ -243,8 +243,82 @@ public class MainActivity extends Activity {
             case 23: progressScreen(body, button); break;
             case 24: endScreen(body, button); break;
             case 25: remoteScreen(body, button); break;
+            case 26: moreScreen(body, button); break;
             default: done(body, button); break;
         }
+        int tab = Nav.tabOf(n);
+        if (tab >= 0) {   // a tab: the three tabs replace the big bottom button
+            col.removeView(button);
+            col.addView(tabBar(tab), new LinearLayout.LayoutParams(-1, dp(66)));
+        }
+    }
+
+    /** The bar of the three tabs (Remote, My TV, More): always the same, the current one in gold. */
+    private View tabBar(final int current) {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setBackground(rcShape(0xFF0B2016, 22, true));
+        bar.setLayoutDirection(Strings.rtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        int[] icons = {RcIcon.REMOTE, RcIcon.TV, RcIcon.DOTS};
+        String[] names = {t("tab_remote"), t("tab_tv"), t("tab_more")};
+        for (int i = 0; i < 3; i++) {
+            final int tab = i;
+            boolean on = i == current;
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setClickable(true);
+            item.setContentDescription(names[i]);
+            if (on) item.setBackground(rcShape(0xFF1F4A33, 18, false));
+            item.addView(new RcIcon(this, icons[i], on ? GOLD : MUTED), new LinearLayout.LayoutParams(dp(26), dp(26)));
+            TextView label = text(names[i], medium, 12, on ? GOLD : MUTED);
+            label.setGravity(Gravity.CENTER);
+            item.addView(label);
+            item.setOnClickListener(v -> {
+                if (tab == current || busy) return;
+                if (tab == Nav.TAB_REMOTE) quickRemote(); else show(Nav.tabScreen(tab));
+            });
+            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, -1, 1f);
+            ip.setMargins(dp(4), dp(4), dp(4), dp(4));
+            bar.addView(item, ip);
+        }
+        return bar;
+    }
+
+    /** The «More» tab: language, which TV, how to work (guided or free), the volume scale, the help to turn the network debugging on, and the version. */
+    private void moreScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("more_title"), t("more_sub"));
+        Object[][] rows = {
+            {RcIcon.APPS, "more_lang"}, {RcIcon.TV, "more_tv"}, {RcIcon.REMOTE, "more_mode"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.KEYBOARD, "more_debug"}};
+        for (int i = 0; i < rows.length; i++) {
+            final int which = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setBackground(rcStates(TILE_FILL, 16, true));
+            row.setPadding(dp(14), dp(10), dp(14), dp(10));
+            row.setClickable(true);
+            row.addView(new RcIcon(this, (Integer) rows[i][0], GOLD), new LinearLayout.LayoutParams(dp(28), dp(28)));
+            TextView name = text(t((String) rows[i][1]), medium, 16, SAND);
+            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1f);
+            np.setMarginStart(dp(14));
+            row.addView(name, np);
+            row.setOnClickListener(v -> {
+                switch (which) {
+                    case 0: show(0); break;
+                    case 1: clearGuide(); space = SPACE_REMOTE; show(1); break;
+                    case 2: show(18); break;
+                    case 3: if (LastTv.load(prefs()) != null) rcVolumeDialog(); break;
+                    default: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
+                }
+            });
+            LinearLayout.LayoutParams rp = lp(0, 8, 0, 0);
+            rp.height = dp(64);
+            body.addView(row, rp);
+        }
+        TextView about = text(t("more_about_t", BuildInfo.VERSION), regular, 13, MUTED);
+        about.setGravity(Gravity.CENTER);
+        body.addView(about, lp(0, 20, 0, 8));
     }
 
     private void language(final LinearLayout body, TextView button) {
@@ -1305,13 +1379,6 @@ public class MainActivity extends Activity {
             lc.addView(chip(t("last_tv"), GOLD, DARK, 0));
             lc.addView(text(lastTv.name, display, 21, SAND), lp(0, 6, 0, 0));
             lc.addView(text(lastTv.ip, regular, 13, MUTED), lp(0, 2, 0, 0));
-            TextView go = text(t("last_open"), medium, 17, DARK);
-            go.setGravity(Gravity.CENTER);
-            go.setBackground(rcShape(GOLD, 26, false));
-            go.setClickable(true);
-            go.setOnClickListener(v -> quickRemote());
-            lc.addView(go, lp(0, 12, 0, 0));
-            ((LinearLayout.LayoutParams) go.getLayoutParams()).height = dp(52);
             final boolean auto = getSharedPreferences("installer", MODE_PRIVATE).getBoolean("auto_remote", false);
             TextView sw = text((auto ? "\u2611  " : "\u2610  ") + t("last_auto"), regular, 13, LINK);
             sw.setMinHeight(dp(44));
@@ -1325,7 +1392,7 @@ public class MainActivity extends Activity {
             lc.addView(other);
             body.addView(lc, lp(0, 4, 0, 4));
         }
-        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}, {"6", "hub_rc_t", "hub_rc_d", "hub_rc_tag"}};
+        String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}};
         for (int i = 0; i < cards.length; i++) {
             final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : i == 4 ? SPACE_REACT : SPACE_REMOTE;
             LinearLayout c = card(i == 0);

@@ -499,6 +499,18 @@ final class Strings {
         k("off_msg", "تأكّد أنه مشغَّل، وعلى نفس شبكة الواي فاي، وأن «تصحيح الشبكة» مفعّل.", "Vérifiez qu\u2019elle est allumée, sur le même Wi-Fi, avec le « Débogage réseau » activé.", "Check that it is on, on the same Wi-Fi, with \"Network debugging\" turned on.");
         k("off_retry", "أعد المحاولة", "Réessayer", "Try again");
         k("off_other", "تلفاز آخر", "Autre télé", "Other TV");
+        k("tab_remote", "جهاز التحكم", "Télécommande", "Remote");
+        k("tab_tv", "تلفازي", "Ma télé", "My TV");
+        k("tab_more", "المزيد", "Plus", "More");
+        k("more_title", "المزيد", "Plus", "More");
+        k("more_sub", "اللغة والتلفاز والمساعدة", "Langue, télé et aide", "Language, TV and help");
+        k("more_lang", "اللغة", "Langue", "Language");
+        k("more_tv", "غيّر التلفاز", "Changer de télé", "Change TV");
+        k("more_mode", "طريقة الاستعمال: مرشَد أو حر", "Façon de travailler : guidé ou libre", "How to work: guided or free");
+        k("more_vol", "مقياس الصوت وخطوته", "Échelle et pas du volume", "Volume scale and step");
+        k("more_debug", "تفعيل «تصحيح الشبكة» على التلفاز", "Activer le « Débogage réseau » sur la télé", "Turn on \"Network debugging\" on the TV");
+        k("more_about", "حول", "À propos", "About");
+        k("more_about_t", "ChouiTV Companion %s", "ChouiTV Companion %s", "ChouiTV Companion %s");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");

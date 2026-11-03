@@ -9,14 +9,27 @@ final class Nav {
     /** Back leaves the app (after a double press). */
     static final int EXIT = -1;
     static final int DOUBLE_PRESS_MS = 2000;
+    static final int TAB_REMOTE = 0, TAB_TV = 1, TAB_MORE = 2;
+
+    /** The tab a screen belongs to (the screens of a task in progress belong to none, and show no tab bar). */
+    static int tabOf(int step) {
+        switch (step) {
+            case 25: return TAB_REMOTE;
+            case 12: return TAB_TV;
+            case 26: return TAB_MORE;
+            default: return -1;
+        }
+    }
+
+    static int tabScreen(int tab) { return tab == TAB_REMOTE ? 25 : tab == TAB_TV ? 12 : 26; }
 
     /** The screen Back goes to, or BLOCKED / EXIT. */
     static int backTarget(int step, boolean busy, boolean guided, boolean cleanFromDone) {
         if (busy || step == 23) return BLOCKED;
         int list = guided ? 19 : 12;
         switch (step) {
-            case 12: return 18;
-            case 18: return 0;
+            case 12: return EXIT;   // a tab: the top of the app
+            case 18: return 26;
             case 19: return 18;
             case 20: case 21: return 19;
             case 22: return 18;
