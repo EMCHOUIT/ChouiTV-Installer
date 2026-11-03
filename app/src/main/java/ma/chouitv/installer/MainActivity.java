@@ -65,6 +65,7 @@ import ma.chouitv.installer.remote.RemoteBody;
 import ma.chouitv.installer.remote.Socket;
 import ma.chouitv.installer.remote.RcRing;
 import ma.chouitv.installer.remote.RcSlider;
+import ma.chouitv.installer.remote.TvList;
 import ma.chouitv.installer.remote.Volume;
 import ma.chouitv.installer.remote.Reconnect;
 
@@ -128,8 +129,9 @@ public class MainActivity extends Activity {
         root.setBackground(background());
         setContentView(root);
         int first = Nav.firstScreen(sp.getString("lang", null) != null, LastTv.load(prefs()) != null);
-        show(first);
-        if (first == 12 && sp.getBoolean("auto_remote", false)) ui.post(this::quickRemote);
+        if (first == 25) { show(28); ui.post(this::quickRemote); }   // the home of the app is the remote of the last TV
+        else if (first == 1) { space = SPACE_REMOTE; show(1); }
+        else show(first);
     }
 
     @Override
@@ -243,45 +245,11 @@ public class MainActivity extends Activity {
             case 24: endScreen(body, button); break;
             case 25: remoteScreen(body, button); break;
             case 26: moreScreen(body, button); break;
+            case 27: myTvsScreen(body, button); break;
+            case 28: splashScreen(body, button); break;
             default: done(body, button); break;
         }
-        int tab = Nav.tabOf(n);
-        if (tab >= 0) {   // a tab: the three tabs replace the big bottom button
-            col.removeView(button);
-            col.addView(tabBar(tab), new LinearLayout.LayoutParams(-1, dp(66)));
-        }
-    }
-
-    /** The bar of the three tabs (Remote, My TV, More): always the same, the current one in gold. */
-    private View tabBar(final int current) {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setBackground(rcShape(0xFF0B2016, 22, true));
-        bar.setLayoutDirection(Strings.rtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-        int[] icons = {RcIcon.REMOTE, RcIcon.TV, RcIcon.DOTS};
-        String[] names = {t("tab_remote"), t("tab_tv"), t("tab_more")};
-        for (int i = 0; i < 3; i++) {
-            final int tab = i;
-            boolean on = i == current;
-            LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.VERTICAL);
-            item.setGravity(Gravity.CENTER);
-            item.setClickable(true);
-            item.setContentDescription(names[i]);
-            if (on) item.setBackground(rcShape(0xFF1F4A33, 18, false));
-            item.addView(new RcIcon(this, icons[i], on ? GOLD : MUTED), new LinearLayout.LayoutParams(dp(26), dp(26)));
-            TextView label = text(names[i], medium, 12, on ? GOLD : MUTED);
-            label.setGravity(Gravity.CENTER);
-            item.addView(label);
-            item.setOnClickListener(v -> {
-                if (tab == current || busy) return;
-                if (tab == Nav.TAB_REMOTE) quickRemote(); else show(Nav.tabScreen(tab));
-            });
-            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, -1, 1f);
-            ip.setMargins(dp(4), dp(4), dp(4), dp(4));
-            bar.addView(item, ip);
-        }
-        return bar;
+        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
     }
 
     /** About: the version, and a button that asks GitHub whether a newer one exists (then offers to download it). */
@@ -328,11 +296,11 @@ public class MainActivity extends Activity {
         d.show();
     }
 
-    /** The «More» tab: language, which TV, how to work (guided or free), the volume scale, the help to turn the network debugging on, and the version. */
+    /** Options of the phone app (never of the TV: the word «Settings» always means the TV): language, volume, help, about. */
     private void moreScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("more_title"), t("more_sub"));
         Object[][] rows = {
-            {RcIcon.APPS, "more_lang"}, {RcIcon.TV, "more_tv"}, {RcIcon.REMOTE, "more_mode"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.HOME, "more_about_row"}};
+            {RcIcon.BOOK, "more_lang"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.HOME, "more_about_row"}};
         for (int i = 0; i < rows.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
@@ -349,10 +317,9 @@ public class MainActivity extends Activity {
             row.setOnClickListener(v -> {
                 switch (which) {
                     case 0: show(0); break;
-                    case 1: clearGuide(); space = SPACE_REMOTE; show(1); break;
-                    case 2: show(18); break;
-                    case 3: if (LastTv.load(prefs()) != null) rcVolumeDialog(); break;
-                    case 4: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
+                    case 1: if (LastTv.load(prefs()) != null) rcVolumeDialog(); break;
+                    case 2: rcLimitDialog(); break;
+                    case 3: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
                     default: aboutDialog(); break;
                 }
             });
@@ -360,6 +327,69 @@ public class MainActivity extends Activity {
             rp.height = dp(64);
             body.addView(row, rp);
         }
+    }
+
+    /** The name of the TV the app talks to (the one the family chose, else its model). */
+    private String curName() { LastTv l = LastTv.load(prefs()); return l == null ? "TV" : l.name; }
+
+    /** The short screen shown while the app reaches the TV at launch: the name of the TV, and nothing to tap. */
+    private void splashScreen(LinearLayout body, TextView button) {
+        titleBlock(body, curName(), t("last_wait"));
+    }
+
+    /** «My TVs»: the TVs of the family by name (never by address), the current one first; a touch opens that TV's page. */
+    private void myTvsScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("tvs_title"), t("tvs_sub"));
+        LastTv now = LastTv.load(prefs());
+        for (final TvList.Tv tv : TvList.load(prefs())) {
+            boolean current = now != null && tv.ip.equals(now.ip);
+            LinearLayout c = card(current);
+            c.setOrientation(LinearLayout.HORIZONTAL);
+            c.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.addView(text(tv.name, display, 21, SAND));
+            col.addView(text(current ? t("tvs_now") : t("tvs_touch"), regular, 13, current ? GOLD : MUTED), lp(0, 2, 0, 0));
+            c.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView pen = text("✎", medium, 22, GOLD);
+            pen.setGravity(Gravity.CENTER);
+            pen.setContentDescription(t("tvs_rename"));
+            pen.setOnClickListener(v -> renameTvDialog(tv));
+            c.addView(pen, new LinearLayout.LayoutParams(dp(52), dp(52)));
+            c.setOnClickListener(v -> { if (!busy) openTv(tv); });
+            body.addView(c, lp(0, 8, 0, 0));
+        }
+        LinearLayout add = card(false);
+        add.setGravity(Gravity.CENTER);
+        add.addView(text("+  " + t("tvs_add"), medium, 17, GOLD));
+        add.setOnClickListener(v -> { if (!busy) { clearGuide(); space = SPACE_REMOTE; show(1); } });
+        body.addView(add, lp(0, 12, 0, 0));
+    }
+
+    /** Makes this TV the current one and opens its page (the connection is made first, with the usual «not answering» window when it fails). */
+    private void openTv(final TvList.Tv tv) {
+        TvList.use(prefs(), tv.ip, tv.model);
+        Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
+        busy = true;
+        bg.execute(() -> {
+            boolean ok = false;
+            try { if (flow != null && tv.ip.equals(curIp)) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
+            if (!ok) ok = rcReconnect();
+            final boolean fine = ok;
+            runOnUiThread(() -> { busy = false; if (fine) show(12); else tvOffDialog(SPACE_REMOTE); });
+        });
+    }
+
+    private void renameTvDialog(final TvList.Tv tv) {
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setText(tv.own);
+        et.setHint(t("tvs_name_hint"));
+        et.setSingleLine(true);
+        et.setPadding(dp(20), dp(12), dp(20), dp(12));
+        new AlertDialog.Builder(this).setTitle(t("tvs_rename")).setView(et)
+            .setPositiveButton(t("rc_vol_save"), (d, w) -> { TvList.rename(prefs(), tv.ip, et.getText().toString()); show(27); })
+            .setNeutralButton(t("tvs_forget"), (d, w) -> { TvList.forget(prefs(), tv.ip); show(LastTv.load(prefs()) == null ? 1 : 27); })
+            .setNegativeButton(t("rc_pw_keep"), null).show();
     }
 
     private void language(final LinearLayout body, TextView button) {
@@ -413,7 +443,7 @@ public class MainActivity extends Activity {
             body.addView(c, lp(0, 0, 0, 10));
         }
         button.setText(t("continue"));
-        button.setOnClickListener(v -> show(18));
+        button.setOnClickListener(v -> { if (LastTv.load(prefs()) != null) { show(28); quickRemote(); } else { space = SPACE_REMOTE; show(1); } });   // no mode screen: the remote, or the search for a TV
     }
 
     private void prepare(LinearLayout body, TextView button) {
@@ -498,10 +528,12 @@ public class MainActivity extends Activity {
                             a.setTextDirection(View.TEXT_DIRECTION_LTR);
                             c.addView(a);
                             c.setOnClickListener(v -> {
+                                if (busy) return;
                                 chosen = ip;
                                 for (int i = 0; i < list.getChildCount(); i++) list.getChildAt(i).setBackground(cardBg(false));
                                 c.setBackground(cardBg(true));
                                 input.setText("");
+                                connectTo(ip, button, status);   // one touch on a TV that was found connects to it
                             });
                             list.addView(c, lp(0, 0, 0, 10));
                         }
@@ -539,7 +571,8 @@ public class MainActivity extends Activity {
                 tvModel = model;
                 try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
                 getSharedPreferences("installer", MODE_PRIVATE).edit().putString("tv_" + ip, tvBrand + "|" + model).apply();
-                LastTv.save(prefs(), ip, (tvBrand + " " + model).trim());
+                TvList.use(prefs(), ip, (tvBrand + " " + model).trim());
+                curIp = ip;
                 runOnUiThread(() -> afterConnect(button, status));
             } catch (final Exception e) {
                 runOnUiThread(() -> {
@@ -1412,27 +1445,8 @@ public class MainActivity extends Activity {
     private void hub(LinearLayout body, TextView button) {
         cleanedHere = false;
         cleanFromDone = false;
-        titleBlock(body, t("hub_title"), t("hub_sub"));
-        final LastTv lastTv = LastTv.load(prefs());
-        if (lastTv != null) {
-            LinearLayout lc = card(true);
-            lc.setOrientation(LinearLayout.VERTICAL);
-            lc.addView(chip(t("last_tv"), GOLD, DARK, 0));
-            lc.addView(text(lastTv.name, display, 21, SAND), lp(0, 6, 0, 0));
-            lc.addView(text(lastTv.ip, regular, 13, MUTED), lp(0, 2, 0, 0));
-            final boolean auto = getSharedPreferences("installer", MODE_PRIVATE).getBoolean("auto_remote", false);
-            TextView sw = text((auto ? "\u2611  " : "\u2610  ") + t("last_auto"), regular, 13, LINK);
-            sw.setMinHeight(dp(44));
-            sw.setGravity(Gravity.CENTER_VERTICAL);
-            sw.setOnClickListener(v -> { getSharedPreferences("installer", MODE_PRIVATE).edit().putBoolean("auto_remote", !auto).apply(); show(12); });
-            lc.addView(sw, lp(0, 6, 0, 0));
-            TextView other = text(t("last_other"), regular, 13, LINK);
-            other.setMinHeight(dp(44));
-            other.setGravity(Gravity.CENTER_VERTICAL);
-            other.setOnClickListener(v -> { clearGuide(); space = SPACE_REMOTE; show(1); });
-            lc.addView(other);
-            body.addView(lc, lp(0, 4, 0, 4));
-        }
+        titleBlock(body, curName(), t("hub_sub"));
+        final LastTv lastTv = null;
         String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}};
         for (int i = 0; i < cards.length; i++) {
             final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : i == 4 ? SPACE_REACT : SPACE_REMOTE;
@@ -1467,6 +1481,7 @@ public class MainActivity extends Activity {
     private AppSlots rcSlots;
     private List<String> rcTvApps;
     private volatile int rcState = RC_OK;
+    private volatile String curIp = "";
 
     private interface Op { void run() throws Exception; }
 
@@ -1610,6 +1625,7 @@ public class MainActivity extends Activity {
                 Adb n = Adb.connect(last.ip, 5555, new File(getFilesDir(), "keys"));
                 if (tv != null && tv != n) tv.close();
                 tv = n;
+                curIp = last.ip;
                 flow = new Flow(n, getCacheDir());
                 flow.ask = this::askRemoval;
                 identifyTv();
@@ -1699,12 +1715,11 @@ public class MainActivity extends Activity {
     }
 
     private void rcMoreMenu() {
-        String[] items = {t("rc_menu"), t("rc_vol_scale"), t("rc_vol_limit"), t("rc_switch")};
+        String[] items = {t("rc_menu"), t("tvs_title"), t("more_title")};
         new AlertDialog.Builder(this).setTitle(t("rc_more")).setItems(items, (d, which) -> {
             if (which == 0) rcKey(Remote.MENU);
-            else if (which == 1) rcVolumeDialog();
-            else if (which == 2) rcLimitDialog();
-            else { space = SPACE_REMOTE; show(2); }
+            else if (which == 1) show(27);
+            else show(26);
         }).show();
     }
 
@@ -1951,7 +1966,8 @@ public class MainActivity extends Activity {
         busy = true;
         bg.execute(() -> {
             boolean ok = false;
-            try { if (flow != null) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
+            LastTv want = LastTv.load(prefs());
+            try { if (flow != null && want != null && want.ip.equals(curIp)) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
             if (!ok) ok = rcReconnect();
             if (!ok) { runOnUiThread(() -> { busy = false; tvOffDialog(sp); }); return; }
             try {
@@ -1966,9 +1982,9 @@ public class MainActivity extends Activity {
 
     /** The TV does not answer: say what to check, and offer to try again or to pick another TV (the usual path). */
     private void tvOffDialog(final int sp) {
-        new AlertDialog.Builder(this).setTitle(t("off_q")).setMessage(t("off_msg"))
+        new AlertDialog.Builder(this).setTitle(t("off_q2", curName())).setMessage(t("off_msg"))
             .setPositiveButton(t("off_retry"), (d, w) -> { if (sp == SPACE_REMOTE) quickRemote(); else startSpace(sp); })
-            .setNegativeButton(t("off_other"), (d, w) -> { space = sp; show(1); })
+            .setNegativeButton(t("tvs_title"), (d, w) -> show(27))
             .show();
     }
 
@@ -1978,7 +1994,8 @@ public class MainActivity extends Activity {
         Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
         bg.execute(() -> {
             boolean ok = false;
-            try { if (flow != null) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
+            LastTv want = LastTv.load(prefs());
+            try { if (flow != null && want != null && want.ip.equals(curIp)) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
             if (!ok) ok = rcReconnect();
             final boolean fine = ok;
             runOnUiThread(() -> {
@@ -2335,7 +2352,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1f);
         np.setMarginStart(dp(10));
         status.addView(names, np);
-        rcTap(status, () -> { if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else rcMoreMenu(); });
+        rcTap(status, () -> { if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else show(27); });
         LinearLayout.LayoutParams sp0 = new LinearLayout.LayoutParams(0, dp(56), 1f);
         sp0.setMargins(dp(12), 0, dp(8), 0);
         top.addView(status, sp0);

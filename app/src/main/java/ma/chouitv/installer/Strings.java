@@ -236,8 +236,8 @@ final class Strings {
         k("hub_inst_t", "ثبّت ChouiTV", "Installer ChouiTV", "Install ChouiTV");
         k("hub_inst_d", "بعدها: يثبّت التطبيق ChouiTV على تلفزيونك ويضبطه.", "Ensuite : l'appli installe et règle ChouiTV sur votre télé.", "Then: the app installs and sets up ChouiTV on your TV.");
         k("hub_inst_tag", "الخطوة 2", "Étape 2", "Step 2");
-        k("hub_react_t", "أعِد تفعيل تطبيقات", "Réactiver des applis", "Turn apps back on");
-        k("hub_react_d", "عند الحاجة: أعِد تطبيقًا أوقفته.", "Au besoin : remettez une appli que vous avez coupée.", "When needed: put back an app you turned off.");
+        k("hub_react_t", "إصلاح", "Dépannage", "Fix a problem");
+        k("hub_react_d", "اختفى تطبيق؟ أعده.", "Une appli a disparu ? Remettez-la.", "An app disappeared? Put it back.");
         k("hub_react_tag", "عند الحاجة", "Au besoin", "When needed");
         k("hub_lang", "اللغة", "Langue", "Language");
         k("cl_next_install", "تابع: ثبّت ChouiTV", "Continuer : installer ChouiTV", "Continue: install ChouiTV");
@@ -502,8 +502,8 @@ final class Strings {
         k("tab_remote", "جهاز التحكم", "Télécommande", "Remote");
         k("tab_tv", "تلفازي", "Ma télé", "My TV");
         k("tab_more", "المزيد", "Plus", "More");
-        k("more_title", "المزيد", "Plus", "More");
-        k("more_sub", "اللغة والتلفاز والمساعدة", "Langue, télé et aide", "Language, TV and help");
+        k("more_title", "الخيارات", "Options", "Options");
+        k("more_sub", "اللغة والصوت والمساعدة", "Langue, volume et aide", "Language, volume and help");
         k("more_lang", "اللغة", "Langue", "Language");
         k("more_tv", "غيّر التلفاز", "Changer de télé", "Change TV");
         k("more_mode", "طريقة الاستعمال: مرشَد أو حر", "Façon de travailler : guidé ou libre", "How to work: guided or free");
@@ -520,6 +520,15 @@ final class Strings {
         k("about_close", "إغلاق", "Fermer", "Close");
         k("about_fail", "تعذّر البحث. تحقّق من الإنترنت ثم أعد المحاولة.", "Impossible de vérifier. Vérifiez Internet puis réessayez.", "Could not check. Check the Internet and try again.");
         k("more_about_row", "حول التطبيق والتحديث", "À propos et mise à jour", "About and update");
+        k("off_q2", "%s لا يردّ", "%s ne répond pas", "%s is not answering");
+        k("tvs_title", "تلفزيوناتي", "Mes télés", "My TVs");
+        k("tvs_sub", "المس تلفازًا للتحكم فيه", "Touchez une télé pour la contrôler", "Touch a TV to control it");
+        k("tvs_now", "مستعمَل الآن", "Utilisée maintenant", "In use now");
+        k("tvs_touch", "المس للاتصال", "Touchez pour vous connecter", "Touch to connect");
+        k("tvs_add", "أضف تلفازًا", "Ajouter une télé", "Add a TV");
+        k("tvs_rename", "غيّر الاسم", "Renommer", "Rename");
+        k("tvs_forget", "انسَ هذا التلفاز", "Oublier cette télé", "Forget this TV");
+        k("tvs_name_hint", "الاسم، مثل الصالون", "Nom (ex. Salon)", "Name (e.g. Living room)");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");

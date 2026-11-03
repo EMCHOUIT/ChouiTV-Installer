@@ -9,26 +9,15 @@ final class Nav {
     /** Back leaves the app (after a double press). */
     static final int EXIT = -1;
     static final int DOUBLE_PRESS_MS = 2000;
-    static final int TAB_REMOTE = 0, TAB_TV = 1, TAB_MORE = 2;
 
-    /** The tab a screen belongs to (the screens of a task in progress belong to none, and show no tab bar). */
-    static int tabOf(int step) {
-        switch (step) {
-            case 25: return TAB_REMOTE;
-            case 12: return TAB_TV;
-            case 26: return TAB_MORE;
-            default: return -1;
-        }
-    }
-
-    static int tabScreen(int tab) { return tab == TAB_REMOTE ? 25 : tab == TAB_TV ? 12 : 26; }
-
-    /** The screen Back goes to, or BLOCKED / EXIT. */
+    /** The screen Back goes to, or BLOCKED / EXIT. The remote (25) is the home of the app. */
     static int backTarget(int step, boolean busy, boolean guided, boolean cleanFromDone) {
         if (busy || step == 23) return BLOCKED;
         int list = guided ? 19 : 12;
         switch (step) {
-            case 12: return EXIT;   // a tab: the top of the app
+            case 12: return 27;   // a TV's page goes back to «My TVs»
+            case 27: return 25;   // «My TVs» and «Options» go back to the remote
+            case 26: return 25;
             case 18: return 26;
             case 19: return 18;
             case 20: case 21: return 19;
@@ -49,16 +38,16 @@ final class Nav {
         return backTarget(step, busy, guided, cleanFromDone) >= 0;
     }
 
-    /** A task opened from the home goes straight to the TV used last (no preparation screen, no scan) when the user is not on a guided path and a TV is known. */
+    /** A task chosen on a TV's page goes straight to that TV (no preparation screen, no scan) when the user is not on a guided path and a TV is known. */
     static boolean startsDirect(boolean guided, boolean lastTvKnown) { return !guided && lastTvKnown; }
 
-    /** The language is asked on the very first use only; after that it is changed from «More». */
+    /** The language is asked on the very first use only; after that it is changed from «Options». */
     static boolean asksLanguage(boolean languageSaved) { return !languageSaved; }
 
-    /** The first screen when the app opens: the language (first use), «My TV» (a TV is known), else how to work (guided or free). */
+    /** The first screen when the app opens: the language (first use), the remote (a TV is known), else the search for a TV. */
     static int firstScreen(boolean languageSaved, boolean tvKnown) {
         if (asksLanguage(languageSaved)) return 0;
-        return tvKnown ? 12 : 18;
+        return tvKnown ? 25 : 1;
     }
 
     /** A second press of Back within two seconds of the first leaves the app. */

@@ -9,8 +9,8 @@ import org.junit.Test;
 /** Where «back» goes from each screen, whether the visible Back control shows, and the double press that leaves the app. */
 public class NavTest {
     @Test public void theMappingIsTheOneTheSystemBackAlwaysHad() {
-        assertEquals(26, Nav.backTarget(18, false, false, false));   // the mode is reached from «Plus»
-        assertEquals(Nav.EXIT, Nav.backTarget(12, false, false, false));   // «Ma télé» is a tab: Back leaves the app after a double press
+        assertEquals(26, Nav.backTarget(18, false, false, false));
+        assertEquals(27, Nav.backTarget(12, false, false, false));
         assertEquals(18, Nav.backTarget(19, false, false, false));
         assertEquals(19, Nav.backTarget(20, false, false, false));
         assertEquals(19, Nav.backTarget(21, false, false, false));
@@ -54,7 +54,7 @@ public class NavTest {
         assertFalse("cleanup running", Nav.showsBack(9, false, false, false));
         assertFalse("personalise", Nav.showsBack(4, false, false, false));
         assertFalse("done", Nav.showsBack(5, false, false, false));
-        for (int s : new int[] {1, 2, 8, 10, 11, 13, 14, 15, 17, 18, 19, 20, 21, 22, 24}) assertTrue("step " + s, Nav.showsBack(s, false, false, false));
+        for (int s : new int[] {1, 2, 8, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 24}) assertTrue("step " + s, Nav.showsBack(s, false, false, false));
     }
 
     @Test public void theSecondPressCountsOnlyWithinTwoSeconds() {
@@ -71,24 +71,18 @@ public class NavTest {
         assertFalse(Nav.startsDirect(true, false));
     }
 
-    @Test public void theThreeTabsAreTheRemoteMyTvAndMore() {
-        assertEquals(Nav.TAB_REMOTE, Nav.tabOf(25));
-        assertEquals(Nav.TAB_TV, Nav.tabOf(12));
-        assertEquals(Nav.TAB_MORE, Nav.tabOf(26));
-        assertEquals(-1, Nav.tabOf(8));     // a task in progress shows no tab bar
-        assertEquals(-1, Nav.tabOf(9));
-        assertEquals(-1, Nav.tabOf(3));
-        assertEquals(25, Nav.tabScreen(Nav.TAB_REMOTE));
-        assertEquals(12, Nav.tabScreen(Nav.TAB_TV));
-        assertEquals(26, Nav.tabScreen(Nav.TAB_MORE));
-    }
-
-    @Test public void theTabsAreTheTopOfTheAppSoBackLeavesFromThem() {
+    @Test public void theRemoteIsTheHomeAndNothingHasATabBar() {
+        assertEquals(25, Nav.firstScreen(true, true));     // a TV is known: the app opens on its remote
+        assertEquals(1, Nav.firstScreen(true, false));     // no TV yet: find one (no mode screen any more)
+        assertEquals(0, Nav.firstScreen(false, false));    // the very first use: the language
         assertEquals(Nav.EXIT, Nav.backTarget(25, false, false, false));
-        assertEquals(Nav.EXIT, Nav.backTarget(26, false, false, false));
-        assertEquals(12, Nav.backTarget(14, false, false, false));    // a task goes back to «Ma télé»
+        assertEquals(25, Nav.backTarget(27, false, false, false));    // «My TVs» goes back to the remote
+        assertEquals(27, Nav.backTarget(12, false, false, false));    // a TV's page goes back to «My TVs»
+        assertEquals(25, Nav.backTarget(26, false, false, false));    // «Options» goes back to the remote
+        assertEquals(12, Nav.backTarget(14, false, false, false));    // a task goes back to the TV's page
         assertFalse(Nav.showsBack(25, false, false, false));
-        assertFalse(Nav.showsBack(26, false, false, false));
-        assertFalse(Nav.showsBack(12, false, false, false));
+        assertTrue(Nav.showsBack(27, false, false, false));
+        assertTrue(Nav.showsBack(26, false, false, false));
+        assertTrue(Nav.showsBack(12, false, false, false));
     }
 }
