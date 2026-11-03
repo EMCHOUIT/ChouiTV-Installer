@@ -63,4 +63,11 @@ public class NavTest {
         assertTrue(Nav.exitNow(5000, 7000));
         assertFalse(Nav.exitNow(5000, 7001));
     }
+
+    @Test public void aTaskGoesStraightToTheKnownTvOnlyWhenNothingGuidesTheUser() {
+        assertTrue(Nav.startsDirect(false, true));    // free mode, a TV was used before: no «Préparez la télé», no scan
+        assertFalse(Nav.startsDirect(false, false));  // first time: the usual path
+        assertFalse(Nav.startsDirect(true, true));    // a guided path keeps its own steps
+        assertFalse(Nav.startsDirect(true, false));
+    }
 }

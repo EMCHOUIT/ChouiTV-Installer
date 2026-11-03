@@ -108,7 +108,7 @@ final class Strings {
             "La télé fonctionne avec vos réglages\net les prochaines mises à jour arrivent seules",
             "Your TV now runs with your settings\nand future updates arrive by themselves");
         k("tip", "نصيحة", "Conseil", "Tip");
-        k("tip_text", "أغلق «تصحيح الشبكة» على التلفزيون عند الانتهاء", "Désactivez le « Débogage réseau » sur la télé une fois fini", "Turn \"Network debugging\" off on the TV when you are done");
+        k("tip_text", "أغلق «تصحيح الشبكة» على التلفزيون عند الانتهاء (يحتاجه جهاز التحكم، فأعد تفعيله حين تستعمله)", "Désactivez le « Débogage réseau » sur la télé une fois fini (la télécommande en a besoin : réactivez-le pour l'utiliser)", "Turn \"Network debugging\" off on the TV when you are done (the remote needs it: turn it back on to use it)");
         k("open_tv", "افتح على التلفزيون", "Ouvrir sur la télé", "Open on the TV");
         k("step_of", "الخطوة %d من %d", "Étape %d sur %d", "Step %d of %d");
         k("eta_lt1", "أقل من دقيقة", "moins d'une minute", "under a minute");
@@ -495,6 +495,10 @@ final class Strings {
         k("rc_vol_step_hint", "عدد المستويات في كل ضغطة", "Niveaux par appui", "Levels per press");
         k("rc_vol_save", "حفظ", "Enregistrer", "Save");
         k("rc_vol_bad", "قيمة غير صالحة", "Valeur non valable", "Invalid value");
+        k("off_q", "التلفاز لا يردّ", "La télé ne répond pas", "The TV is not answering");
+        k("off_msg", "تأكّد أنه مشغَّل، وعلى نفس شبكة الواي فاي، وأن «تصحيح الشبكة» مفعّل.", "Vérifiez qu\u2019elle est allumée, sur le même Wi-Fi, avec le « Débogage réseau » activé.", "Check that it is on, on the same Wi-Fi, with \"Network debugging\" turned on.");
+        k("off_retry", "أعد المحاولة", "Réessayer", "Try again");
+        k("off_other", "تلفاز آخر", "Autre télé", "Other TV");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");

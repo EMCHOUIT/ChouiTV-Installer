@@ -36,6 +36,9 @@ final class Nav {
         return backTarget(step, busy, guided, cleanFromDone) >= 0;
     }
 
+    /** A task opened from the home goes straight to the TV used last (no preparation screen, no scan) when the user is not on a guided path and a TV is known. */
+    static boolean startsDirect(boolean guided, boolean lastTvKnown) { return !guided && lastTvKnown; }
+
     /** A second press of Back within two seconds of the first leaves the app. */
     static boolean exitNow(long lastPress, long now) {
         return lastPress > 0 && now - lastPress <= DOUBLE_PRESS_MS;

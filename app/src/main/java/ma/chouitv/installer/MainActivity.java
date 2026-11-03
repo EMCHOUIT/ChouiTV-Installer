@@ -1340,7 +1340,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
             cp.setMarginStart(dp(14));
             c.addView(col, cp);
-            c.setOnClickListener(v -> { if (!busy) { clearGuide(); space = sp; show(1); } });   // choosing a space yourself leaves any guided path
+            c.setOnClickListener(v -> { if (!busy) { clearGuide(); startSpace(sp); } });   // choosing a space yourself leaves any guided path
             body.addView(c, lp(0, 12, 0, 0));
         }
         resumeCard(body);
@@ -1504,6 +1504,7 @@ public class MainActivity extends Activity {
                 tv = n;
                 flow = new Flow(n, getCacheDir());
                 flow.ask = this::askRemoval;
+                identifyTv();
                 rcStatus(RC_OK, 0);
                 return true;
             } catch (InterruptedException ie) {
@@ -1825,6 +1826,44 @@ public class MainActivity extends Activity {
         d.show();
     }
 
+    /** The model and the brand of the TV the app is connected to (the cleanup and the install need them). */
+    private void identifyTv() {
+        try {
+            model = flow.model();
+            tvModel = model;
+            try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
+        } catch (Exception ignored) { }
+    }
+
+    /** A task chosen on the home: straight to the TV used last (no preparation screen, no scan) when the user is not guided and a TV is known. */
+    private void startSpace(final int sp) {
+        space = sp;
+        if (!Nav.startsDirect(guide != null, LastTv.load(prefs()) != null)) { show(1); return; }
+        Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
+        busy = true;
+        bg.execute(() -> {
+            boolean ok = false;
+            try { if (flow != null) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
+            if (!ok) ok = rcReconnect();
+            if (!ok) { runOnUiThread(() -> { busy = false; tvOffDialog(sp); }); return; }
+            try {
+                if (sp == SPACE_CLEAN) loadCleanupPlan(); else if (sp == SPACE_REACT) loadReactivation();
+                final int to = sp == SPACE_INSTALL ? 3 : sp == SPACE_GET ? 14 : sp == SPACE_SEND ? 17 : sp == SPACE_REMOTE ? 25 : sp == SPACE_CLEAN ? 8 : 11;
+                runOnUiThread(() -> { busy = false; show(to); });
+            } catch (final Exception e) {
+                runOnUiThread(() -> { busy = false; Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
+            }
+        });
+    }
+
+    /** The TV does not answer: say what to check, and offer to try again or to pick another TV (the usual path). */
+    private void tvOffDialog(final int sp) {
+        new AlertDialog.Builder(this).setTitle(t("off_q")).setMessage(t("off_msg"))
+            .setPositiveButton(t("off_retry"), (d, w) -> { if (sp == SPACE_REMOTE) quickRemote(); else startSpace(sp); })
+            .setNegativeButton(t("off_other"), (d, w) -> { space = sp; show(1); })
+            .show();
+    }
+
     /** One tap from the hub: reaches the remembered TV (the open link when there is one, else a few quiet tries) and opens its remote. */
     private void quickRemote() {
         space = SPACE_REMOTE;
@@ -1835,7 +1874,7 @@ public class MainActivity extends Activity {
             if (!ok) ok = rcReconnect();
             final boolean fine = ok;
             runOnUiThread(() -> {
-                if (fine) show(25); else Toast.makeText(this, t("last_fail"), Toast.LENGTH_LONG).show();
+                if (fine) show(25); else tvOffDialog(SPACE_REMOTE);
             });
         });
     }
