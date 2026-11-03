@@ -2235,7 +2235,7 @@ public class MainActivity extends Activity {
         rcTap(more, this::rcMoreMenu);
         top.addView(rcWell(more, 28, 4));
         panel.addView(top);
-        rcStatus(rcState, 0);
+        rcStatus(RC_OK, 0);   // the remote only opens on a TV that has just answered
 
         // six printed keys for the shortcuts, each in its well
         Object[][] tiles = {
