@@ -36,6 +36,7 @@ The app is now called **ChouiTV Companion** (it was ChouiTV Installer up to 1.7)
 - **Accessible**: TalkBack reads the pad as five buttons, and the screen mirrors right to left in Arabic.
 - **A fast, exact volume** (1.8.1): a slider sets the level from 0 to 100 in one command, the level is read from the TV, and a "Maximum volume" limit protects the family's ears.
 - **The volume follows each TV** (1.8.2): scale read from the TV or typed by hand, an adjustable step for the + and − keys, the TV's own volume bar shown on every change.
+- **A simpler app** (1.9): three tabs at the bottom (Remote, My TV, More), tasks that go straight to the last TV, and "About and update" in More.
 
 The remote needs "Network debugging" turned on on the TV, like the rest of the app.
 
@@ -243,10 +244,10 @@ JDK 17 and the Android SDK (platform 34):
 git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease      # the file is in app/build/outputs/apk/release
-./gradlew :app:testDebugUnitTest    # 173 tests on the JVM
+./gradlew :app:testDebugUnitTest    # 181 tests on the JVM
 ```
 
-Current version: **1.8.2** (`versionCode 15`), for Android 8 or newer (`minSdk 26`).
+Current version: **1.9** (`versionCode 16`), for Android 8 or newer (`minSdk 26`).
 
 The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram, the version number on the banner, the QR code) are rebuilt with `python docs/media/build_media.py` (needs Pillow and Edge or Chrome); the phone screenshots are real and are not generated.
 
@@ -256,6 +257,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 
 | Version | What changed |
 |---|---|
+| **1.9** | A simpler app: three tabs (Remote, My TV, More); tasks go straight to the last TV, with no preparation or search; a "The TV is not answering" window with Try again or Other TV; bigger − and + volume keys; "About and update" in More; the language is asked on the first launch only; the "Network debugging" tip no longer contradicts the remote |
 | **1.8.2** | Volume on every TV: the app reads the TV's scale (15, 30 or 100 levels) or takes it by hand, an adjustable step for the + and − keys, the TV's own volume bar shows on every change, the remote's keys take over when the TV ignores the fast command, the volume limit is a percentage; the slider bubble is always whole; rounded app icons |
 | **1.8.1** | Volume: a slider that sets the level in one command (about 12 times faster than a key), the level read from the TV, − and + keys that stop the moment the finger lifts, a mute that remembers the level, and a "Maximum volume" chosen by the family |
 | **1.8** | **ChouiTV Companion**: a raised-key remote (four-wedge pad, Back, Home, Mute, volume, power with a confirmation), six shortcuts (Quran & Radio, Channels, Apps, Screensaver, Type on TV, TV settings), typing on the TV in Arabic too, six app buttons with real names and icons, the last TV remembered with automatic reconnection, TalkBack, right-to-left Arabic |
