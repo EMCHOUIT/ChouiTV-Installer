@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/media/logo.png" alt="ChouiTV Installer logo (Ch8TV)" width="132"></p>
+<p align="center"><img src="docs/media/logo.png" alt="ChouiTV Companion logo (Ch8TV)" width="132"></p>
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="docs/media/hero-ar.png" alt="ChouiTV Installer: ثبّت ChouiTV على تلفزيونك من هاتفك" width="100%"></a></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="docs/media/hero-ar.png" alt="ChouiTV Companion: ثبّت ChouiTV على تلفزيونك من هاتفك" width="100%"></a></p>
 
 <p align="center"><b>🇲🇦 العربية</b> &nbsp;·&nbsp; <a href="README.fr.md">🇫🇷 Français</a> &nbsp;·&nbsp; <a href="README.en.md">🇬🇧 English</a></p>
 
@@ -17,7 +17,7 @@
 
 تطبيق صغير على هاتفك (**ChouiTV Companion**) يجد تلفزيونك، ويتحكّم فيه كجهاز تحكم، فينظّفه إن شئت، وينزّل **أحدث إصدار** من [ChouiTV](https://github.com/EMCHOUIT/ChouiTV) ويثبّته ويضبطه، ثم ينقل إعداداتك إلى تلفزيون آخر. **يرشدك خطوة بخطوة، أو تختار بنفسك. بلا كمبيوتر ولا أوامر.**
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20نزّل%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>لهاتف أندرويد 8 أو أحدث · الملف نحو 1 ميغابايت</sub></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20نزّل%20ChouiTV%20Companion-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>لهاتف أندرويد 8 أو أحدث · الملف نحو 1 ميغابايت</sub></p>
 
 > 🛡️ **إن عرضت غوغل رسالة أمان** (Play Protect) عند فتح الملف فهذا طبيعي: التطبيق جديد وغير معروف عندها بعد. اختر **«التثبيت بدون فحص»**. التطبيق لا يطلب أي إذن حساس ولا يثبّت شيئًا على هاتفك، وإنما يرسل ChouiTV إلى تلفزيونك فقط.
 
@@ -309,7 +309,7 @@ cd ChouiTV-Installer
 <h3 align="center">التثبيت في ثلاث خطوات</h3>
 
 <table align="center" dir="rtl">
-<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>نزّل</b> الملف <code>ChouiTV-Installer.apk</code> على هاتفك (الزر أعلاه، أو امسح الرمز من شاشة أخرى).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>افتحه.</b> إن طلب أندرويد إذنًا فاسمح مرة واحدة للمتصفح أو لمدير الملفات بتثبيت التطبيقات. وقد يظهر تحذير «تطبيق غير معروف»: الشيفرة مفتوحة وتستطيع بناءها بنفسك (<a href="#build">البناء</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>افتح ChouiTV Installer</b> واتبع الخطوات.</td></tr>
+<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>نزّل</b> الملف <code>ChouiTV-Installer.apk</code> على هاتفك (الزر أعلاه، أو امسح الرمز من شاشة أخرى).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>افتحه.</b> إن طلب أندرويد إذنًا فاسمح مرة واحدة للمتصفح أو لمدير الملفات بتثبيت التطبيقات. وقد يظهر تحذير «تطبيق غير معروف»: الشيفرة مفتوحة وتستطيع بناءها بنفسك (<a href="#build">البناء</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>افتح ChouiTV Companion</b> واتبع الخطوات.</td></tr>
 </table>
 
 <div align="center">

@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/media/logo.png" alt="ChouiTV Installer logo (Ch8TV)" width="132"></p>
+<p align="center"><img src="docs/media/logo.png" alt="ChouiTV Companion logo (Ch8TV)" width="132"></p>
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="docs/media/hero-en.png" alt="ChouiTV Installer: install ChouiTV on your TV from your phone" width="100%"></a></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="docs/media/hero-en.png" alt="ChouiTV Companion: install ChouiTV on your TV from your phone" width="100%"></a></p>
 
 <p align="center"><a href="README.md">🇲🇦 العربية</a> &nbsp;·&nbsp; <a href="README.fr.md">🇫🇷 Français</a> &nbsp;·&nbsp; <b>🇬🇧 English</b></p>
 
@@ -15,7 +15,7 @@
 
 A small app on your phone (**ChouiTV Companion**) that finds your TV, drives it like a remote, cleans it if you want, downloads the **latest version** of [ChouiTV](https://github.com/EMCHOUIT/ChouiTV), installs and sets it up, then copies your settings to another TV. **It guides you step by step, or you choose yourself. No computer, no commands.**
 
-<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Installer-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
+<p align="center"><a href="https://github.com/EMCHOUIT/ChouiTV-Installer/releases/latest/download/ChouiTV-Installer.apk"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20ChouiTV%20Companion-D6AF6B?style=for-the-badge&labelColor=0A1D14" alt="download"></a><br><sub>For Android 8+ phones · about 1 MB</sub></p>
 
 > 🛡️ **If Google shows a security message** (Play Protect) when you open the file, that is normal: the app is new and Google does not know it yet. Choose **"Install without scanning"**. It asks for no sensitive permission and installs nothing on your phone: it only sends ChouiTV to your TV.
 
@@ -283,7 +283,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 <h3 align="center">Install in three steps</h3>
 
 <table align="center">
-<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Download</b> the <code>ChouiTV-Installer.apk</code> file on your phone (the button above, or the QR code from another screen).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Open it.</b> If Android asks for permission, allow your browser or file manager to install apps once. An "unknown app" warning may appear: the code is open and you can build it yourself (<a href="#build">Build</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Open ChouiTV Installer</b> and follow the steps.</td></tr>
+<tr><td width="33%" valign="top" align="center">1️⃣<br><br><b>Download</b> the <code>ChouiTV-Installer.apk</code> file on your phone (the button above, or the QR code from another screen).</td><td width="33%" valign="top" align="center">2️⃣<br><br><b>Open it.</b> If Android asks for permission, allow your browser or file manager to install apps once. An "unknown app" warning may appear: the code is open and you can build it yourself (<a href="#build">Build</a>).</td><td width="33%" valign="top" align="center">3️⃣<br><br><b>Open ChouiTV Companion</b> and follow the steps.</td></tr>
 </table>
 
 <div align="center">
