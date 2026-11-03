@@ -529,6 +529,12 @@ final class Strings {
         k("tvs_rename", "غيّر الاسم", "Renommer", "Rename");
         k("tvs_forget", "انسَ هذا التلفاز", "Oublier cette télé", "Forget this TV");
         k("tvs_name_hint", "الاسم، مثل الصالون", "Nom (ex. Salon)", "Name (e.g. Living room)");
+        k("eq_t", "جهّز هذا التلفاز", "Équiper cette télé", "Set up this TV");
+        k("eq_d", "تنظيف، ثم ChouiTV، ثم ضبط: خطوة بخطوة.", "Nettoyer, installer ChouiTV, puis régler : pas à pas.", "Clean up, install ChouiTV, then set up: step by step.");
+        k("eq_ask_q", "ماذا نفعل بهذا التلفاز؟", "Que faire avec cette télé ?", "What to do with this TV?");
+        k("eq_ask_msg", "يمكنني تجهيزه خطوة بخطوة (تنظيف، ChouiTV، ضبط)، أو تستعمل جهاز التحكم فقط الآن.", "Je peux l\u2019équiper pas à pas (nettoyage, ChouiTV, réglages), ou vous utilisez seulement la télécommande pour l\u2019instant.", "I can set it up step by step (clean-up, ChouiTV, settings), or you can just use the remote for now.");
+        k("eq_ask_do", "جهّزه", "L\u2019équiper", "Set it up");
+        k("eq_ask_no", "جهاز التحكم فقط", "Seulement la télécommande", "Only the remote");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");

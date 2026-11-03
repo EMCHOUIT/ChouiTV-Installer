@@ -57,6 +57,7 @@ import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
 import ma.chouitv.installer.remote.Remote;
 import ma.chouitv.installer.remote.AppSlots;
+import ma.chouitv.installer.remote.Equip;
 import ma.chouitv.installer.remote.Apps;
 import ma.chouitv.installer.remote.LastTv;
 import ma.chouitv.installer.remote.Keycap;
@@ -220,6 +221,7 @@ public class MainActivity extends Activity {
             if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
             guideBar(body);
         }
+        if (guide != null && n == 5 && guide.path == Guide.Path.EQUIP) Equip.markEquipped(prefs(), curIp);
         if (guide != null && ((n == 5 && guide.path == Guide.Path.EQUIP) || n == 13)) clearGuide();
         switch (n) {
             case 0: language(body, button); break;
@@ -1457,6 +1459,14 @@ public class MainActivity extends Activity {
         remote.addView(rt, rtp);
         remote.setOnClickListener(v -> { if (!busy) quickRemote(); });
         body.addView(remote, lp(0, 4, 0, 0));
+        if (guide == null && Equip.offers(prefs(), curIp)) {   // a TV that was not set up yet: the first thing offered is to set it up, step by step
+            LinearLayout eq = card(true);
+            eq.setOrientation(LinearLayout.VERTICAL);
+            eq.addView(text(t("eq_t"), display, 21, GOLD));
+            eq.addView(text(t("eq_d"), regular, 13, MUTED), lp(0, 2, 0, 0));
+            eq.setOnClickListener(v -> { if (!busy) startEquip(); });
+            body.addView(eq, lp(0, 12, 0, 0));
+        }
         Object[][] cards = {
             {RcIcon.APPS, "hub_clean_t", "hub_clean_d", SPACE_CLEAN}, {RcIcon.TV, "hub_inst_t", "hub_inst_d", SPACE_INSTALL},
             {RcIcon.BOOK, "hub_get_t", "hub_get_d", SPACE_GET}, {RcIcon.KEYBOARD, "hub_send_t", "hub_send_d", SPACE_SEND}, {RcIcon.GEAR, "hub_react_t", "hub_react_d", SPACE_REACT}};
@@ -1967,9 +1977,12 @@ public class MainActivity extends Activity {
     }
 
     /** A task chosen on the home: straight to the TV used last (no preparation screen, no scan) when the user is not guided and a TV is known. */
-    private void startSpace(final int sp) {
+    private void startSpace(final int sp) { startSpace(sp, false); }
+
+    /** {@code withGuide}: a guided path whose TV is known also goes straight to it (the path keeps its own steps and bar). */
+    private void startSpace(final int sp, boolean withGuide) {
         space = sp;
-        if (!Nav.startsDirect(guide != null, LastTv.load(prefs()) != null)) { show(1); return; }
+        if (!Nav.startsDirect(guide != null && !withGuide, LastTv.load(prefs()) != null)) { show(1); return; }
         Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
         busy = true;
         bg.execute(() -> {
@@ -2451,7 +2464,7 @@ public class MainActivity extends Activity {
         if (space == SPACE_INSTALL) { busy = false; show(3); return; }
         if (space == SPACE_GET) { busy = false; show(14); return; }
         if (space == SPACE_SEND) { busy = false; show(17); return; }
-        if (space == SPACE_REMOTE) { busy = false; show(25); return; }
+        if (space == SPACE_REMOTE) { busy = false; show(25); if (Equip.shouldAsk(prefs(), curIp)) askWhatToDo(); return; }
         stopTicker();
         status.setTextColor(GOLD);
         status.setText(t(space == SPACE_CLEAN ? "cl_loading" : "re_loading"));
@@ -2923,12 +2936,28 @@ public class MainActivity extends Activity {
     }
 
     /** Starts or resumes a guided path: each space begins with the connection to the TV, except the step that only asks to change TV. */
+    /** The set-up of a TV, step by step (the existing guided path: clean up, install ChouiTV, set up). */
+    private void startEquip() {
+        guide = new Guide(Guide.Path.EQUIP);
+        saveGuide();
+        goGuided();
+    }
+
+    /** The first time a TV answers: what to do with it? The answer is asked once. */
+    private void askWhatToDo() {
+        final String ip = curIp;
+        Equip.markAsked(prefs(), ip);
+        new AlertDialog.Builder(this).setTitle(t("eq_ask_q")).setMessage(t("eq_ask_msg"))
+            .setPositiveButton(t("eq_ask_do"), (d, w) -> startEquip())
+            .setNegativeButton(t("eq_ask_no"), null).show();
+    }
+
     private void goGuided() {
         if (guide.path == Guide.Path.COPY && guide.step == 1) { show(21); return; }
         if (guide.path == Guide.Path.SEND && guide.step == 0) { show(20); return; }
         if (guide.path == Guide.Path.EQUIP && guide.step == 2) { guide.step = 1; saveGuide(); }   // the settings step needs the install's own state: redo from the install
         space = spaceFor(guide);
-        show(1);
+        startSpace(space, true);
     }
 
     private void modeScreen(LinearLayout body, TextView button) {
