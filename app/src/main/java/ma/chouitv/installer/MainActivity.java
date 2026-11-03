@@ -1999,6 +1999,7 @@ public class MainActivity extends Activity {
         TextView vol = rcPrinted("VOL");
         vol.setBackgroundColor(0xFF081A10);
         vol.setGravity(Gravity.CENTER);
+        bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);   // minus stays on the left and plus on the right, whatever the language
         bar.setBackground(Keycap.hard(density, 30));
         bar.setPadding(0, 0, 0, dp(3));
         bar.addView(vd, new LinearLayout.LayoutParams(0, dp(60), 1f));
