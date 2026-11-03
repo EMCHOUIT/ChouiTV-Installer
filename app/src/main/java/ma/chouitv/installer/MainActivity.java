@@ -127,10 +127,9 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         root.setBackground(background());
         setContentView(root);
-        if (sp.getString("lang", null) != null && LastTv.load(prefs()) != null) {
-            show(12);
-            if (sp.getBoolean("auto_remote", false)) ui.post(this::quickRemote);
-        } else show(0);
+        int first = Nav.firstScreen(sp.getString("lang", null) != null, LastTv.load(prefs()) != null);
+        show(first);
+        if (first == 12 && sp.getBoolean("auto_remote", false)) ui.post(this::quickRemote);
     }
 
     @Override
@@ -285,11 +284,55 @@ public class MainActivity extends Activity {
         return bar;
     }
 
+    /** About: the version, and a button that asks GitHub whether a newer one exists (then offers to download it). */
+    private void aboutDialog() {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        final android.app.Dialog d = rcDialog(c);
+        c.addView(rcDialogHead(t("about_title"), null, d));
+        c.addView(text(t("more_about_t", BuildInfo.VERSION), display, 20, SAND), lp(2, 12, 2, 0));
+        c.addView(text("ma.chouitv.installer", regular, 12, MUTED), lp(2, 2, 2, 0));
+        final TextView result = text("", regular, 14, SAND);
+        c.addView(result, lp(2, 12, 2, 0));
+        final TextView check = text(t("about_check"), medium, 17, DARK);
+        check.setGravity(Gravity.CENTER);
+        check.setBackground(rcShape(GOLD, 22, false));
+        check.setClickable(true);
+        check.setOnClickListener(v -> {
+            result.setTextColor(SAND);
+            result.setText(t("about_checking"));
+            bg.execute(() -> {
+                String tag = null;
+                try {
+                    java.net.HttpURLConnection h = (java.net.HttpURLConnection) new java.net.URL(UpdateCheck.LATEST_URL).openConnection();
+                    h.setConnectTimeout(6000);
+                    h.setReadTimeout(8000);
+                    h.setRequestProperty("Accept", "application/vnd.github+json");
+                    java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+                    try (InputStream in = h.getInputStream()) { byte[] b = new byte[4096]; int n; while ((n = in.read(b)) > 0) o.write(b, 0, n); }
+                    tag = UpdateCheck.tagOf(o.toString("UTF-8"));
+                } catch (Exception ignored) { }
+                final String latest = tag;
+                runOnUiThread(() -> {
+                    if (latest == null) { result.setTextColor(0xFFE8896B); result.setText(t("about_fail")); }
+                    else if (UpdateCheck.isNewer(BuildInfo.VERSION, latest)) {
+                        result.setText(t("about_new", latest.replaceFirst("^v", ""), BuildInfo.VERSION));
+                        check.setText(t("about_download"));
+                        check.setOnClickListener(x -> startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(UpdateCheck.DOWNLOAD_URL))));
+                    } else result.setText(t("about_uptodate", BuildInfo.VERSION));
+                });
+            });
+        });
+        c.addView(check, lp(0, 14, 0, 0));
+        ((LinearLayout.LayoutParams) check.getLayoutParams()).height = dp(52);
+        d.show();
+    }
+
     /** The «More» tab: language, which TV, how to work (guided or free), the volume scale, the help to turn the network debugging on, and the version. */
     private void moreScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("more_title"), t("more_sub"));
         Object[][] rows = {
-            {RcIcon.APPS, "more_lang"}, {RcIcon.TV, "more_tv"}, {RcIcon.REMOTE, "more_mode"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.KEYBOARD, "more_debug"}};
+            {RcIcon.APPS, "more_lang"}, {RcIcon.TV, "more_tv"}, {RcIcon.REMOTE, "more_mode"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.HOME, "more_about_row"}};
         for (int i = 0; i < rows.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
@@ -309,16 +352,14 @@ public class MainActivity extends Activity {
                     case 1: clearGuide(); space = SPACE_REMOTE; show(1); break;
                     case 2: show(18); break;
                     case 3: if (LastTv.load(prefs()) != null) rcVolumeDialog(); break;
-                    default: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
+                    case 4: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
+                    default: aboutDialog(); break;
                 }
             });
             LinearLayout.LayoutParams rp = lp(0, 8, 0, 0);
             rp.height = dp(64);
             body.addView(row, rp);
         }
-        TextView about = text(t("more_about_t", BuildInfo.VERSION), regular, 13, MUTED);
-        about.setGravity(Gravity.CENTER);
-        body.addView(about, lp(0, 20, 0, 8));
     }
 
     private void language(final LinearLayout body, TextView button) {
@@ -2355,17 +2396,17 @@ public class MainActivity extends Activity {
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setClipChildren(false);
-        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, 54, 54, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
-        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, 54, 54, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, 66, 66, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
+        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, 66, 66, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
         rcSlider = new RcSlider(this, display);
         rcSlider.setWords(t("rc_vol_w"), t("rc_vol_read"), t("rc_vol_release"), t("rc_vol_a11y"));
         volShowScale();
         rcSlider.setListener(level -> rcVolSet(level));
         rcHoldStep(vd, false);
         rcHoldStep(vu, true);
-        bar.addView(vd, new LinearLayout.LayoutParams(dp(54), dp(57)));
+        bar.addView(vd, new LinearLayout.LayoutParams(dp(66), dp(69)));
         bar.addView(rcSlider, new LinearLayout.LayoutParams(0, -2, 1f));
-        bar.addView(vu, new LinearLayout.LayoutParams(dp(54), dp(57)));
+        bar.addView(vu, new LinearLayout.LayoutParams(dp(66), dp(69)));
         bar.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
         LinearLayout volWell = rcWell(bar, 34, 4);
         volWell.setClipChildren(false);

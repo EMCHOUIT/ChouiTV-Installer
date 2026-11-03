@@ -511,6 +511,15 @@ final class Strings {
         k("more_debug", "تفعيل «تصحيح الشبكة» على التلفاز", "Activer le « Débogage réseau » sur la télé", "Turn on \"Network debugging\" on the TV");
         k("more_about", "حول", "À propos", "About");
         k("more_about_t", "ChouiTV Companion %s", "ChouiTV Companion %s", "ChouiTV Companion %s");
+        k("about_title", "حول التطبيق والتحديث", "À propos et mise à jour", "About and update");
+        k("about_check", "ابحث عن تحديث", "Rechercher une mise à jour", "Check for an update");
+        k("about_checking", "جارٍ البحث…", "Recherche…", "Checking…");
+        k("about_uptodate", "تطبيقك محدَّث (الإصدار %s).", "Votre appli est à jour (version %s).", "Your app is up to date (version %s).");
+        k("about_new", "إصدار جديد: %s (لديك %s). هل تنزّله؟", "Nouvelle version : %s (vous avez la %s). La télécharger ?", "New version: %s (you have %s). Download it?");
+        k("about_download", "نزّل", "Télécharger", "Download");
+        k("about_close", "إغلاق", "Fermer", "Close");
+        k("about_fail", "تعذّر البحث. تحقّق من الإنترنت ثم أعد المحاولة.", "Impossible de vérifier. Vérifiez Internet puis réessayez.", "Could not check. Check the Internet and try again.");
+        k("more_about_row", "حول التطبيق والتحديث", "À propos et mise à jour", "About and update");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la télé", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la télé", "Type on TV");

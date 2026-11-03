@@ -52,6 +52,15 @@ final class Nav {
     /** A task opened from the home goes straight to the TV used last (no preparation screen, no scan) when the user is not on a guided path and a TV is known. */
     static boolean startsDirect(boolean guided, boolean lastTvKnown) { return !guided && lastTvKnown; }
 
+    /** The language is asked on the very first use only; after that it is changed from «More». */
+    static boolean asksLanguage(boolean languageSaved) { return !languageSaved; }
+
+    /** The first screen when the app opens: the language (first use), «My TV» (a TV is known), else how to work (guided or free). */
+    static int firstScreen(boolean languageSaved, boolean tvKnown) {
+        if (asksLanguage(languageSaved)) return 0;
+        return tvKnown ? 12 : 18;
+    }
+
     /** A second press of Back within two seconds of the first leaves the app. */
     static boolean exitNow(long lastPress, long now) {
         return lastPress > 0 && now - lastPress <= DOUBLE_PRESS_MS;
