@@ -34,6 +34,7 @@ L'appli s'appelle désormais **ChouiTV Companion** (elle s'appelait ChouiTV Inst
 - **La télé est retenue** : à l'ouverture, une carte « Dernière télé » ouvre la télécommande d'un seul appui (ou directement, si vous le choisissez), et l'appli se reconnecte toute seule si le Wi-Fi ou la télé décroche.
 - **Éteindre** demande confirmation : une télé éteinte ainsi ne se rallume qu'avec sa télécommande d'origine.
 - **Accessible** : l'anneau est lu par TalkBack comme cinq boutons, et l'écran passe en arabe de droite à gauche.
+- **Un volume rapide et précis** (1.8.1) : un curseur règle le niveau de 0 à 100 en une seule commande, le niveau est lu sur la télé, et une limite « Volume maximum » protège les oreilles de la famille.
 
 La télécommande a besoin que le « Débogage réseau » soit activé sur la télé, comme le reste de l'appli.
 
@@ -241,10 +242,10 @@ JDK 17 et Android SDK (plateforme 34) :
 git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease      # le fichier est dans app/build/outputs/apk/release
-./gradlew :app:testDebugUnitTest    # 159 tests sur la JVM
+./gradlew :app:testDebugUnitTest    # 166 tests sur la JVM
 ```
 
-Version actuelle : **1.8** (`versionCode 13`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **1.8.1** (`versionCode 14`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -254,6 +255,7 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **1.8.1** | Volume : un curseur qui règle le niveau en une seule commande (environ 12 fois plus vite qu'une touche), le niveau lu sur la télé, des touches − et + qui s'arrêtent dès que le doigt se lève, un muet qui se souvient du niveau, et un « Volume maximum » au choix de la famille |
 | **1.8** | **ChouiTV Companion** : une télécommande en relief (pavé à quatre secteurs, Retour, Accueil, Muet, volume, veille avec confirmation), six raccourcis (Coran et radio, Chaînes, Applications, Écran de veille, Écrire sur la télé, Réglages de la télé), écriture sur la télé en arabe aussi, six boutons d'applis avec nom et icône réels, dernière télé retenue avec reconnexion automatique, TalkBack, arabe de droite à gauche |
 | **1.7** | Nettoyage plus sûr : les listes de nettoyage sont signées et la liste protégée ne peut que grandir ; les applis inconnues sont montrées mais pas cochées ; la liste protégée est revérifiée juste avant chaque changement ; une carte « Après un redémarrage » dit ce qui est resté éteint et ce que la TV a remis en marche toute seule ; après avoir rallumé un service système, l'appli dit de redémarrer la TV |
 | **1.6.2** | Le nettoyage ne désactive plus le service TV de Xiaomi ni le Mi TV Manager (Réglages > TV > Image en a besoin) |
