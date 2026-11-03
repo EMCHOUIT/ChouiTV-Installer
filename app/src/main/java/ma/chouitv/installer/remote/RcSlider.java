@@ -153,12 +153,15 @@ public final class RcSlider extends View {
         text.setColor(0xFFE9D9A6);
         text.setLetterSpacing(0.1f);
         text.setTextAlign(right ? Paint.Align.RIGHT : Paint.Align.LEFT);
-        c.drawText(word, right ? w - 8f * d : 8f * d, 14f * d, text);
+        if (!dragging) {
+            c.drawText(word, right ? w - 8f * d : 8f * d, 14f * d, text);
+            text.setLetterSpacing(0f);
+            text.setTextAlign(right ? Paint.Align.LEFT : Paint.Align.RIGHT);
+            text.setColor(known ? 0xFFF6EFE0 : 0xFFC6BBA4);
+            String top = known ? lv + " / " + max : failed ? "?" : reading;
+            c.drawText(top, right ? 8f * d : w - 8f * d, 14f * d, text);
+        }
         text.setLetterSpacing(0f);
-        text.setTextAlign(right ? Paint.Align.LEFT : Paint.Align.RIGHT);
-        text.setColor(known ? 0xFFF6EFE0 : 0xFFC6BBA4);
-        String top = known ? lv + " / " + max : failed ? "?" : reading;
-        c.drawText(top, right ? 8f * d : w - 8f * d, 14f * d, text);
 
         // the rail, sunk
         float cy = 41f * d, half = 9f * d;
@@ -213,21 +216,21 @@ public final class RcSlider extends View {
         text.setColor(INK);
         c.drawText(known ? String.valueOf(lv) : "?", kx, cy + 5.5f * d, text);
 
-        // while dragging: a bubble above the knob with the level and the hint
+        // while dragging: a pill on the top row, over the knob, with the level and the hint (it stays inside the view, nothing is cut)
         if (dragging && known) {
-            float bw = 104f * d, bh = 50f * d;
-            float bx = Math.max(bw / 2f, Math.min(w - bw / 2f, kx)), by = cy - kr - 10f * d - bh;
-            r.set(bx - bw / 2f, by, bx + bw / 2f, by + bh);
+            String msg = lv + (release.isEmpty() ? "" : "  ·  " + release);
+            text.setTypeface(Typeface.DEFAULT_BOLD);
+            text.setTextSize(12f * d);
+            text.setTextAlign(Paint.Align.CENTER);
+            float tw = text.measureText(msg), bw = Math.min(w - 8f * d, tw + 22f * d), bh = 21f * d;
+            float bx = Math.max(bw / 2f + 4f * d, Math.min(w - bw / 2f - 4f * d, kx));
+            r.set(bx - bw / 2f, 1f * d, bx + bw / 2f, 1f * d + bh);
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(null);
             p.setColor(limit > 0 && lv >= limit ? 0xFFF3C9C2 : 0xFFF6EFE0);
-            c.drawRoundRect(r, 14f * d, 14f * d, p);
+            c.drawRoundRect(r, bh / 2f, bh / 2f, p);
             text.setColor(INK);
-            text.setTypeface(face != null ? face : Typeface.DEFAULT_BOLD);
-            text.setTextSize(22f * d);
-            c.drawText(String.valueOf(lv), bx, by + 26f * d, text);
-            text.setTypeface(Typeface.DEFAULT);
-            text.setTextSize(11f * d);
-            text.setColor(0xFF4A4636);
-            c.drawText(release, bx, by + 42f * d, text);
+            c.drawText(msg, bx, 1f * d + bh / 2f + 4.2f * d, text);
         }
     }
 
