@@ -1909,7 +1909,7 @@ public class MainActivity extends Activity {
         android.graphics.drawable.LayerDrawable bedLayers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {bed, getDrawable(R.drawable.ic_star8)});
         bedLayers.setLayerInset(1, dp(12), dp(12), dp(12), dp(12));
         cross.setBackground(bedLayers);
-        int[][] pos = {{98, 10, 104, 76}, {98, 214, 104, 76}, {10, 98, 76, 104}, {214, 98, 76, 104}};   // x, y, w, h (dp) of up, down, left, right
+        int[][] pos = {{112, 8, 116, 84}, {112, 248, 116, 84}, {8, 112, 84, 116}, {248, 112, 84, 116}};   // x, y, w, h (dp) of up, down, left, right
         int[] icons = {RcIcon.UP, RcIcon.DOWN, RcIcon.LEFT, RcIcon.RIGHT};
         int[] codes = {Remote.UP, Remote.DOWN, Remote.LEFT, Remote.RIGHT};
         String[] spoken = {"▲", "▼", "◀", "▶"};
@@ -1921,7 +1921,7 @@ public class MainActivity extends Activity {
             rcHold(a, codes[i]);
             cross.addView(a, fp);
         }
-        TextView ok = text("OK", display, 26, DARK);
+        TextView ok = text("OK", display, 30, DARK);
         ok.setGravity(Gravity.CENTER);
         GradientDrawable okShape = new GradientDrawable();
         okShape.setShape(GradientDrawable.OVAL);
@@ -1930,16 +1930,16 @@ public class MainActivity extends Activity {
         okRing.setShape(GradientDrawable.OVAL);
         okRing.setStroke(dp(1), 0x66402E0A);
         android.graphics.drawable.LayerDrawable okLayers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {okShape, okRing});
-        okLayers.setLayerInset(1, dp(7), dp(7), dp(7), dp(7));
+        okLayers.setLayerInset(1, dp(8), dp(8), dp(8), dp(8));
         ok.setBackground(okLayers);
         ok.setClickable(true);
         ok.setContentDescription("OK");
         rcTap(ok, () -> rcKey(Remote.OK));
-        FrameLayout.LayoutParams okp = new FrameLayout.LayoutParams(dp(96), dp(96));
-        okp.leftMargin = dp(102);
-        okp.topMargin = dp(102);
+        FrameLayout.LayoutParams okp = new FrameLayout.LayoutParams(dp(112), dp(112));
+        okp.leftMargin = dp(114);
+        okp.topMargin = dp(114);
         cross.addView(ok, okp);
-        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(dp(300), dp(300));
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(dp(340), dp(340));
         cl.gravity = Gravity.CENTER_HORIZONTAL;
         cl.topMargin = dp(10);
         body.addView(cross, cl);
