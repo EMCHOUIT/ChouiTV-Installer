@@ -1403,10 +1403,21 @@ public class MainActivity extends Activity {
         b.setClickable(true);
         b.setFocusable(true);
         b.setContentDescription(spoken == null ? label : spoken);
-        int isz = label == null ? 28 : 26;
-        b.addView(new RcIcon(this, icon, iconColor), new LinearLayout.LayoutParams(dp(isz), dp(isz)));
+        if (label != null && h >= 90) {   // the big tiles: the icon sits in a gold-ringed medallion
+            FrameLayout med = new FrameLayout(this);
+            GradientDrawable m = new GradientDrawable();
+            m.setShape(GradientDrawable.OVAL);
+            m.setColor(0xFF0E2418);
+            m.setStroke(dp(1), 0xAAD6AF6B);
+            med.setBackground(m);
+            med.addView(new RcIcon(this, icon, iconColor), new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
+            b.addView(med, new LinearLayout.LayoutParams(dp(46), dp(46)));
+        } else {
+            int isz = label == null ? 30 : 26;
+            b.addView(new RcIcon(this, icon, iconColor), new LinearLayout.LayoutParams(dp(isz), dp(isz)));
+        }
         if (label != null) {
-            TextView tv1 = text(label, medium, 13, SAND);
+            TextView tv1 = text(label, medium, 14, SAND);
             tv1.setGravity(Gravity.CENTER);
             tv1.setMaxLines(2);
             b.addView(tv1, lp(4, 3, 4, 0));
@@ -1839,7 +1850,9 @@ public class MainActivity extends Activity {
         bed.setShape(GradientDrawable.OVAL);
         bed.setColor(0xFF0B1F14);
         bed.setStroke(dp(1), 0x55D6AF6B);
-        cross.setBackground(bed);
+        android.graphics.drawable.LayerDrawable bedLayers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {bed, getDrawable(R.drawable.ic_star8)});
+        bedLayers.setLayerInset(1, dp(12), dp(12), dp(12), dp(12));
+        cross.setBackground(bedLayers);
         int[][] pos = {{98, 10, 104, 76}, {98, 214, 104, 76}, {10, 98, 76, 104}, {214, 98, 76, 104}};   // x, y, w, h (dp) of up, down, left, right
         int[] icons = {RcIcon.UP, RcIcon.DOWN, RcIcon.LEFT, RcIcon.RIGHT};
         int[] codes = {Remote.UP, Remote.DOWN, Remote.LEFT, Remote.RIGHT};
@@ -1857,7 +1870,12 @@ public class MainActivity extends Activity {
         GradientDrawable okShape = new GradientDrawable();
         okShape.setShape(GradientDrawable.OVAL);
         okShape.setColor(GOLD);
-        ok.setBackground(okShape);
+        GradientDrawable okRing = new GradientDrawable();
+        okRing.setShape(GradientDrawable.OVAL);
+        okRing.setStroke(dp(1), 0x66402E0A);
+        android.graphics.drawable.LayerDrawable okLayers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {okShape, okRing});
+        okLayers.setLayerInset(1, dp(7), dp(7), dp(7), dp(7));
+        ok.setBackground(okLayers);
         ok.setClickable(true);
         ok.setContentDescription("OK");
         rcTap(ok, () -> rcKey(Remote.OK));
