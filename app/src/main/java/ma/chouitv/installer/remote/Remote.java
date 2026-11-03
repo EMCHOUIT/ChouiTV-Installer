@@ -54,6 +54,15 @@ public final class Remote {
 
     public static String open(Target t) { return "am start -n " + t.component; }
 
+    /** Starts an app of the TV from its package, through its TV launcher entry (no need to know the activity). */
+    public static String launch(String pkg) {
+        if (!Guard.validPackage(pkg)) throw new IllegalArgumentException("not a package name: " + pkg);
+        return "monkey -p " + pkg + " -c android.intent.category.LEANBACK_LAUNCHER 1";
+    }
+
+    /** The settings of the TV. */
+    public static String settings() { return "am start -a android.settings.SETTINGS"; }
+
     /** Types {@code text} into the field that has the focus on the TV. Throws when the TV refuses the clipboard: nothing is pasted then. */
     public static void sendText(Shell tv, String text) throws IOException {
         if (text == null || text.trim().isEmpty()) throw new IllegalArgumentException("nothing to send");

@@ -56,7 +56,11 @@ import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
 import ma.chouitv.installer.remote.Remote;
-import ma.chouitv.installer.remote.RemoteView;
+import ma.chouitv.installer.remote.AppSlots;
+import ma.chouitv.installer.remote.Apps;
+import ma.chouitv.installer.remote.LastTv;
+import ma.chouitv.installer.remote.RcIcon;
+import ma.chouitv.installer.remote.Reconnect;
 
 import static ma.chouitv.installer.Strings.t;
 
@@ -117,7 +121,10 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         root.setBackground(background());
         setContentView(root);
-        show(0);
+        if (sp.getString("lang", null) != null && LastTv.load(prefs()) != null) {
+            show(12);
+            if (sp.getBoolean("auto_remote", false)) ui.post(this::quickRemote);
+        } else show(0);
     }
 
     @Override
@@ -411,6 +418,7 @@ public class MainActivity extends Activity {
                 tvModel = model;
                 try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
                 getSharedPreferences("installer", MODE_PRIVATE).edit().putString("tv_" + ip, tvBrand + "|" + model).apply();
+                LastTv.save(prefs(), ip, (tvBrand + " " + model).trim());
                 runOnUiThread(() -> afterConnect(button, status));
             } catch (final Exception e) {
                 runOnUiThread(() -> {
@@ -1284,6 +1292,33 @@ public class MainActivity extends Activity {
         cleanedHere = false;
         cleanFromDone = false;
         titleBlock(body, t("hub_title"), t("hub_sub"));
+        final LastTv lastTv = LastTv.load(prefs());
+        if (lastTv != null) {
+            LinearLayout lc = card(true);
+            lc.setOrientation(LinearLayout.VERTICAL);
+            lc.addView(chip(t("last_tv"), GOLD, DARK, 0));
+            lc.addView(text(lastTv.name, display, 21, SAND), lp(0, 6, 0, 0));
+            lc.addView(text(lastTv.ip, regular, 13, MUTED), lp(0, 2, 0, 0));
+            TextView go = text(t("last_open"), medium, 17, DARK);
+            go.setGravity(Gravity.CENTER);
+            go.setBackground(rcShape(GOLD, 26, false));
+            go.setClickable(true);
+            go.setOnClickListener(v -> quickRemote());
+            lc.addView(go, lp(0, 12, 0, 0));
+            ((LinearLayout.LayoutParams) go.getLayoutParams()).height = dp(52);
+            final boolean auto = getSharedPreferences("installer", MODE_PRIVATE).getBoolean("auto_remote", false);
+            TextView sw = text((auto ? "\u2611  " : "\u2610  ") + t("last_auto"), regular, 13, LINK);
+            sw.setMinHeight(dp(44));
+            sw.setGravity(Gravity.CENTER_VERTICAL);
+            sw.setOnClickListener(v -> { getSharedPreferences("installer", MODE_PRIVATE).edit().putBoolean("auto_remote", !auto).apply(); show(12); });
+            lc.addView(sw, lp(0, 6, 0, 0));
+            TextView other = text(t("last_other"), regular, 13, LINK);
+            other.setMinHeight(dp(44));
+            other.setGravity(Gravity.CENTER_VERTICAL);
+            other.setOnClickListener(v -> { clearGuide(); space = SPACE_REMOTE; show(1); });
+            lc.addView(other);
+            body.addView(lc, lp(0, 4, 0, 4));
+        }
         String[][] cards = {{"1", "hub_clean_t", "hub_clean_d", "hub_clean_tag"}, {"2", "hub_inst_t", "hub_inst_d", "hub_inst_tag"}, {"3", "hub_get_t", "hub_get_d", "hub_get_tag"}, {"4", "hub_send_t", "hub_send_d", "hub_send_tag"}, {"5", "hub_react_t", "hub_react_d", "hub_react_tag"}, {"6", "hub_rc_t", "hub_rc_d", "hub_rc_tag"}};
         for (int i = 0; i < cards.length; i++) {
             final int sp = i == 0 ? SPACE_CLEAN : i == 1 ? SPACE_INSTALL : i == 2 ? SPACE_GET : i == 3 ? SPACE_SEND : i == 4 ? SPACE_REACT : SPACE_REMOTE;
@@ -1311,52 +1346,153 @@ public class MainActivity extends Activity {
 
     // ---------- the remote control ----------
 
-    private TextView rcBtn(String label, int fill, int color, final Runnable act) {
-        TextView b = text(label, medium, 17, color);
-        b.setGravity(Gravity.CENTER);
-        b.setPadding(dp(6), dp(14), dp(6), dp(14));
+    private static final int RC_OK = 0, RC_RECONNECTING = 1, RC_OFFLINE = 2;
+    private static final int KEY_FILL = 0xFF1F4A33, KEY_PRESSED = 0xFF2C6445, TILE_FILL = 0xFF16382A, KEY_LINE = 0x88D6AF6B;
+    private TextView rcPillName, rcPillSub;
+    private View rcPillDot;
+    private AppSlots rcSlots;
+    private List<String> rcTvApps;
+    private volatile int rcState = RC_OK;
+
+    private interface Op { void run() throws Exception; }
+
+    private LastTv.Store prefs() {
+        final SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
+        return new LastTv.Store() {
+            @Override public String get(String k) { return sp.getString(k, null); }
+            @Override public void put(String k, String v) { sp.edit().putString(k, v).apply(); }
+        };
+    }
+
+    private GradientDrawable rcShape(int fill, int radiusDp, boolean line) {
         GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(14));
+        g.setCornerRadius(dp(radiusDp));
         g.setColor(fill);
-        g.setStroke(dp(1), 0x66D6AF6B);
-        b.setBackground(g);
+        if (line) g.setStroke(dp(1), KEY_LINE);
+        return g;
+    }
+
+    private android.graphics.drawable.StateListDrawable rcStates(int fill, int radiusDp, boolean line) {
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        s.addState(new int[] {android.R.attr.state_pressed}, rcShape(KEY_PRESSED, radiusDp, line));
+        s.addState(new int[] {}, rcShape(fill, radiusDp, line));
+        return s;
+    }
+
+    /** A key: an icon (and a label under it when given) on a rounded raised shape. {@code spoken} is what a screen reader says. */
+    private LinearLayout rcKeyBtn(int icon, String label, int w, int h, int fill, int radiusDp, int iconColor, String spoken) {
+        LinearLayout b = new LinearLayout(this);
+        b.setOrientation(LinearLayout.VERTICAL);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(rcStates(fill, radiusDp, true));
         b.setClickable(true);
-        b.setOnClickListener(v -> act.run());
+        b.setFocusable(true);
+        b.setContentDescription(spoken == null ? label : spoken);
+        int isz = label == null ? 28 : 26;
+        b.addView(new RcIcon(this, icon, iconColor), new LinearLayout.LayoutParams(dp(isz), dp(isz)));
+        if (label != null) {
+            TextView tv1 = text(label, medium, 13, SAND);
+            tv1.setGravity(Gravity.CENTER);
+            tv1.setMaxLines(2);
+            b.addView(tv1, lp(4, 3, 4, 0));
+        }
+        b.setLayoutParams(new LinearLayout.LayoutParams(w <= 0 ? 0 : dp(w), dp(h), w <= 0 ? 1f : 0f));
         return b;
     }
 
-    /** An empty cell of the pad: no frame. */
-    private TextView rcGap() { TextView g = text("", regular, 17, SAND); g.setPadding(dp(6), dp(14), dp(6), dp(14)); return g; }
+    /** Taps send the key at once; a finger kept down on an arrow or the volume repeats it (after 0.4 s, then every 0.12 s). */
+    private void rcHold(final View v, final int code) {
+        final Runnable[] again = new Runnable[1];
+        again[0] = new Runnable() { @Override public void run() { rcKey(code); ui.postDelayed(this, 120); } };
+        v.setOnTouchListener((x, e) -> {
+            switch (e.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    x.setPressed(true);
+                    x.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                    rcKey(code);
+                    ui.postDelayed(again[0], 400);
+                    return true;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    x.setPressed(false);
+                    ui.removeCallbacks(again[0]);
+                    return true;
+                default:
+                    return true;
+            }
+        });
+    }
 
-    private LinearLayout rcRow(TextView... cells) {
-        LinearLayout r = new LinearLayout(this);
-        r.setOrientation(LinearLayout.HORIZONTAL);
-        for (TextView c : cells) {
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            p.setMargins(dp(4), dp(8), dp(4), dp(8));   // room to put the finger on the button that is meant
-            r.addView(c, p);
-        }
-        return r;
+    private void rcTap(View v, final Runnable act) {
+        v.setOnClickListener(x -> { x.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP); act.run(); });
     }
 
     private void rcFail(final Exception e) {
         runOnUiThread(() -> Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_SHORT).show());
     }
 
-    private void rcKey(final int code) {
-        bg.execute(() -> { try { flow.shell().run(Remote.key(code)); } catch (Exception e) { rcFail(e); } });
+    /** What the status pill says: connected, reconnecting (with the try number), or off. */
+    private void rcStatus(final int state, final int attempt) {
+        rcState = state;
+        runOnUiThread(() -> {
+            if (rcPillSub == null) return;
+            LastTv last = LastTv.load(prefs());
+            String ip = last == null ? "" : last.ip;
+            String s = state == RC_OK ? t("rc_st_ok") : state == RC_RECONNECTING ? t("rc_st_re", attempt, Reconnect.MAX_TRIES) : t("rc_st_off");
+            rcPillSub.setText(ip.isEmpty() ? s : ip + " · " + s);
+            rcPillDot.setBackground(rcShape(state == RC_OK ? 0xFF4CD37F : state == RC_RECONNECTING ? 0xFFD6AF6B : 0xFFE8896B, 8, false));
+        });
     }
 
-    private void rcOpen(final Remote.Target target) {
+    /** Runs a command on the TV. If the link dropped, gets it back (a few tries, growing waits) and sends the command once more. */
+    private void rcRun(final Op op) {
         bg.execute(() -> {
             try {
-                String pkg = target.pkg();
-                if (pkg != null && !Remote.installed(flow.shell(), pkg)) { runOnUiThread(() -> rcMissing(target)); return; }
-                if (Remote.start(flow.shell(), target) == Remote.Started.NOT_OPENABLE) {
-                    runOnUiThread(() -> Toast.makeText(this, t("rc_need_update"), Toast.LENGTH_LONG).show());
-                    flow.shell().run(Remote.open(Remote.Target.HOME));   // at least the home opens
+                op.run();
+                if (rcState != RC_OK) rcStatus(RC_OK, 0);
+            } catch (Exception e) {
+                if (!Reconnect.worthRetrying(e)) { rcFail(e); return; }
+                if (rcReconnect()) {
+                    try { op.run(); } catch (Exception e2) { rcFail(e2); }
                 }
-            } catch (Exception e) { rcFail(e); }
+            }
+        });
+    }
+
+    /** Reconnects to the remembered TV (on the background thread). False when it does not answer after the tries. */
+    private boolean rcReconnect() {
+        LastTv last = LastTv.load(prefs());
+        if (last == null) { rcStatus(RC_OFFLINE, 0); return false; }
+        for (int a = 1; !Reconnect.giveUp(a); a++) {
+            rcStatus(RC_RECONNECTING, a);
+            try {
+                if (a > 1) Thread.sleep(Reconnect.delayMs(a - 1));
+                Adb n = Adb.connect(last.ip, 5555, new File(getFilesDir(), "keys"));
+                if (tv != null && tv != n) tv.close();
+                tv = n;
+                flow = new Flow(n, getCacheDir());
+                flow.ask = this::askRemoval;
+                rcStatus(RC_OK, 0);
+                return true;
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return false;
+            } catch (Exception ignored) { }
+        }
+        rcStatus(RC_OFFLINE, 0);
+        return false;
+    }
+
+    private void rcKey(final int code) { rcRun(() -> flow.shell().run(Remote.key(code))); }
+
+    private void rcOpen(final Remote.Target target) {
+        rcRun(() -> {
+            String pkg = target.pkg();
+            if (pkg != null && !Remote.installed(flow.shell(), pkg)) { runOnUiThread(() -> rcMissing(target)); return; }
+            if (Remote.start(flow.shell(), target) == Remote.Started.NOT_OPENABLE) {
+                runOnUiThread(() -> Toast.makeText(this, t("rc_need_update"), Toast.LENGTH_LONG).show());
+                flow.shell().run(Remote.open(Remote.Target.HOME));   // at least the home opens
+            }
         });
     }
 
@@ -1378,54 +1514,380 @@ public class MainActivity extends Activity {
         if (!size.equals(String.valueOf(f.length()))) flow.pushFile(f, Remote.HELPER_REMOTE);
     }
 
-    private void remoteScreen(LinearLayout body, final TextView button) {
-        final int fill = 0xFF12331F;
-        titleBlock(body, t("rc_title"), t("rc_sub"));
-        final RemoteView pad = new RemoteView(this);
-        pad.setListener(code -> rcKey(code));
-        LinearLayout.LayoutParams padLp = lp(0, 8, 0, 8);
-        padLp.gravity = Gravity.CENTER_HORIZONTAL;
-        body.addView(pad, padLp);
+    /** A pop-up card in the app's look: dark green, gold line, wide, centred. */
+    private android.app.Dialog rcDialog(LinearLayout content) {
+        final android.app.Dialog d = new android.app.Dialog(this);
+        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        content.setBackground(rcShape(0xFF12331F, 24, true));
+        content.setPadding(dp(16), dp(16), dp(16), dp(16));
+        d.setContentView(content);
+        android.view.Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+            w.setLayout((int) (getResources().getDisplayMetrics().widthPixels * 0.94f), android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+            w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+        return d;
+    }
 
-        sectionLabel(body, t("rc_open_h"));
-        body.addView(rcRow(rcBtn(t("rc_saver"), fill, GOLD, () -> rcOpen(Remote.Target.SAVER))));
-        body.addView(rcRow(rcBtn(t("rc_listen"), fill, GOLD, () -> rcOpen(Remote.Target.LISTEN))));
-        body.addView(rcRow(rcBtn(t("rc_channels"), fill, GOLD, () -> rcOpen(Remote.Target.CHANNELS))));
+    private LinearLayout rcDialogHead(String title, String sub, final android.app.Dialog d) {
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(text(title, display, 21, SAND));
+        if (sub != null) col.addView(text(sub, regular, 13, MUTED));
+        head.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView x = text("✕", medium, 20, GOLD);
+        x.setGravity(Gravity.CENTER);
+        x.setContentDescription(t("rc_close"));
+        x.setOnClickListener(v -> d.dismiss());
+        head.addView(x, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        return head;
+    }
 
-        sectionLabel(body, t("rc_text_h"));
+    private String rcTvKey() {
+        LastTv l = LastTv.load(prefs());
+        return l == null ? "tv" : l.ip;
+    }
+
+    private void rcPowerAsk() {
+        LastTv l = LastTv.load(prefs());
+        confirmGrave(t("rc_pw_q", l == null ? "TV" : l.name), t("rc_pw_msg"), t("rc_pw_keep"), t("rc_pw_do"), () -> rcKey(Remote.POWER));
+    }
+
+    private void rcMoreMenu() {
+        String[] items = {t("rc_menu"), t("rc_switch")};
+        new AlertDialog.Builder(this).setTitle(t("rc_more")).setItems(items, (d, which) -> {
+            if (which == 0) rcKey(Remote.MENU);
+            else { space = SPACE_REMOTE; show(2); }
+        }).show();
+    }
+
+    private void rcTextDialog() {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        final android.app.Dialog d = rcDialog(c);
+        c.addView(rcDialogHead(t("rc_write"), null, d));
         final android.widget.EditText et = new android.widget.EditText(this);
         et.setHint(t("rc_text_hint"));
-        et.setHintTextColor(MUTED);
-        et.setTextColor(SAND);
-        et.setTextSize(17);
-        et.setMinLines(2);
+        et.setHintTextColor(0xFF7A7567);
+        et.setTextColor(0xFF1B1B1B);
+        et.setTextSize(19);
+        et.setMinLines(3);
         et.setGravity(Gravity.TOP | Gravity.START);
-        GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(12));
-        g.setColor(0xFF0F2A1B);
-        g.setStroke(dp(1), 0x66D6AF6B);
-        et.setBackground(g);
-        et.setPadding(dp(12), dp(10), dp(12), dp(10));
-        body.addView(et, lp(4, 4, 4, 0));
-        body.addView(text(t("rc_text_tip"), regular, 12, MUTED), lp(6, 4, 6, 0));
-        // Send is the main button of the bottom area, so it rides just above the phone keyboard; the way back is the quiet link under it
-        button.setText(t("rc_send"));
-        button.setOnClickListener(v -> {
+        et.setBackground(rcShape(0xFFF6EFE0, 14, true));
+        et.setPadding(dp(14), dp(12), dp(14), dp(12));
+        c.addView(et, lp(0, 10, 0, 0));
+        c.addView(text(t("rc_text_tip"), regular, 12, MUTED), lp(2, 6, 2, 0));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        TextView clear = text(t("rc_clear"), medium, 17, SAND);
+        clear.setGravity(Gravity.CENTER);
+        clear.setBackground(rcStates(KEY_FILL, 22, true));
+        clear.setClickable(true);
+        clear.setOnClickListener(v -> et.setText(""));
+        TextView send = text(t("rc_send"), medium, 17, DARK);
+        send.setGravity(Gravity.CENTER);
+        send.setBackground(rcShape(GOLD, 22, false));
+        send.setClickable(true);
+        send.setOnClickListener(v -> {
             final String s = et.getText().toString();
             if (s.trim().isEmpty()) { Toast.makeText(this, t("rc_empty"), Toast.LENGTH_SHORT).show(); return; }
-            bg.execute(() -> {
+            rcRun(() -> {
                 try {
                     rcEnsureHelper();
                     Remote.sendText(flow.shell(), s);
                     runOnUiThread(() -> { et.setText(""); Toast.makeText(this, t("rc_sent"), Toast.LENGTH_SHORT).show(); });
                 } catch (IllegalArgumentException e) {
                     runOnUiThread(() -> Toast.makeText(this, t("rc_too_long", Remote.MAX_TEXT), Toast.LENGTH_SHORT).show());
-                } catch (Exception e) {
+                } catch (IOException e) {
+                    if (Reconnect.worthRetrying(e) && !String.valueOf(e.getMessage()).startsWith("the TV did not take")) throw e;
                     runOnUiThread(() -> Toast.makeText(this, t("rc_text_fail", friendly(e, "", false)), Toast.LENGTH_LONG).show());
                 }
             });
         });
-        secondaryBelow(button, t("cl_home"), () -> show(12));
+        row.addView(clear, new LinearLayout.LayoutParams(0, dp(52), 1f));
+        LinearLayout.LayoutParams sp1 = new LinearLayout.LayoutParams(0, dp(52), 1.4f);
+        sp1.setMarginStart(dp(10));
+        row.addView(send, sp1);
+        c.addView(row, lp(0, 12, 0, 0));
+        d.show();
+        et.requestFocus();
+    }
+
+    private void rcAppsDialog() {
+        rcSlots = AppSlots.load(prefs(), rcTvKey());
+        showAppsDialog(false);
+    }
+
+    private void showAppsDialog(final boolean edit) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        final android.app.Dialog d = rcDialog(c);
+        c.addView(rcDialogHead(t("rc_apps"), edit ? t("rc_edit") : t("rc_apps_sub"), d));
+        for (int r = 0; r < 2; r++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            for (int k = 0; k < 3; k++) {
+                final int i = r * 3 + k;
+                final String pkg = rcSlots.get(i);
+                LinearLayout cell = new LinearLayout(this);
+                cell.setOrientation(LinearLayout.VERTICAL);
+                cell.setGravity(Gravity.CENTER);
+                cell.setBackground(pkg == null ? rcShape(0x00000000, 16, true) : rcStates(TILE_FILL, 16, true));
+                cell.setClickable(true);
+                TextView initial = text(pkg == null ? "+" : Apps.label(pkg).substring(0, 1).toUpperCase(), display, 22, GOLD);
+                initial.setGravity(Gravity.CENTER);
+                initial.setBackground(rcShape(0xFF0E2418, 22, true));
+                cell.addView(initial, new LinearLayout.LayoutParams(dp(44), dp(44)));
+                TextView name = text(pkg == null ? t("rc_add") : Apps.label(pkg) + (edit ? " ✎" : ""), medium, 13, pkg == null ? MUTED : SAND);
+                name.setGravity(Gravity.CENTER);
+                name.setMaxLines(2);
+                cell.addView(name, lp(4, 6, 4, 0));
+                cell.setContentDescription(pkg == null ? t("rc_add") : Apps.label(pkg));
+                cell.setOnClickListener(v -> {
+                    if (pkg == null || edit) { d.dismiss(); rcPick(i); return; }
+                    d.dismiss();
+                    rcRun(() -> flow.shell().run(Remote.launch(pkg)));
+                });
+                cell.setOnLongClickListener(v -> { d.dismiss(); rcPick(i); return true; });
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(112), 1f);
+                cp.setMargins(dp(5), dp(5), dp(5), dp(5));
+                row.addView(cell, cp);
+            }
+            c.addView(row, lp(0, r == 0 ? 10 : 0, 0, 0));
+        }
+        TextView toggle = text(edit ? t("rc_done") : t("rc_edit"), medium, 17, edit ? DARK : SAND);
+        toggle.setGravity(Gravity.CENTER);
+        toggle.setBackground(edit ? rcShape(GOLD, 22, false) : rcStates(KEY_FILL, 22, true));
+        toggle.setClickable(true);
+        toggle.setOnClickListener(v -> { d.dismiss(); showAppsDialog(!edit); });
+        c.addView(toggle, lp(5, 8, 5, 0));
+        ((LinearLayout.LayoutParams) toggle.getLayoutParams()).height = dp(52);
+        c.addView(text(t("rc_tip_edit"), regular, 12, MUTED), lp(4, 8, 4, 0));
+        d.show();
+    }
+
+    /** The list of the TV's apps, to put one on slot {@code slot}. */
+    private void rcPick(final int slot) {
+        final Toast wait = Toast.makeText(this, t("rc_apps_wait"), Toast.LENGTH_SHORT);
+        if (rcTvApps == null) wait.show();
+        bg.execute(() -> {
+            try {
+                if (rcTvApps == null) rcTvApps = Apps.choices(Apps.parse(flow.shell().run(Apps.LIST_COMMAND)));
+            } catch (Exception e) { rcFail(e); }
+            runOnUiThread(() -> showPicker(slot));
+        });
+    }
+
+    private void showPicker(final int slot) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        final android.app.Dialog d = rcDialog(c);
+        c.addView(rcDialogHead(t("rc_pick", slot + 1), null, d));
+        List<String> apps = rcTvApps == null ? new ArrayList<String>() : rcTvApps;
+        if (apps.isEmpty()) c.addView(text(t("rc_apps_none"), regular, 15, MUTED), lp(4, 14, 4, 14));
+        ScrollView sv = new ScrollView(this);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        for (final String pkg : apps) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setBackground(rcStates(pkg.equals(rcSlots.get(slot)) ? KEY_PRESSED : TILE_FILL, 12, true));
+            row.setPadding(dp(14), dp(8), dp(14), dp(8));
+            row.setClickable(true);
+            row.addView(text(Apps.label(pkg), medium, 17, SAND));
+            int other = rcSlots.slotOf(pkg);
+            row.addView(text(other >= 0 && other != slot ? t("rc_in_slot", other + 1) : pkg, regular, 12, MUTED));
+            row.setOnClickListener(v -> {
+                AppSlots next = rcSlots;
+                int was = next.slotOf(pkg);
+                if (was >= 0 && was != slot) next = next.with(was, null);   // an app sits on one button only
+                rcSlots = next.with(slot, pkg);
+                AppSlots.save(prefs(), rcTvKey(), rcSlots);
+                d.dismiss();
+                showAppsDialog(true);
+            });
+            list.addView(row, lp(0, 0, 0, 6));
+            ((LinearLayout.LayoutParams) row.getLayoutParams()).height = dp(64);
+        }
+        sv.addView(list);
+        c.addView(sv, new LinearLayout.LayoutParams(-1, Math.min(dp(360), getResources().getDisplayMetrics().heightPixels / 2)));
+        if (rcSlots.get(slot) != null) {
+            TextView rm = text(t("rc_remove"), medium, 16, 0xFFE8896B);
+            rm.setGravity(Gravity.CENTER);
+            rm.setBackground(rcShape(0x00000000, 22, true));
+            rm.setClickable(true);
+            rm.setOnClickListener(v -> {
+                rcSlots = rcSlots.with(slot, null);
+                AppSlots.save(prefs(), rcTvKey(), rcSlots);
+                d.dismiss();
+                showAppsDialog(true);
+            });
+            c.addView(rm, new LinearLayout.LayoutParams(-1, dp(48)));
+        }
+        d.show();
+    }
+
+    /** One tap from the hub: reaches the remembered TV (the open link when there is one, else a few quiet tries) and opens its remote. */
+    private void quickRemote() {
+        space = SPACE_REMOTE;
+        Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
+        bg.execute(() -> {
+            boolean ok = false;
+            try { if (flow != null) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
+            if (!ok) ok = rcReconnect();
+            final boolean fine = ok;
+            runOnUiThread(() -> {
+                if (fine) show(25); else Toast.makeText(this, t("last_fail"), Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+    private void remoteScreen(LinearLayout body, final TextView button) {
+        final LastTv last = LastTv.load(prefs());
+        rcSlots = AppSlots.load(prefs(), rcTvKey());
+        rcTvApps = null;
+
+        // top: power, the TV and its state, more
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout power = rcKeyBtn(RcIcon.POWER, null, 52, 52, 0xFF4A1E1B, 26, 0xFFFF8F80, t("rc_pw_do"));
+        rcTap(power, this::rcPowerAsk);
+        top.addView(power);
+        LinearLayout pill = new LinearLayout(this);
+        pill.setOrientation(LinearLayout.HORIZONTAL);
+        pill.setGravity(Gravity.CENTER_VERTICAL);
+        pill.setBackground(rcStates(TILE_FILL, 26, true));
+        pill.setPadding(dp(14), dp(2), dp(14), dp(2));
+        rcPillDot = new View(this);
+        pill.addView(rcPillDot, new LinearLayout.LayoutParams(dp(10), dp(10)));
+        LinearLayout names = new LinearLayout(this);
+        names.setOrientation(LinearLayout.VERTICAL);
+        rcPillName = text(last == null ? "TV" : last.name, medium, 14, SAND);
+        rcPillName.setMaxLines(1);
+        rcPillSub = text("", regular, 12, MUTED);
+        rcPillSub.setIncludeFontPadding(false);
+        rcPillName.setIncludeFontPadding(false);
+        rcPillSub.setMaxLines(1);
+        names.addView(rcPillName);
+        names.addView(rcPillSub);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1f);
+        np.setMarginStart(dp(10));
+        pill.addView(names, np);
+        rcTap(pill, () -> {
+            if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else rcMoreMenu();
+        });
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, dp(56), 1f);
+        pp.setMargins(dp(8), 0, dp(8), 0);
+        top.addView(pill, pp);
+        LinearLayout more = rcKeyBtn(RcIcon.MORE, null, 52, 52, TILE_FILL, 26, SAND, t("rc_more"));
+        rcTap(more, this::rcMoreMenu);
+        top.addView(more);
+        body.addView(top, lp(0, 4, 0, 6));
+        rcStatus(rcState, 0);
+
+        // six shortcuts
+        sectionLabel(body, t("rc_shortcuts"));
+        Object[][] tiles = {
+            {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
+            {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
+        for (int r = 0; r < 2; r++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            for (int k = 0; k < 3; k++) {
+                final int i = r * 3 + k;
+                LinearLayout tile = rcKeyBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 84, TILE_FILL, 16, GOLD, null);
+                LinearLayout.LayoutParams tp = (LinearLayout.LayoutParams) tile.getLayoutParams();
+                tp.setMargins(dp(4), dp(4), dp(4), dp(4));
+                rcTap(tile, () -> {
+                    switch (i) {
+                        case 0: rcOpen(Remote.Target.LISTEN); break;
+                        case 1: rcOpen(Remote.Target.CHANNELS); break;
+                        case 2: rcAppsDialog(); break;
+                        case 3: rcOpen(Remote.Target.SAVER); break;
+                        case 4: rcTextDialog(); break;
+                        default: rcRun(() -> flow.shell().run(Remote.settings()));
+                    }
+                });
+                row.addView(tile);
+            }
+            body.addView(row);
+        }
+
+        // the cross: four separate arrows with room between them, and a big OK
+        FrameLayout cross = new FrameLayout(this);
+        int[][] pos = {{100, 18, 100, 68}, {100, 214, 100, 68}, {18, 100, 68, 100}, {214, 100, 68, 100}};   // x, y, w, h (dp) of up, down, left, right
+        int[] icons = {RcIcon.UP, RcIcon.DOWN, RcIcon.LEFT, RcIcon.RIGHT};
+        int[] codes = {Remote.UP, Remote.DOWN, Remote.LEFT, Remote.RIGHT};
+        String[] spoken = {"▲", "▼", "◀", "▶"};
+        for (int i = 0; i < 4; i++) {
+            LinearLayout a = rcKeyBtn(icons[i], null, pos[i][2], pos[i][3], KEY_FILL, 22, GOLD, spoken[i]);
+            FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(dp(pos[i][2]), dp(pos[i][3]));
+            fp.leftMargin = dp(pos[i][0]);
+            fp.topMargin = dp(pos[i][1]);
+            rcHold(a, codes[i]);
+            cross.addView(a, fp);
+        }
+        TextView ok = text("OK", display, 26, DARK);
+        ok.setGravity(Gravity.CENTER);
+        GradientDrawable okShape = new GradientDrawable();
+        okShape.setShape(GradientDrawable.OVAL);
+        okShape.setColor(GOLD);
+        ok.setBackground(okShape);
+        ok.setClickable(true);
+        ok.setContentDescription("OK");
+        rcTap(ok, () -> rcKey(Remote.OK));
+        FrameLayout.LayoutParams okp = new FrameLayout.LayoutParams(dp(96), dp(96));
+        okp.leftMargin = dp(102);
+        okp.topMargin = dp(102);
+        cross.addView(ok, okp);
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(dp(300), dp(300));
+        cl.gravity = Gravity.CENTER_HORIZONTAL;
+        cl.topMargin = dp(10);
+        body.addView(cross, cl);
+        TextView hint = text(t("rc_hold"), regular, 12, MUTED);
+        hint.setGravity(Gravity.CENTER);
+        body.addView(hint, lp(0, 0, 0, 8));
+
+        // back and home
+        LinearLayout nav = new LinearLayout(this);
+        nav.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout back = rcKeyBtn(RcIcon.BACK, t("rc_back"), 0, 56, KEY_FILL, 20, SAND, null);
+        LinearLayout home = rcKeyBtn(RcIcon.HOME, t("rc_home"), 0, 56, KEY_FILL, 20, SAND, null);
+        ((LinearLayout.LayoutParams) back.getLayoutParams()).setMargins(dp(4), 0, dp(6), 0);
+        ((LinearLayout.LayoutParams) home.getLayoutParams()).setMargins(dp(6), 0, dp(4), 0);
+        rcTap(back, () -> rcKey(Remote.BACK));
+        rcTap(home, () -> rcKey(Remote.HOME));
+        nav.addView(back);
+        nav.addView(home);
+        body.addView(nav, lp(0, 6, 0, 0));
+
+        // sound
+        sectionLabel(body, t("rc_sound"));
+        LinearLayout snd = new LinearLayout(this);
+        snd.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout vd = rcKeyBtn(RcIcon.VOL_DOWN, null, 0, 56, KEY_FILL, 20, SAND, t("rc_vdown"));
+        LinearLayout mu = rcKeyBtn(RcIcon.MUTE, t("rc_mute2"), 0, 56, KEY_FILL, 20, SAND, null);
+        LinearLayout vu = rcKeyBtn(RcIcon.VOL_UP, null, 0, 56, KEY_FILL, 20, SAND, t("rc_vup"));
+        ((LinearLayout.LayoutParams) vd.getLayoutParams()).setMargins(dp(4), 0, dp(6), 0);
+        ((LinearLayout.LayoutParams) mu.getLayoutParams()).setMargins(dp(6), 0, dp(6), 0);
+        ((LinearLayout.LayoutParams) mu.getLayoutParams()).weight = 1.4f;
+        ((LinearLayout.LayoutParams) vu.getLayoutParams()).setMargins(dp(6), 0, dp(4), 0);
+        rcHold(vd, Remote.VOLUME_DOWN);
+        rcHold(vu, Remote.VOLUME_UP);
+        rcTap(mu, () -> rcKey(Remote.MUTE));
+        snd.addView(vd);
+        snd.addView(mu);
+        snd.addView(vu);
+        body.addView(snd);
+
+        button.setText(t("cl_home"));
+        secondaryStyle(button);
+        button.setOnClickListener(v -> show(12));
     }
 
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
