@@ -1590,10 +1590,11 @@ public class MainActivity extends Activity {
     }
 
     private void rcMoreMenu() {
-        String[] items = {t("rc_menu"), t("rc_vol_limit"), t("rc_switch")};
+        String[] items = {t("rc_menu"), t("rc_vol_scale"), t("rc_vol_limit"), t("rc_switch")};
         new AlertDialog.Builder(this).setTitle(t("rc_more")).setItems(items, (d, which) -> {
             if (which == 0) rcKey(Remote.MENU);
-            else if (which == 1) rcLimitDialog();
+            else if (which == 1) rcVolumeDialog();
+            else if (which == 2) rcLimitDialog();
             else { space = SPACE_REMOTE; show(2); }
         }).show();
     }
@@ -1835,19 +1836,28 @@ public class MainActivity extends Activity {
         });
     }
 
-    // ---- volume: a level set in one command, a step at a time when held, a maximum chosen by the family; the scale is the one of the TV ----
+    // ---- volume: a level set in one command, a step at a time when held, a maximum chosen by the family; the scale is the one of the TV (or typed by hand) ----
 
     private RcSlider rcSlider;
-    private volatile int volLevel = -1, volPrev = 0, volMax = Volume.DEFAULT_MAX;
-    private volatile boolean volVerified;   // the direct command was seen to move the volume of this TV (this session)
+    private volatile int volLevel = -1, volPrev = 0, volMax = Volume.DEFAULT_MAX, volDetected = Volume.DEFAULT_MAX;
+    private volatile boolean volDetectedOk;   // the TV gave its maximum
+    private volatile boolean volVerified;     // the direct command was seen to move the volume of this TV (this session)
     private final java.util.concurrent.atomic.AtomicBoolean volBusy = new java.util.concurrent.atomic.AtomicBoolean(false);
 
+    private SharedPreferences volPrefs() { return getSharedPreferences("installer", MODE_PRIVATE); }
+
     /** Some TVs ignore the direct command (their volume goes through an amplifier, for instance): the keys are used for them, and it is remembered. */
-    private boolean volKeysMode() { return getSharedPreferences("installer", MODE_PRIVATE).getBoolean("vol_keys_" + rcTvKey(), false); }
-    private void volKeysMode(boolean on) { getSharedPreferences("installer", MODE_PRIVATE).edit().putBoolean("vol_keys_" + rcTvKey(), on).apply(); }
+    private boolean volKeysMode() { return volPrefs().getBoolean("vol_keys_" + rcTvKey(), false); }
+    private void volKeysMode(boolean on) { volPrefs().edit().putBoolean("vol_keys_" + rcTvKey(), on).apply(); }
+
+    /** The scale typed by hand for this TV (0: the one the TV reports) and the step of the + and - keys (1 by default). */
+    private int volScaleManual() { return volPrefs().getInt("vol_scale_" + rcTvKey(), 0); }
+    private int volStep() { return Math.max(1, Math.min(volMax, volPrefs().getInt("vol_step_" + rcTvKey(), 1))); }
+
+    private void volApplyScale() { int m = volScaleManual(); volMax = m > 0 ? m : volDetected; }
 
     /** The family's maximum volume as a level of this TV (it is kept as a percentage, because TVs have 15, 30 or 100 levels). */
-    private int volLimit() { return Volume.limitLevel(getSharedPreferences("installer", MODE_PRIVATE).getInt("vol_limit", 0), volMax); }
+    private int volLimit() { return Volume.limitLevel(volPrefs().getInt("vol_limit", 0), volMax); }
 
     private int volReadLevel() throws IOException {
         int l = Volume.parseLevel(flow.shell().run(Volume.READ), volMax);
@@ -1855,20 +1865,30 @@ public class MainActivity extends Activity {
         return l;
     }
 
+    /** Puts the scale, the limit and the step on the slider. */
+    private void volShowScale() {
+        if (rcSlider == null) return;
+        rcSlider.setMax(volMax);
+        rcSlider.setLimit(volLimit());
+        rcSlider.setStep(volStep());
+    }
+
     /** Reads the scale and the level of the TV and shows them; "?" when the TV never answers. */
     private void rcVolRefresh() {
         bg.execute(() -> {
             int l = -1;
             try {
-                volMax = Volume.parseMax(flow.shell().run(Volume.READ_MAX));
+                String out = flow.shell().run(Volume.READ_MAX);
+                volDetectedOk = Volume.hasMax(out);
+                volDetected = Volume.parseMax(out);
+                volApplyScale();
                 l = volReadLevel();
             } catch (Exception ignored) { }
             final int lv = l;
             volLevel = lv;
             runOnUiThread(() -> {
                 if (rcSlider == null) return;
-                rcSlider.setMax(volMax);
-                rcSlider.setLimit(volLimit());
+                volShowScale();
                 rcSlider.setLevel(lv, true);
             });
         });
@@ -1894,29 +1914,36 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** The key(s) of the TV that move the volume by {@code step} levels from {@code now} to {@code target} (one key when the level is not known). */
+    private void volSendKeys(int now, int target, boolean up) throws IOException {
+        String batch = now >= 0 && target >= 0 && target != now ? Volume.keys(now, target) : null;
+        flow.shell().run(batch != null ? batch : Remote.key(up ? Remote.VOLUME_UP : Remote.VOLUME_DOWN));
+    }
+
     /**
-     * One step up or down; a new step is not started while the last one is still running, so nothing piles up and nothing goes on after the finger leaves.
-     * The first time on a TV the result is checked: if the direct command moved nothing, the key is sent and the keys are used from then on.
+     * One press of + or -: it moves the volume by the chosen step. A new press is not started while the last one is still running, so nothing piles up and
+     * nothing goes on after the finger leaves. The first time on a TV the result is checked: if the direct command moved nothing, the keys are sent and
+     * used from then on.
      */
     private void rcVolStep(final boolean up) {
-        final int now = volLevel, lim = volLimit(), max = volMax;
+        final int now = volLevel, lim = volLimit(), max = volMax, n = volStep();
         if (up && lim > 0 && now >= lim) return;
         if (!volBusy.compareAndSet(false, true)) return;
-        final int target = now < 0 ? -1 : Volume.capped(now + (up ? 1 : -1), lim, max);
+        final int target = now < 0 ? -1 : Volume.stepTarget(now, n, up, lim, max);
         if (target >= 0) { volLevel = target; if (rcSlider != null) rcSlider.setLevel(target, false); }
-        final int key = up ? Remote.VOLUME_UP : Remote.VOLUME_DOWN;
         rcRun(() -> {
             try {
-                boolean keys = volKeysMode(), sentKey = false;
+                boolean keys = volKeysMode(), sentKeys = false;
                 if (!keys) {
-                    if (Volume.failed(flow.shell().run(Volume.adj(up)))) { keys = true; volKeysMode(true); }
+                    String cmd = n == 1 ? Volume.adj(up) : now >= 0 ? Volume.set(target, max) : Volume.batchAdj(n, up);
+                    if (Volume.failed(flow.shell().run(cmd))) { keys = true; volKeysMode(true); }
                     else if (!volVerified && now >= 0) {
                         Thread.sleep(450);
                         if (Volume.moved(now, volReadLevel(), up, max)) volVerified = true;
-                        else { flow.shell().run(Remote.key(key)); sentKey = true; volKeysMode(true); keys = true; }
+                        else { volSendKeys(now, target, up); sentKeys = true; volKeysMode(true); keys = true; }
                     }
                 }
-                if (keys && !sentKey) flow.shell().run(Remote.key(key));
+                if (keys && !sentKeys) volSendKeys(now, target, up);
             } finally { volBusy.set(false); }
         });
     }
@@ -1954,18 +1981,103 @@ public class MainActivity extends Activity {
         rcVolSet(target);
     }
 
-    /** The maximum volume the family chooses (a percentage of the scale of the TV, or off). */
+    /** The family's limit (a percentage of the scale of the TV, or off). */
     private void rcLimitDialog() {
         final int[] percents = {0, 30, 50, 70, 90};
         String[] names = new String[percents.length];
         for (int i = 0; i < percents.length; i++) names[i] = percents[i] == 0 ? t("rc_vol_off") : percents[i] + " %";
-        int cur = getSharedPreferences("installer", MODE_PRIVATE).getInt("vol_limit", 0), checked = 0;
+        int cur = volPrefs().getInt("vol_limit", 0), checked = 0;
         for (int i = 0; i < percents.length; i++) if (percents[i] == cur) checked = i;
         new AlertDialog.Builder(this).setTitle(t("rc_vol_limit")).setSingleChoiceItems(names, checked, (dlg, which) -> {
-            getSharedPreferences("installer", MODE_PRIVATE).edit().putInt("vol_limit", percents[which]).apply();
+            volPrefs().edit().putInt("vol_limit", percents[which]).apply();
             if (rcSlider != null) rcSlider.setLimit(volLimit());
             dlg.dismiss();
         }).show();
+    }
+
+    /** A pill the user can choose (the scale mode), painted gold when it is the chosen one. */
+    private TextView volChoice(String label, boolean on) {
+        TextView c = text(label, medium, 15, on ? DARK : SAND);
+        c.setGravity(Gravity.CENTER);
+        c.setMinHeight(dp(52));
+        c.setPadding(dp(10), dp(6), dp(10), dp(6));
+        c.setBackground(on ? rcShape(GOLD, 22, false) : rcStates(KEY_FILL, 22, true));
+        c.setClickable(true);
+        return c;
+    }
+
+    private android.widget.EditText volNumber(String hint, int value) {
+        android.widget.EditText et = new android.widget.EditText(this);
+        et.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        et.setHint(hint);
+        et.setHintTextColor(0xFF7A7567);
+        et.setTextColor(0xFF1B1B1B);
+        et.setTextSize(18);
+        et.setText(value > 0 ? String.valueOf(value) : "");
+        et.setBackground(rcShape(0xFFF6EFE0, 14, true));
+        et.setPadding(dp(14), dp(10), dp(14), dp(10));
+        et.setFilters(new android.text.InputFilter[] {new android.text.InputFilter.LengthFilter(3)});
+        return et;
+    }
+
+    /** «Échelle et pas» : the scale of the TV (found by the app, or typed by hand) and how many levels a press of + or - moves. */
+    private void rcVolumeDialog() {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        final android.app.Dialog d = rcDialog(c);
+        c.addView(rcDialogHead(t("rc_vol_scale"), null, d));
+        final boolean[] manual = {volScaleManual() > 0};
+
+        c.addView(text(t("rc_vol_scale_h"), medium, 14, GOLD), lp(2, 12, 2, 4));
+        LinearLayout modes = new LinearLayout(this);
+        modes.setOrientation(LinearLayout.HORIZONTAL);
+        final TextView auto = volChoice(volDetectedOk ? t("rc_vol_auto", volDetected) : t("rc_vol_auto_def", volDetected), !manual[0]);
+        final TextView hand = volChoice(t("rc_vol_manual"), manual[0]);
+        modes.addView(auto, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(0, -2, 1f);
+        hp.setMarginStart(dp(8));
+        modes.addView(hand, hp);
+        c.addView(modes);
+        final android.widget.EditText scale = volNumber(t("rc_vol_manual_hint"), volScaleManual());
+        scale.setVisibility(manual[0] ? View.VISIBLE : View.GONE);
+        c.addView(scale, lp(0, 8, 0, 0));
+        View.OnClickListener pick = v -> {
+            manual[0] = v == hand;
+            auto.setBackground(manual[0] ? rcStates(KEY_FILL, 22, true) : rcShape(GOLD, 22, false));
+            auto.setTextColor(manual[0] ? SAND : DARK);
+            hand.setBackground(manual[0] ? rcShape(GOLD, 22, false) : rcStates(KEY_FILL, 22, true));
+            hand.setTextColor(manual[0] ? DARK : SAND);
+            scale.setVisibility(manual[0] ? View.VISIBLE : View.GONE);
+        };
+        auto.setOnClickListener(pick);
+        hand.setOnClickListener(pick);
+
+        c.addView(text(t("rc_vol_step"), medium, 14, GOLD), lp(2, 16, 2, 4));
+        final android.widget.EditText step = volNumber(t("rc_vol_step_hint"), volStep());
+        c.addView(step);
+
+        TextView save = text(t("rc_vol_save"), medium, 17, DARK);
+        save.setGravity(Gravity.CENTER);
+        save.setBackground(rcShape(GOLD, 22, false));
+        save.setClickable(true);
+        save.setOnClickListener(v -> {
+            int sc = 0, st = 1;
+            try { st = Integer.parseInt(step.getText().toString().trim()); } catch (NumberFormatException e) { st = 0; }
+            if (manual[0]) {
+                try { sc = Integer.parseInt(scale.getText().toString().trim()); } catch (NumberFormatException e) { sc = 0; }
+                if (!Volume.validScale(sc)) { Toast.makeText(this, t("rc_vol_bad"), Toast.LENGTH_SHORT).show(); return; }
+            }
+            int max = manual[0] ? sc : volDetected;
+            if (!Volume.validStep(st, max)) { Toast.makeText(this, t("rc_vol_bad"), Toast.LENGTH_SHORT).show(); return; }
+            volPrefs().edit().putInt("vol_scale_" + rcTvKey(), manual[0] ? sc : 0).putInt("vol_step_" + rcTvKey(), st).apply();
+            volApplyScale();
+            volShowScale();
+            rcVolRefresh();
+            d.dismiss();
+        });
+        c.addView(save, lp(0, 16, 0, 0));
+        ((LinearLayout.LayoutParams) save.getLayoutParams()).height = dp(52);
+        d.show();
     }
 
     /** A key sunk in a dark well, like the sockets of a real remote. */
@@ -2137,7 +2249,7 @@ public class MainActivity extends Activity {
         LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, 54, 54, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
         rcSlider = new RcSlider(this, display);
         rcSlider.setWords(t("rc_vol_w"), t("rc_vol_read"), t("rc_vol_release"), t("rc_vol_a11y"));
-        rcSlider.setLimit(volLimit());
+        volShowScale();
         rcSlider.setListener(level -> rcVolSet(level));
         rcHoldStep(vd, false);
         rcHoldStep(vu, true);

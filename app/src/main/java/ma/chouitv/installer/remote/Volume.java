@@ -92,4 +92,32 @@ public final class Volume {
         if (after != before) return true;
         return up ? before >= max : before <= 0;
     }
+
+    /** True when the TV's answer holds a usable maximum (so that the screen can say «detected» or «default»). */
+    public static boolean hasMax(String out) {
+        if (out == null) return false;
+        Matcher m = MAXIMUM.matcher(out);
+        if (!m.find()) return false;
+        int v = Integer.parseInt(m.group(1));
+        return v >= 2 && v <= 250;
+    }
+
+    /** A scale typed by hand: the highest level of the TV. */
+    public static boolean validScale(int v) { return v >= 2 && v <= 250; }
+
+    /** A step typed by hand: how many levels a press of + or - moves. */
+    public static boolean validStep(int step, int max) { return step >= 1 && step <= max; }
+
+    /** The level after a press of + or - with this step (kept between 0, the family's limit and the maximum). */
+    public static int stepTarget(int now, int step, boolean up, int limit, int max) {
+        return capped(now + (up ? step : -step), limit, max);
+    }
+
+    /** {@code step} adjustments in one command, for when the level is not known (at most 30). */
+    public static String batchAdj(int step, boolean up) {
+        int n = Math.max(1, Math.min(MAX_KEYS, step));
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < n; i++) { if (i > 0) b.append("; "); b.append(adj(up)); }
+        return b.toString();
+    }
 }

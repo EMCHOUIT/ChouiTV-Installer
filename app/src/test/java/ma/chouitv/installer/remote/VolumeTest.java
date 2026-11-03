@@ -98,4 +98,42 @@ public class VolumeTest {
         assertEquals(20, Volume.muteTarget(0, 0, 100));   // nothing remembered: a gentle level (a fifth of the scale)
         assertEquals(3, Volume.muteTarget(0, 0, 15));
     }
+
+    @Test public void theTvTellsWhetherItGaveItsMaximum() {
+        assertTrue(Volume.hasMax("   Max: 15"));
+        assertTrue(Volume.hasMax("Min: 0\n   Max: 100\n"));
+        assertFalse(Volume.hasMax(""));
+        assertFalse(Volume.hasMax(null));
+        assertFalse(Volume.hasMax("Max: 999"));
+    }
+
+    @Test public void aManualScaleAndAStepMustBeSensible() {
+        assertTrue(Volume.validScale(15));
+        assertTrue(Volume.validScale(100));
+        assertTrue(Volume.validScale(250));
+        assertFalse(Volume.validScale(1));
+        assertFalse(Volume.validScale(0));
+        assertFalse(Volume.validScale(251));
+        assertTrue(Volume.validStep(1, 15));
+        assertTrue(Volume.validStep(5, 100));
+        assertFalse(Volume.validStep(0, 100));
+        assertFalse(Volume.validStep(-2, 100));
+        assertFalse(Volume.validStep(16, 15));   // a step larger than the scale
+    }
+
+    @Test public void aKeyMovesTheLevelByTheChosenStepAndStopsAtTheLimits() {
+        assertEquals(25, Volume.stepTarget(20, 5, true, 0, 100));
+        assertEquals(15, Volume.stepTarget(20, 5, false, 0, 100));
+        assertEquals(0, Volume.stepTarget(3, 5, false, 0, 100));
+        assertEquals(100, Volume.stepTarget(98, 5, true, 0, 100));
+        assertEquals(70, Volume.stepTarget(68, 5, true, 70, 100));   // the family limit
+        assertEquals(15, Volume.stepTarget(14, 2, true, 0, 15));     // a TV with 15 levels
+        assertEquals(21, Volume.stepTarget(20, 1, true, 0, 100));
+    }
+
+    @Test public void withoutAKnownLevelAStepIsSeveralAdjustmentsInOneCommand() {
+        assertEquals("cmd media_session volume --stream 3 --show --adj raise; cmd media_session volume --stream 3 --show --adj raise", Volume.batchAdj(2, true));
+        assertEquals("cmd media_session volume --stream 3 --show --adj lower", Volume.batchAdj(1, false));
+        assertEquals(30, Volume.batchAdj(99, true).split("; ").length);   // never more than 30
+    }
 }

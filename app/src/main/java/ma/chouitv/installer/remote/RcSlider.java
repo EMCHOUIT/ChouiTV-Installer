@@ -32,6 +32,7 @@ public final class RcSlider extends View {
     private int shown = -1;        // under the finger while dragging
     private int limit = 0;         // 0: no maximum (a level of this TV)
     private int max = Volume.DEFAULT_MAX;   // the highest level of this TV
+    private int step = 0;          // 0: a twentieth of the scale
     private boolean dragging, failed;
     private String word = "VOL", reading = "…", release = "", spoken = "Volume";
     private Typeface face;
@@ -73,6 +74,9 @@ public final class RcSlider extends View {
     }
 
     public int getMax() { return max; }
+
+    /** How many levels a TalkBack swipe moves (the step chosen for the + and - keys). */
+    public void setStep(int s) { step = Math.max(1, s); }
 
     @Override protected void onMeasure(int w, int h) {
         setMeasuredDimension(MeasureSpec.getSize(w), Math.round(63 * d));
@@ -242,7 +246,7 @@ public final class RcSlider extends View {
     @Override public boolean performAccessibilityAction(int action, Bundle args) {
         int cur = Math.max(0, level);
         int to = -1;
-        int step = Math.max(1, max / 20);   // 5 on a TV with 100 levels, 1 on one with 15
+        int step = this.step > 0 ? this.step : Math.max(1, max / 20);   // 5 on a TV with 100 levels, 1 on one with 15
         if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) to = cur + step;
         else if (action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) to = cur - step;
         else if (action == android.R.id.accessibilityActionSetProgress && args != null) to = Math.round(args.getFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, cur));
