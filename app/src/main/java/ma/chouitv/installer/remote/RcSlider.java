@@ -30,7 +30,8 @@ public final class RcSlider extends View {
     private Listener listener;
     private int level = -1;        // as the TV says (-1: not known yet)
     private int shown = -1;        // under the finger while dragging
-    private int limit = 0;         // 0: no maximum
+    private int limit = 0;         // 0: no maximum (a level of this TV)
+    private int max = Volume.DEFAULT_MAX;   // the highest level of this TV
     private boolean dragging, failed;
     private String word = "VOL", reading = "…", release = "", spoken = "Volume";
     private Typeface face;
@@ -64,9 +65,21 @@ public final class RcSlider extends View {
 
     public void setLimit(int l) { limit = l; invalidate(); }
 
+    /** The number of levels of this TV (15, 30, 100...): the rail and every number follow it. */
+    public void setMax(int m) {
+        max = Math.max(2, m);
+        if (level > max) level = max;
+        invalidate();
+    }
+
+    public int getMax() { return max; }
+
     @Override protected void onMeasure(int w, int h) {
         setMeasuredDimension(MeasureSpec.getSize(w), Math.round(63 * d));
     }
+
+    /** A tick of the phone every tenth of the scale (every level on a TV with 10 levels or fewer). */
+    private int tickOf(int v) { return max <= 10 ? v : (int) (v * 10L / max); }
 
     private boolean rtl() { return getLayoutDirection() == LAYOUT_DIRECTION_RTL; }
 
@@ -74,15 +87,15 @@ public final class RcSlider extends View {
     private float x1() { return getWidth() - 26f * d; }
 
     private float xOf(int lv) {
-        float f = Math.max(0, Math.min(100, lv)) / 100f;
+        float f = Math.max(0, Math.min(max, lv)) / (float) max;
         return rtl() ? x1() - (x1() - x0()) * f : x0() + (x1() - x0()) * f;
     }
 
     private int levelAt(float x) {
         float f = (x - x0()) / (x1() - x0());
         if (rtl()) f = 1f - f;
-        int v = Math.round(Math.max(0f, Math.min(1f, f)) * 100f);
-        return Volume.capped(v, limit);
+        int v = Math.round(Math.max(0f, Math.min(1f, f)) * max);
+        return Volume.capped(v, limit, max);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {
@@ -91,14 +104,15 @@ public final class RcSlider extends View {
                 getParent().requestDisallowInterceptTouchEvent(true);
                 dragging = true;
                 shown = levelAt(e.getX());
-                lastTick = shown / 10;
+                lastTick = tickOf(shown);
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                 invalidate();
                 return true;
             case MotionEvent.ACTION_MOVE:
                 if (dragging) {
                     int v = levelAt(e.getX());
-                    if (v / 10 != lastTick) { lastTick = v / 10; performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); }
+                    int tick = tickOf(v);
+                    if (tick != lastTick) { lastTick = tick; performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); }
                     shown = v;
                     invalidate();
                 }
@@ -139,7 +153,7 @@ public final class RcSlider extends View {
         text.setLetterSpacing(0f);
         text.setTextAlign(right ? Paint.Align.LEFT : Paint.Align.RIGHT);
         text.setColor(known ? 0xFFF6EFE0 : 0xFFC6BBA4);
-        String top = known ? lv + " / 100" : failed ? "?" : reading;
+        String top = known ? lv + " / " + max : failed ? "?" : reading;
         c.drawText(top, right ? 8f * d : w - 8f * d, 14f * d, text);
 
         // the rail, sunk
@@ -154,7 +168,7 @@ public final class RcSlider extends View {
         p.setShader(null);
 
         // the part beyond the family's maximum, hatched
-        if (limit > 0 && limit < 100) {
+        if (limit > 0 && limit < max) {
             float xl = xOf(limit), xe = right ? x0() - 12f * d : x1() + 12f * d;
             float a = Math.min(xl, xe), b = Math.max(xl, xe);
             c.save();
@@ -219,7 +233,7 @@ public final class RcSlider extends View {
         super.onInitializeAccessibilityNodeInfo(info);
         info.setClassName("android.widget.SeekBar");
         info.setContentDescription(spoken);
-        info.setRangeInfo(AccessibilityNodeInfo.RangeInfo.obtain(AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_INT, 0f, 100f, Math.max(0, level)));
+        info.setRangeInfo(AccessibilityNodeInfo.RangeInfo.obtain(AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_INT, 0f, max, Math.max(0, level)));
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS);
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD);
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD);
@@ -228,11 +242,12 @@ public final class RcSlider extends View {
     @Override public boolean performAccessibilityAction(int action, Bundle args) {
         int cur = Math.max(0, level);
         int to = -1;
-        if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) to = cur + 5;
-        else if (action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) to = cur - 5;
+        int step = Math.max(1, max / 20);   // 5 on a TV with 100 levels, 1 on one with 15
+        if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) to = cur + step;
+        else if (action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) to = cur - step;
         else if (action == android.R.id.accessibilityActionSetProgress && args != null) to = Math.round(args.getFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, cur));
         if (to < 0 && !(action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)) return super.performAccessibilityAction(action, args);
-        to = Volume.capped(to, limit);
+        to = Volume.capped(to, limit, max);
         level = to;
         failed = false;
         invalidate();

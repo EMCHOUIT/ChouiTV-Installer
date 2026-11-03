@@ -1835,39 +1835,57 @@ public class MainActivity extends Activity {
         });
     }
 
-    // ---- volume: a level set in one command, a step at a time when held, a maximum chosen by the family ----
+    // ---- volume: a level set in one command, a step at a time when held, a maximum chosen by the family; the scale is the one of the TV ----
 
     private RcSlider rcSlider;
-    private volatile int volLevel = -1, volPrev = 0;
+    private volatile int volLevel = -1, volPrev = 0, volMax = Volume.DEFAULT_MAX;
+    private volatile boolean volVerified;   // the direct command was seen to move the volume of this TV (this session)
     private final java.util.concurrent.atomic.AtomicBoolean volBusy = new java.util.concurrent.atomic.AtomicBoolean(false);
 
-    private int volLimit() { return getSharedPreferences("installer", MODE_PRIVATE).getInt("vol_limit", 0); }
+    /** Some TVs ignore the direct command (their volume goes through an amplifier, for instance): the keys are used for them, and it is remembered. */
+    private boolean volKeysMode() { return getSharedPreferences("installer", MODE_PRIVATE).getBoolean("vol_keys_" + rcTvKey(), false); }
+    private void volKeysMode(boolean on) { getSharedPreferences("installer", MODE_PRIVATE).edit().putBoolean("vol_keys_" + rcTvKey(), on).apply(); }
 
-    /** Reads the level the TV reports and shows it; "?" when the TV never answers. */
+    /** The family's maximum volume as a level of this TV (it is kept as a percentage, because TVs have 15, 30 or 100 levels). */
+    private int volLimit() { return Volume.limitLevel(getSharedPreferences("installer", MODE_PRIVATE).getInt("vol_limit", 0), volMax); }
+
+    private int volReadLevel() throws IOException {
+        int l = Volume.parseLevel(flow.shell().run(Volume.READ), volMax);
+        if (l < 0) l = Volume.parseLevel(flow.shell().run(Volume.READ_DUMP), volMax);
+        return l;
+    }
+
+    /** Reads the scale and the level of the TV and shows them; "?" when the TV never answers. */
     private void rcVolRefresh() {
         bg.execute(() -> {
             int l = -1;
             try {
-                l = Volume.parseLevel(flow.shell().run(Volume.READ));
-                if (l < 0) l = Volume.parseLevel(flow.shell().run(Volume.READ_DUMP));
+                volMax = Volume.parseMax(flow.shell().run(Volume.READ_MAX));
+                l = volReadLevel();
             } catch (Exception ignored) { }
             final int lv = l;
             volLevel = lv;
-            runOnUiThread(() -> { if (rcSlider != null) rcSlider.setLevel(lv, true); });
+            runOnUiThread(() -> {
+                if (rcSlider == null) return;
+                rcSlider.setMax(volMax);
+                rcSlider.setLimit(volLimit());
+                rcSlider.setLevel(lv, true);
+            });
         });
     }
 
-    /** Sets a level in one command (the keys in one batch when the TV does not know the command), then reads it back. */
+    /** Sets a level in one command (the keys in one batch when the TV does not follow the command), then reads it back a little later. */
     private void rcVolSet(final int wanted) {
-        final int level = Volume.capped(wanted, volLimit());
+        final int level = Volume.capped(wanted, volLimit(), volMax);
         final int from = volLevel;
         rcRun(() -> {
-            String out = flow.shell().run(Volume.set(level));
-            if (Volume.failed(out)) {
-                String keys = Volume.keys(from, level);
-                if (keys != null) flow.shell().run(keys);
+            boolean keys = volKeysMode();
+            if (!keys && Volume.failed(flow.shell().run(Volume.set(level, volMax)))) keys = true;
+            if (keys) {
+                String batch = Volume.keys(from, level);
+                if (batch != null) flow.shell().run(batch);
             }
-            // the TV's setting is slow to follow: trust what was set now, and read it back a little later
+            // the TV's setting is slow to follow: trust what was set now, and read it back later
             volLevel = level;
             runOnUiThread(() -> {
                 if (rcSlider != null) rcSlider.setLevel(level, false);
@@ -1876,17 +1894,29 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** One step up or down; a new step is not started while the last one is still running, so nothing piles up and nothing goes on after the finger leaves. */
+    /**
+     * One step up or down; a new step is not started while the last one is still running, so nothing piles up and nothing goes on after the finger leaves.
+     * The first time on a TV the result is checked: if the direct command moved nothing, the key is sent and the keys are used from then on.
+     */
     private void rcVolStep(final boolean up) {
-        final int now = volLevel, lim = volLimit();
+        final int now = volLevel, lim = volLimit(), max = volMax;
         if (up && lim > 0 && now >= lim) return;
         if (!volBusy.compareAndSet(false, true)) return;
-        final int target = now < 0 ? -1 : Volume.capped(now + (up ? 1 : -1), lim);
+        final int target = now < 0 ? -1 : Volume.capped(now + (up ? 1 : -1), lim, max);
         if (target >= 0) { volLevel = target; if (rcSlider != null) rcSlider.setLevel(target, false); }
+        final int key = up ? Remote.VOLUME_UP : Remote.VOLUME_DOWN;
         rcRun(() -> {
             try {
-                String out = flow.shell().run(Volume.adj(up));
-                if (Volume.failed(out)) flow.shell().run(Remote.key(up ? Remote.VOLUME_UP : Remote.VOLUME_DOWN));
+                boolean keys = volKeysMode(), sentKey = false;
+                if (!keys) {
+                    if (Volume.failed(flow.shell().run(Volume.adj(up)))) { keys = true; volKeysMode(true); }
+                    else if (!volVerified && now >= 0) {
+                        Thread.sleep(450);
+                        if (Volume.moved(now, volReadLevel(), up, max)) volVerified = true;
+                        else { flow.shell().run(Remote.key(key)); sentKey = true; volKeysMode(true); keys = true; }
+                    }
+                }
+                if (keys && !sentKey) flow.shell().run(Remote.key(key));
             } finally { volBusy.set(false); }
         });
     }
@@ -1906,7 +1936,7 @@ public class MainActivity extends Activity {
                 case android.view.MotionEvent.ACTION_CANCEL:
                     x.setPressed(false);
                     ui.removeCallbacks(again);
-                    ui.postDelayed(this::rcVolRefresh, 600);
+                    ui.postDelayed(this::rcVolRefresh, 1200);
                     return true;
                 default:
                     return true;
@@ -1919,21 +1949,21 @@ public class MainActivity extends Activity {
         final int now = volLevel;
         if (now < 0) { rcKey(Remote.MUTE); return; }   // the level is not known: the TV's own mute key
         if (now > 0) volPrev = now;
-        final int target = Volume.muteTarget(now, volPrev);
+        final int target = Volume.muteTarget(now, volPrev, volMax);
         if (rcSlider != null) rcSlider.setLevel(target, false);
         rcVolSet(target);
     }
 
-    /** The maximum volume the family chooses (a level, or off). */
+    /** The maximum volume the family chooses (a percentage of the scale of the TV, or off). */
     private void rcLimitDialog() {
-        final int[] levels = {0, 30, 50, 70, 90};
-        String[] names = new String[levels.length];
-        for (int i = 0; i < levels.length; i++) names[i] = levels[i] == 0 ? t("rc_vol_off") : String.valueOf(levels[i]);
-        int cur = volLimit(), checked = 0;
-        for (int i = 0; i < levels.length; i++) if (levels[i] == cur) checked = i;
+        final int[] percents = {0, 30, 50, 70, 90};
+        String[] names = new String[percents.length];
+        for (int i = 0; i < percents.length; i++) names[i] = percents[i] == 0 ? t("rc_vol_off") : percents[i] + " %";
+        int cur = getSharedPreferences("installer", MODE_PRIVATE).getInt("vol_limit", 0), checked = 0;
+        for (int i = 0; i < percents.length; i++) if (percents[i] == cur) checked = i;
         new AlertDialog.Builder(this).setTitle(t("rc_vol_limit")).setSingleChoiceItems(names, checked, (dlg, which) -> {
-            getSharedPreferences("installer", MODE_PRIVATE).edit().putInt("vol_limit", levels[which]).apply();
-            if (rcSlider != null) rcSlider.setLimit(levels[which]);
+            getSharedPreferences("installer", MODE_PRIVATE).edit().putInt("vol_limit", percents[which]).apply();
+            if (rcSlider != null) rcSlider.setLimit(volLimit());
             dlg.dismiss();
         }).show();
     }
