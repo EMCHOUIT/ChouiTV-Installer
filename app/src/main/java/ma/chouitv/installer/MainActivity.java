@@ -1379,12 +1379,27 @@ public class MainActivity extends Activity {
         return s;
     }
 
+    private android.graphics.drawable.StateListDrawable rcKeyStates(int fill, int radiusDp) {
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        s.addState(new int[] {android.R.attr.state_pressed}, rcLayers(KEY_PRESSED, radiusDp, 3, 0));
+        s.addState(new int[] {}, rcLayers(fill, radiusDp, 0, 3));
+        return s;
+    }
+
+    /** The lip (dark) under the face of the key; {@code top} and {@code bottom} are how far the face is moved down or kept up, in dp. */
+    private android.graphics.drawable.LayerDrawable rcLayers(int fill, int radiusDp, int top, int bottom) {
+        android.graphics.drawable.LayerDrawable l = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {
+            rcShape(0xFF08170F, radiusDp, false), rcShape(fill, radiusDp, true)});
+        l.setLayerInset(1, 0, dp(top), 0, dp(bottom));
+        return l;
+    }
+
     /** A key: an icon (and a label under it when given) on a rounded raised shape. {@code spoken} is what a screen reader says. */
     private LinearLayout rcKeyBtn(int icon, String label, int w, int h, int fill, int radiusDp, int iconColor, String spoken) {
         LinearLayout b = new LinearLayout(this);
         b.setOrientation(LinearLayout.VERTICAL);
         b.setGravity(Gravity.CENTER);
-        b.setBackground(rcStates(fill, radiusDp, true));
+        b.setBackground(rcKeyStates(fill, radiusDp));
         b.setClickable(true);
         b.setFocusable(true);
         b.setContentDescription(spoken == null ? label : spoken);
@@ -1755,7 +1770,7 @@ public class MainActivity extends Activity {
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout power = rcKeyBtn(RcIcon.POWER, null, 52, 52, 0xFF4A1E1B, 26, 0xFFFF8F80, t("rc_pw_do"));
+        LinearLayout power = rcKeyBtn(RcIcon.POWER, null, 56, 56, 0xFF4A1E1B, 26, 0xFFFF8F80, t("rc_pw_do"));
         rcTap(power, this::rcPowerAsk);
         top.addView(power);
         LinearLayout pill = new LinearLayout(this);
@@ -1781,10 +1796,10 @@ public class MainActivity extends Activity {
         rcTap(pill, () -> {
             if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else rcMoreMenu();
         });
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, dp(56), 1f);
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, dp(60), 1f);
         pp.setMargins(dp(8), 0, dp(8), 0);
         top.addView(pill, pp);
-        LinearLayout more = rcKeyBtn(RcIcon.MORE, null, 52, 52, TILE_FILL, 26, SAND, t("rc_more"));
+        LinearLayout more = rcKeyBtn(RcIcon.MORE, null, 56, 56, TILE_FILL, 26, SAND, t("rc_more"));
         rcTap(more, this::rcMoreMenu);
         top.addView(more);
         body.addView(top, lp(0, 4, 0, 6));
@@ -1800,7 +1815,7 @@ public class MainActivity extends Activity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (int k = 0; k < 3; k++) {
                 final int i = r * 3 + k;
-                LinearLayout tile = rcKeyBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 84, TILE_FILL, 16, GOLD, null);
+                LinearLayout tile = rcKeyBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 98, TILE_FILL, 18, GOLD, null);
                 LinearLayout.LayoutParams tp = (LinearLayout.LayoutParams) tile.getLayoutParams();
                 tp.setMargins(dp(4), dp(4), dp(4), dp(4));
                 rcTap(tile, () -> {
@@ -1820,12 +1835,17 @@ public class MainActivity extends Activity {
 
         // the cross: four separate arrows with room between them, and a big OK
         FrameLayout cross = new FrameLayout(this);
-        int[][] pos = {{100, 18, 100, 68}, {100, 214, 100, 68}, {18, 100, 68, 100}, {214, 100, 68, 100}};   // x, y, w, h (dp) of up, down, left, right
+        GradientDrawable bed = new GradientDrawable();
+        bed.setShape(GradientDrawable.OVAL);
+        bed.setColor(0xFF0B1F14);
+        bed.setStroke(dp(1), 0x55D6AF6B);
+        cross.setBackground(bed);
+        int[][] pos = {{98, 10, 104, 76}, {98, 214, 104, 76}, {10, 98, 76, 104}, {214, 98, 76, 104}};   // x, y, w, h (dp) of up, down, left, right
         int[] icons = {RcIcon.UP, RcIcon.DOWN, RcIcon.LEFT, RcIcon.RIGHT};
         int[] codes = {Remote.UP, Remote.DOWN, Remote.LEFT, Remote.RIGHT};
         String[] spoken = {"▲", "▼", "◀", "▶"};
         for (int i = 0; i < 4; i++) {
-            LinearLayout a = rcKeyBtn(icons[i], null, pos[i][2], pos[i][3], KEY_FILL, 22, GOLD, spoken[i]);
+            LinearLayout a = rcKeyBtn(icons[i], null, pos[i][2], pos[i][3], KEY_FILL, 24, GOLD, spoken[i]);
             FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(dp(pos[i][2]), dp(pos[i][3]));
             fp.leftMargin = dp(pos[i][0]);
             fp.topMargin = dp(pos[i][1]);
@@ -1856,8 +1876,8 @@ public class MainActivity extends Activity {
         // back and home
         LinearLayout nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout back = rcKeyBtn(RcIcon.BACK, t("rc_back"), 0, 56, KEY_FILL, 20, SAND, null);
-        LinearLayout home = rcKeyBtn(RcIcon.HOME, t("rc_home"), 0, 56, KEY_FILL, 20, SAND, null);
+        LinearLayout back = rcKeyBtn(RcIcon.BACK, t("rc_back"), 0, 68, KEY_FILL, 20, SAND, null);
+        LinearLayout home = rcKeyBtn(RcIcon.HOME, t("rc_home"), 0, 68, KEY_FILL, 20, SAND, null);
         ((LinearLayout.LayoutParams) back.getLayoutParams()).setMargins(dp(4), 0, dp(6), 0);
         ((LinearLayout.LayoutParams) home.getLayoutParams()).setMargins(dp(6), 0, dp(4), 0);
         rcTap(back, () -> rcKey(Remote.BACK));
@@ -1870,9 +1890,9 @@ public class MainActivity extends Activity {
         sectionLabel(body, t("rc_sound"));
         LinearLayout snd = new LinearLayout(this);
         snd.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout vd = rcKeyBtn(RcIcon.VOL_DOWN, null, 0, 56, KEY_FILL, 20, SAND, t("rc_vdown"));
-        LinearLayout mu = rcKeyBtn(RcIcon.MUTE, t("rc_mute2"), 0, 56, KEY_FILL, 20, SAND, null);
-        LinearLayout vu = rcKeyBtn(RcIcon.VOL_UP, null, 0, 56, KEY_FILL, 20, SAND, t("rc_vup"));
+        LinearLayout vd = rcKeyBtn(RcIcon.VOL_DOWN, null, 0, 68, KEY_FILL, 20, SAND, t("rc_vdown"));
+        LinearLayout mu = rcKeyBtn(RcIcon.MUTE, t("rc_mute2"), 0, 68, KEY_FILL, 20, SAND, null);
+        LinearLayout vu = rcKeyBtn(RcIcon.VOL_UP, null, 0, 68, KEY_FILL, 20, SAND, t("rc_vup"));
         ((LinearLayout.LayoutParams) vd.getLayoutParams()).setMargins(dp(4), 0, dp(6), 0);
         ((LinearLayout.LayoutParams) mu.getLayoutParams()).setMargins(dp(6), 0, dp(6), 0);
         ((LinearLayout.LayoutParams) mu.getLayoutParams()).weight = 1.4f;
