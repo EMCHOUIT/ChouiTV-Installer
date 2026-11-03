@@ -2,9 +2,11 @@ package ma.chouitv.installer.remote;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,21 +15,20 @@ import android.view.MotionEvent;
 import android.view.View;
 
 /**
- * The pad of the remote, drawn like the one of a real remote: a dark well holding four separate wedges (up, right, down, left) around a big gold OK,
- * with a dark slot along each diagonal. The geometry is in {@link RingGeometry}. A finger kept on a wedge repeats the arrow (after 0.4 s, then every 0.12 s).
+ * The pad of the remote, drawn like a real one with layers (no flat fills): a dark plate holding four raised wedges (up, right, down, left) with parallel
+ * gaps between them, around a big gold OK in a dish. Each wedge has a dark lip under it and a gradient face, and sinks 2 units when pressed.
+ * The geometry (what is under a finger) is in {@link RingGeometry}. A finger kept on a wedge repeats the arrow (after 0.4 s, then every 0.12 s).
  */
 public final class RcRing extends View {
     public interface Listener { void onKey(int code); }
 
-    private static final int WELL = 0xFF081A10, FACE = 0xFF2B6648, PRESSED = 0xFF1B4631, EDGE = 0x33FFFFFF, GOLD = 0xFFD6AF6B, INK = 0xFF2A1F05;
-    private static final float R_IN = 58f, R_OUT = 140f;
+    private static final float R_OUT = 139.6f, R_IN = 71.5f, GAP = 16.2f, LIP = 3.5f, SINK = 2.3f;
+    private static final int PLATE = 0xFF06110B, CHEVRON = 0xFFE9D9A6;
 
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
-    private final RectF outer = new RectF(150f - R_OUT, 150f - R_OUT, 150f + R_OUT, 150f + R_OUT);
-    private final RectF inner = new RectF(150f - R_IN, 150f - R_IN, 150f + R_IN, 150f + R_IN);
     private final Handler ui = new Handler(Looper.getMainLooper());
     private Listener listener;
     private int pressed = RingGeometry.NONE;
@@ -45,12 +46,11 @@ public final class RcRing extends View {
 
     public RcRing(Context c, Typeface okFace) {
         super(c);
-        line.setStyle(Paint.Style.STROKE);
-        line.setStrokeCap(Paint.Cap.BUTT);
         label.setTextAlign(Paint.Align.CENTER);
-        label.setColor(INK);
-        label.setTextSize(36f);
+        label.setColor(0xFF241A04);
+        label.setTextSize(31f);
         if (okFace != null) label.setTypeface(okFace);
+        label.setFakeBoldText(true);
         setContentDescription("Remote pad");
     }
 
@@ -100,76 +100,103 @@ public final class RcRing extends View {
         super.onDetachedFromWindow();
     }
 
-    private void wedge(Canvas c, int zone, float centerAngle) {
-        float start = centerAngle - 45f;
+    private static float px(float r, double deg) { return (float) (150f + r * Math.cos(Math.toRadians(deg))); }
+    private static float py(float r, double deg) { return (float) (150f + r * Math.sin(Math.toRadians(deg))); }
+
+    /** A wedge whose two sides are parallel to the diagonals and a constant {@link #GAP} from its neighbours. */
+    private void wedgePath(float centerAngle) {
+        double dR = Math.toDegrees(Math.asin(GAP / 2f / R_OUT)), dr = Math.toDegrees(Math.asin(GAP / 2f / R_IN));
+        float a0 = centerAngle - 45f + (float) dR, sweep = 90f - 2f * (float) dR;
+        float b0 = centerAngle + 45f - (float) dr, bsweep = -(90f - 2f * (float) dr);
         path.reset();
-        path.arcTo(outer, start, 90f);
-        path.arcTo(inner, start + 90f, -90f);
+        path.arcTo(new RectF(150f - R_OUT, 150f - R_OUT, 150f + R_OUT, 150f + R_OUT), a0, sweep, true);
+        path.lineTo(px(R_IN, b0), py(R_IN, b0));
+        path.arcTo(new RectF(150f - R_IN, 150f - R_IN, 150f + R_IN, 150f + R_IN), b0, bsweep, false);
         path.close();
-        fill.setStyle(Paint.Style.FILL);
-        fill.setColor(pressed == zone ? PRESSED : FACE);
-        c.drawPath(path, fill);
-        // a light edge on the outer rim, a dark one under the inner rim: the wedge looks raised
-        line.setStrokeWidth(1.6f);
-        line.setColor(pressed == zone ? 0x00000000 : EDGE);
-        RectF rim = new RectF(outer);
-        rim.inset(1.5f, 1.5f);
-        c.drawArc(rim, start + 4f, 82f, false, line);
     }
 
-    /** A chevron at (cx, cy) pointing the way (dx, dy). */
-    private void chevron(Canvas c, float cx, float cy, float dx, float dy) {
-        float px = -dy, py = dx;
-        path.reset();
-        path.moveTo(cx - dx * 8f + px * 13f, cy - dy * 8f + py * 13f);
-        path.lineTo(cx + dx * 8f, cy + dy * 8f);
-        path.lineTo(cx - dx * 8f - px * 13f, cy - dy * 8f - py * 13f);
+    private void wedge(Canvas c, int zone, float angle) {
+        boolean down = pressed == zone;
+        wedgePath(angle);
+        RectF bounds = new RectF();
+        path.computeBounds(bounds, true);
+        // the lip under the wedge
+        c.save();
+        c.translate(0f, LIP);
+        fill.setShader(null);
+        fill.setStyle(Paint.Style.FILL);
+        fill.setColor(0xFF030A06);
+        c.drawPath(path, fill);
+        c.restore();
+        // the face, which sinks when pressed
+        c.save();
+        if (down) c.translate(0f, SINK);
+        fill.setShader(down ? null : new LinearGradient(0f, bounds.top, 0f, bounds.bottom, 0xFF31634C, 0xFF193F2E, Shader.TileMode.CLAMP));
+        fill.setColor(0xFF173A2B);
+        c.drawPath(path, fill);
+        fill.setShader(null);
+        line.setStyle(Paint.Style.STROKE);
+        line.setStrokeWidth(1.2f);
+        line.setColor(0x38E9D9A6);
         c.drawPath(path, line);
+        // chevron
+        line.setStrokeWidth(3.6f);
+        line.setStrokeCap(Paint.Cap.ROUND);
+        line.setStrokeJoin(Paint.Join.ROUND);
+        line.setColor(CHEVRON);
+        float cx = px(106f, angle), cy = py(106f, angle);
+        double a = Math.toRadians(angle + 90);
+        float s = 10.4f;
+        Path ch = new Path();
+        float[][] pts = {{-s, s * 0.55f}, {0f, -s * 0.55f}, {s, s * 0.55f}};
+        for (int i = 0; i < 3; i++) {
+            float x = (float) (pts[i][0] * Math.cos(a) - pts[i][1] * Math.sin(a)) + cx, y = (float) (pts[i][0] * Math.sin(a) + pts[i][1] * Math.cos(a)) + cy;
+            if (i == 0) ch.moveTo(x, y); else ch.lineTo(x, y);
+        }
+        c.drawPath(ch, line);
+        line.setStrokeCap(Paint.Cap.BUTT);
+        c.restore();
     }
 
     @Override protected void onDraw(Canvas c) {
         c.save();
         c.scale(scale, scale);
+        // the plate
         fill.setStyle(Paint.Style.FILL);
-        fill.setColor(WELL);
+        fill.setShader(null);
+        fill.setColor(PLATE);
         c.drawCircle(150f, 150f, 149f, fill);
-        line.setStrokeWidth(1.5f);
-        line.setColor(0x55D6AF6B);
-        c.drawCircle(150f, 150f, 148f, line);
+        line.setStyle(Paint.Style.STROKE);
+        line.setStrokeWidth(1.2f);
+        line.setColor(0x73C9A44C);
+        c.drawCircle(150f, 150f, 148.4f, line);
+        line.setStrokeWidth(3.6f);
+        line.setColor(0x99000000);
+        c.drawCircle(150f, 150f, 145f, line);
 
         wedge(c, RingGeometry.UP, -90f);
         wedge(c, RingGeometry.RIGHT, 0f);
         wedge(c, RingGeometry.DOWN, 90f);
         wedge(c, RingGeometry.LEFT, 180f);
 
-        // the slots between the wedges
-        line.setStrokeWidth(RingGeometry.DEAD_BAND * 1.6f);
-        line.setColor(WELL);
-        c.drawLine(150f - 140f * 0.7071f, 150f - 140f * 0.7071f, 150f + 140f * 0.7071f, 150f + 140f * 0.7071f, line);
-        c.drawLine(150f - 140f * 0.7071f, 150f + 140f * 0.7071f, 150f + 140f * 0.7071f, 150f - 140f * 0.7071f, line);
-
-        // chevrons
-        line.setStrokeWidth(5f);
-        line.setStrokeCap(Paint.Cap.ROUND);
-        line.setStrokeJoin(Paint.Join.ROUND);
-        line.setColor(GOLD);
-        chevron(c, 150f, 51f, 0f, -1f);
-        chevron(c, 249f, 150f, 1f, 0f);
-        chevron(c, 150f, 249f, 0f, 1f);
-        chevron(c, 51f, 150f, -1f, 0f);
-        line.setStrokeCap(Paint.Cap.BUTT);
-
-        // OK: a dark socket, the gold dish with a ring, and the word
-        fill.setColor(WELL);
-        c.drawCircle(150f, 150f, 56f, fill);
-        fill.setColor(pressed == RingGeometry.OK ? 0xFFB48C3A : 0xFFD0A84E);
-        c.drawCircle(150f, 150f, 50f, fill);
-        fill.setColor(pressed == RingGeometry.OK ? 0xFFC39A44 : 0xFFE2BE68);
-        c.drawCircle(150f, 148f, 44f, fill);
+        // OK: the socket, the gold cap with a dark edge, the dish, the word
+        boolean down = pressed == RingGeometry.OK;
+        fill.setStyle(Paint.Style.FILL);
+        fill.setShader(null);
+        fill.setColor(0xFF030A06);
+        c.drawCircle(150f, 150f + LIP, 56.5f, fill);
+        c.save();
+        if (down) c.translate(0f, SINK);
+        fill.setShader(new LinearGradient(0f, 93.5f, 0f, 206.5f, down ? 0xFF9A7832 : 0xFFF0DC9E, down ? 0xFFC9A44C : 0xFFA5822F, Shader.TileMode.CLAMP));
+        c.drawCircle(150f, 150f, 56.5f, fill);
         line.setStrokeWidth(1.2f);
-        line.setColor(0x66402E0A);
-        c.drawCircle(150f, 150f, 37f, line);
-        c.drawText("OK", 150f, 162f, label);
+        line.setColor(0x992A1D05);
+        c.drawCircle(150f, 150f, 56.5f, line);
+        fill.setShader(new LinearGradient(0f, 105f, 0f, 195f, new int[] {0xFFA8853A, 0xFFC9A44C, 0xFFE2C77A}, new float[] {0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(150f, 150f, 45f, fill);
+        fill.setShader(null);
+        c.drawText("OK", 150f, 160.5f, label);
+        c.restore();
         c.restore();
     }
 }

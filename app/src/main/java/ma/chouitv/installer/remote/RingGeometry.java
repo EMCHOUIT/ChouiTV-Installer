@@ -4,7 +4,7 @@ package ma.chouitv.installer.remote;
 public final class RingGeometry {
     private RingGeometry() {}
 
-    public static final float SIZE = 300f, CENTER = 150f, OK_RADIUS = 56f, OUTER_RADIUS = 146f, DEAD_BAND = 6f;
+    public static final float SIZE = 300f, CENTER = 150f, OK_RADIUS = 64f, OUTER_RADIUS = 149f, DEAD_BAND = 8f;
     public static final int NONE = -1, UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3, OK = 4;
 
     /** The button under (x, y) of the grid. */

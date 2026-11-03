@@ -59,7 +59,10 @@ import ma.chouitv.installer.remote.Remote;
 import ma.chouitv.installer.remote.AppSlots;
 import ma.chouitv.installer.remote.Apps;
 import ma.chouitv.installer.remote.LastTv;
+import ma.chouitv.installer.remote.Keycap;
 import ma.chouitv.installer.remote.RcIcon;
+import ma.chouitv.installer.remote.RemoteBody;
+import ma.chouitv.installer.remote.Socket;
 import ma.chouitv.installer.remote.RcRing;
 import ma.chouitv.installer.remote.Reconnect;
 
@@ -1833,10 +1836,18 @@ public class MainActivity extends Activity {
     private LinearLayout rcWell(View inner, int radiusDp, int padDp) {
         LinearLayout w = new LinearLayout(this);
         w.setGravity(Gravity.CENTER);
-        w.setBackground(rcShape(0xFF081A10, radiusDp, false));
+        w.setBackground(new Socket(getResources().getDisplayMetrics().density, radiusDp));
         w.setPadding(dp(padDp), dp(padDp), dp(padDp), dp(padDp));
         w.addView(inner);
         return w;
+    }
+
+    /** A key with the layered look of a real one (lip, gradient, light edge); {@code cap} is its look, 3 dp at the bottom are kept for the lip. */
+    private LinearLayout rcCapBtn(int icon, String label, int w, int h, Keycap cap, int iconColor, String spoken) {
+        LinearLayout b = rcKeyBtn(icon, label, w, h + 3, KEY_FILL, 12, iconColor, spoken);
+        b.setBackground(cap);
+        b.setPadding(0, 0, 0, dp(3));
+        return b;
     }
 
     /** The word printed under a key, in small spaced capitals as on a real remote. */
@@ -1853,7 +1864,7 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout key = rcKeyBtn(icon, null, sizeDp, sizeDp, KEY_FILL, sizeDp / 2, GOLD, word);
+        LinearLayout key = rcCapBtn(icon, null, sizeDp, sizeDp, Keycap.hard(getResources().getDisplayMetrics().density, 100), 0xFFE9D9A6, word);
         rcTap(key, act);
         col.addView(rcWell(key, sizeDp / 2 + 4, 4), new LinearLayout.LayoutParams(-2, -2));
         TextView w = rcPrinted(word);
@@ -1876,15 +1887,15 @@ public class MainActivity extends Activity {
         float[] radii = left ? new float[] {big, big, small, small, small, small, big, big} : new float[] {small, small, big, big, big, big, small, small};
         GradientDrawable up = new GradientDrawable();
         up.setCornerRadii(radii);
-        up.setColor(KEY_FILL);
+        up.setColor(0x00000000);
         GradientDrawable down = new GradientDrawable();
         down.setCornerRadii(radii);
-        down.setColor(KEY_PRESSED);
+        down.setColor(0x55000000);
         android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
         sl.addState(new int[] {android.R.attr.state_pressed}, down);
         sl.addState(new int[] {}, up);
         k.setBackground(sl);
-        k.addView(new RcIcon(this, icon, GOLD), new LinearLayout.LayoutParams(dp(30), dp(30)));
+        k.addView(new RcIcon(this, icon, 0xFFE9D9A6), new LinearLayout.LayoutParams(dp(30), dp(30)));
         return k;
     }
 
@@ -1896,19 +1907,15 @@ public class MainActivity extends Activity {
         // the remote's body: dark green with a thin gold bezel
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        GradientDrawable bezel = new GradientDrawable();
-        bezel.setCornerRadius(dp(34));
-        bezel.setStroke(dp(2), 0xAAD6AF6B);
-        android.graphics.drawable.LayerDrawable shell = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {rcShape(0xFF143B28, 40, false), bezel});
-        shell.setLayerInset(1, dp(5), dp(5), dp(5), dp(5));
-        panel.setBackground(shell);
-        panel.setPadding(dp(18), dp(18), dp(18), dp(16));
+        final float density = getResources().getDisplayMetrics().density;
+        panel.setBackground(new RemoteBody(density));
+        panel.setPadding(dp(20), dp(20), dp(20), dp(18));
 
         // top: the red power key, the connection light and the name of the TV, more
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout power = rcKeyBtn(RcIcon.POWER, null, 52, 52, 0xFFB3322B, 26, 0xFFFFFFFF, t("rc_pw_do"));
+        LinearLayout power = rcCapBtn(RcIcon.POWER, null, 54, 54, Keycap.power(density), 0xFFFFF1EC, t("rc_pw_do"));
         rcTap(power, this::rcPowerAsk);
         top.addView(rcWell(power, 30, 4));
         LinearLayout status = new LinearLayout(this);
@@ -1933,7 +1940,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams sp0 = new LinearLayout.LayoutParams(0, dp(56), 1f);
         sp0.setMargins(dp(12), 0, dp(8), 0);
         top.addView(status, sp0);
-        LinearLayout more = rcKeyBtn(RcIcon.MORE, null, 48, 48, KEY_FILL, 24, SAND, t("rc_more"));
+        LinearLayout more = rcCapBtn(RcIcon.MORE, null, 48, 48, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_more"));
         rcTap(more, this::rcMoreMenu);
         top.addView(rcWell(more, 28, 4));
         panel.addView(top);
@@ -1948,8 +1955,8 @@ public class MainActivity extends Activity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (int k = 0; k < 3; k++) {
                 final int i = r * 3 + k;
-                LinearLayout tile = rcKeyBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 82, 0xFF12301F, 14, GOLD, null);
-                LinearLayout cell = rcWell(tile, 18, 4);
+                LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 80, Keycap.tile(density, 12), GOLD, null);
+                LinearLayout cell = rcWell(tile, 16, 3);
                 LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
                 tp.setMargins(dp(4), dp(r == 0 ? 14 : 2), dp(4), dp(2));
                 rcTap(tile, () -> {
@@ -1992,6 +1999,8 @@ public class MainActivity extends Activity {
         TextView vol = rcPrinted("VOL");
         vol.setBackgroundColor(0xFF081A10);
         vol.setGravity(Gravity.CENTER);
+        bar.setBackground(Keycap.hard(density, 30));
+        bar.setPadding(0, 0, 0, dp(3));
         bar.addView(vd, new LinearLayout.LayoutParams(0, dp(60), 1f));
         bar.addView(vol, new LinearLayout.LayoutParams(dp(56), dp(60)));
         bar.addView(vu, new LinearLayout.LayoutParams(0, dp(60), 1f));

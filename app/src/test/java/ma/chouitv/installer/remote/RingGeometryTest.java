@@ -28,14 +28,14 @@ public class RingGeometryTest {
     }
 
     @Test public void outsideTheRingIsNothing() {
-        assertEquals(RingGeometry.NONE, zone(0, 148));
+        assertEquals(RingGeometry.NONE, zone(0, 151));
         assertEquals(RingGeometry.NONE, RingGeometry.zoneAt(0, 0));
         assertEquals(RingGeometry.NONE, zone(200, 0));
     }
 
     @Test public void everyWedgeIsWideEnoughForAThumb() {
-        // at the inner edge of the wedges (radius 60 units) the free width between the dead bands is more than 40 units, about 45 dp on a 340 dp pad
-        float width = (float) (2 * 60 * Math.sin(Math.toRadians(45)) - 2 * RingGeometry.DEAD_BAND * Math.sqrt(2));
+        // at the inner edge of the wedges (radius 60 units) the free width between the dead bands is more than 40 units
+        float width = (float) (2 * 71.5 * Math.sin(Math.toRadians(45)) - 2 * RingGeometry.DEAD_BAND * Math.sqrt(2));
         assertTrue("width " + width, width > 40f);
     }
 
