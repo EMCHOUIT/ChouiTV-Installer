@@ -60,6 +60,7 @@ import ma.chouitv.installer.remote.AppSlots;
 import ma.chouitv.installer.remote.Apps;
 import ma.chouitv.installer.remote.LastTv;
 import ma.chouitv.installer.remote.RcIcon;
+import ma.chouitv.installer.remote.RcRing;
 import ma.chouitv.installer.remote.Reconnect;
 
 import static ma.chouitv.installer.Strings.t;
@@ -1828,52 +1829,117 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** A key sunk in a dark well, like the sockets of a real remote. */
+    private LinearLayout rcWell(View inner, int radiusDp, int padDp) {
+        LinearLayout w = new LinearLayout(this);
+        w.setGravity(Gravity.CENTER);
+        w.setBackground(rcShape(0xFF081A10, radiusDp, false));
+        w.setPadding(dp(padDp), dp(padDp), dp(padDp), dp(padDp));
+        w.addView(inner);
+        return w;
+    }
+
+    /** The word printed under a key, in small spaced capitals as on a real remote. */
+    private TextView rcPrinted(String word) {
+        TextView p = text(word.toUpperCase(java.util.Locale.ROOT), medium, 11, 0xFFE9D9A6);
+        p.setGravity(Gravity.CENTER);
+        p.setLetterSpacing(0.1f);
+        p.setMaxLines(1);
+        return p;
+    }
+
+    /** A round key in its well with its word printed under it. */
+    private LinearLayout rcRoundWithWord(int icon, final String word, int sizeDp, final Runnable act) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout key = rcKeyBtn(icon, null, sizeDp, sizeDp, KEY_FILL, sizeDp / 2, GOLD, word);
+        rcTap(key, act);
+        col.addView(rcWell(key, sizeDp / 2 + 4, 4), new LinearLayout.LayoutParams(-2, -2));
+        TextView w = rcPrinted(word);
+        w.setMinHeight(dp(28));
+        w.setGravity(Gravity.CENTER);
+        w.setClickable(true);
+        rcTap(w, act);
+        col.addView(w);
+        return col;
+    }
+
+    /** One half of the volume bar: rounded on the outer side only. */
+    private LinearLayout rcHalfKey(int icon, boolean left, String spoken) {
+        LinearLayout k = new LinearLayout(this);
+        k.setGravity(Gravity.CENTER);
+        k.setClickable(true);
+        k.setFocusable(true);
+        k.setContentDescription(spoken);
+        float big = dp(28), small = dp(6);
+        float[] radii = left ? new float[] {big, big, small, small, small, small, big, big} : new float[] {small, small, big, big, big, big, small, small};
+        GradientDrawable up = new GradientDrawable();
+        up.setCornerRadii(radii);
+        up.setColor(KEY_FILL);
+        GradientDrawable down = new GradientDrawable();
+        down.setCornerRadii(radii);
+        down.setColor(KEY_PRESSED);
+        android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
+        sl.addState(new int[] {android.R.attr.state_pressed}, down);
+        sl.addState(new int[] {}, up);
+        k.setBackground(sl);
+        k.addView(new RcIcon(this, icon, GOLD), new LinearLayout.LayoutParams(dp(30), dp(30)));
+        return k;
+    }
+
     private void remoteScreen(LinearLayout body, final TextView button) {
         final LastTv last = LastTv.load(prefs());
         rcSlots = AppSlots.load(prefs(), rcTvKey());
         rcTvApps = null;
 
-        // top: power, the TV and its state, more
+        // the remote's body: dark green with a thin gold bezel
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bezel = new GradientDrawable();
+        bezel.setCornerRadius(dp(34));
+        bezel.setStroke(dp(2), 0xAAD6AF6B);
+        android.graphics.drawable.LayerDrawable shell = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {rcShape(0xFF143B28, 40, false), bezel});
+        shell.setLayerInset(1, dp(5), dp(5), dp(5), dp(5));
+        panel.setBackground(shell);
+        panel.setPadding(dp(18), dp(18), dp(18), dp(16));
+
+        // top: the red power key, the connection light and the name of the TV, more
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout power = rcKeyBtn(RcIcon.POWER, null, 56, 56, 0xFF4A1E1B, 26, 0xFFFF8F80, t("rc_pw_do"));
+        LinearLayout power = rcKeyBtn(RcIcon.POWER, null, 52, 52, 0xFFB3322B, 26, 0xFFFFFFFF, t("rc_pw_do"));
         rcTap(power, this::rcPowerAsk);
-        top.addView(power);
-        LinearLayout pill = new LinearLayout(this);
-        pill.setOrientation(LinearLayout.HORIZONTAL);
-        pill.setGravity(Gravity.CENTER_VERTICAL);
-        pill.setBackground(rcStates(TILE_FILL, 26, true));
-        pill.setPadding(dp(14), dp(2), dp(14), dp(2));
+        top.addView(rcWell(power, 30, 4));
+        LinearLayout status = new LinearLayout(this);
+        status.setOrientation(LinearLayout.HORIZONTAL);
+        status.setGravity(Gravity.CENTER_VERTICAL);
+        status.setClickable(true);
         rcPillDot = new View(this);
-        pill.addView(rcPillDot, new LinearLayout.LayoutParams(dp(10), dp(10)));
+        status.addView(rcPillDot, new LinearLayout.LayoutParams(dp(10), dp(10)));
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
-        rcPillName = text(last == null ? "TV" : last.name, medium, 14, SAND);
+        rcPillName = text((last == null ? "TV" : last.name).toUpperCase(java.util.Locale.ROOT), medium, 14, SAND);
         rcPillName.setMaxLines(1);
+        rcPillName.setLetterSpacing(0.06f);
         rcPillSub = text("", regular, 12, MUTED);
-        rcPillSub.setIncludeFontPadding(false);
-        rcPillName.setIncludeFontPadding(false);
         rcPillSub.setMaxLines(1);
         names.addView(rcPillName);
         names.addView(rcPillSub);
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1f);
         np.setMarginStart(dp(10));
-        pill.addView(names, np);
-        rcTap(pill, () -> {
-            if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else rcMoreMenu();
-        });
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, dp(60), 1f);
-        pp.setMargins(dp(8), 0, dp(8), 0);
-        top.addView(pill, pp);
-        LinearLayout more = rcKeyBtn(RcIcon.MORE, null, 56, 56, TILE_FILL, 26, SAND, t("rc_more"));
+        status.addView(names, np);
+        rcTap(status, () -> { if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else rcMoreMenu(); });
+        LinearLayout.LayoutParams sp0 = new LinearLayout.LayoutParams(0, dp(56), 1f);
+        sp0.setMargins(dp(12), 0, dp(8), 0);
+        top.addView(status, sp0);
+        LinearLayout more = rcKeyBtn(RcIcon.MORE, null, 48, 48, KEY_FILL, 24, SAND, t("rc_more"));
         rcTap(more, this::rcMoreMenu);
-        top.addView(more);
-        body.addView(top, lp(0, 4, 0, 6));
+        top.addView(rcWell(more, 28, 4));
+        panel.addView(top);
         rcStatus(rcState, 0);
 
-        // six shortcuts
-        sectionLabel(body, t("rc_shortcuts"));
+        // six printed keys for the shortcuts, each in its well
         Object[][] tiles = {
             {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
             {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
@@ -1882,9 +1948,10 @@ public class MainActivity extends Activity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (int k = 0; k < 3; k++) {
                 final int i = r * 3 + k;
-                LinearLayout tile = rcKeyBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 98, TILE_FILL, 18, GOLD, null);
-                LinearLayout.LayoutParams tp = (LinearLayout.LayoutParams) tile.getLayoutParams();
-                tp.setMargins(dp(4), dp(4), dp(4), dp(4));
+                LinearLayout tile = rcKeyBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 82, 0xFF12301F, 14, GOLD, null);
+                LinearLayout cell = rcWell(tile, 18, 4);
+                LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
+                tp.setMargins(dp(4), dp(r == 0 ? 14 : 2), dp(4), dp(2));
                 rcTap(tile, () -> {
                     switch (i) {
                         case 0: rcOpen(Remote.Target.LISTEN); break;
@@ -1895,89 +1962,45 @@ public class MainActivity extends Activity {
                         default: rcRun(() -> flow.shell().run(Remote.settings()));
                     }
                 });
-                row.addView(tile);
+                row.addView(cell, tp);
             }
-            body.addView(row);
+            panel.addView(row);
         }
 
-        // the cross: four separate arrows with room between them, and a big OK
-        FrameLayout cross = new FrameLayout(this);
-        GradientDrawable bed = new GradientDrawable();
-        bed.setShape(GradientDrawable.OVAL);
-        bed.setColor(0xFF0B1F14);
-        bed.setStroke(dp(1), 0x55D6AF6B);
-        android.graphics.drawable.LayerDrawable bedLayers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {bed, getDrawable(R.drawable.ic_star8)});
-        bedLayers.setLayerInset(1, dp(12), dp(12), dp(12), dp(12));
-        cross.setBackground(bedLayers);
-        int[][] pos = {{112, 8, 116, 84}, {112, 248, 116, 84}, {8, 112, 84, 116}, {248, 112, 84, 116}};   // x, y, w, h (dp) of up, down, left, right
-        int[] icons = {RcIcon.UP, RcIcon.DOWN, RcIcon.LEFT, RcIcon.RIGHT};
-        int[] codes = {Remote.UP, Remote.DOWN, Remote.LEFT, Remote.RIGHT};
-        String[] spoken = {"▲", "▼", "◀", "▶"};
-        for (int i = 0; i < 4; i++) {
-            LinearLayout a = rcKeyBtn(icons[i], null, pos[i][2], pos[i][3], KEY_FILL, 24, GOLD, spoken[i]);
-            FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(dp(pos[i][2]), dp(pos[i][3]));
-            fp.leftMargin = dp(pos[i][0]);
-            fp.topMargin = dp(pos[i][1]);
-            rcHold(a, codes[i]);
-            cross.addView(a, fp);
-        }
-        TextView ok = text("OK", display, 30, DARK);
-        ok.setGravity(Gravity.CENTER);
-        GradientDrawable okShape = new GradientDrawable();
-        okShape.setShape(GradientDrawable.OVAL);
-        okShape.setColor(GOLD);
-        GradientDrawable okRing = new GradientDrawable();
-        okRing.setShape(GradientDrawable.OVAL);
-        okRing.setStroke(dp(1), 0x66402E0A);
-        android.graphics.drawable.LayerDrawable okLayers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {okShape, okRing});
-        okLayers.setLayerInset(1, dp(8), dp(8), dp(8), dp(8));
-        ok.setBackground(okLayers);
-        ok.setClickable(true);
-        ok.setContentDescription("OK");
-        rcTap(ok, () -> rcKey(Remote.OK));
-        FrameLayout.LayoutParams okp = new FrameLayout.LayoutParams(dp(112), dp(112));
-        okp.leftMargin = dp(114);
-        okp.topMargin = dp(114);
-        cross.addView(ok, okp);
-        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(dp(340), dp(340));
-        cl.gravity = Gravity.CENTER_HORIZONTAL;
-        cl.topMargin = dp(10);
-        body.addView(cross, cl);
-        TextView hint = text(t("rc_hold"), regular, 12, MUTED);
-        hint.setGravity(Gravity.CENTER);
-        body.addView(hint, lp(0, 0, 0, 8));
+        // the pad: four wedges around OK
+        RcRing ring = new RcRing(this, display);
+        ring.setListener(code -> rcKey(code));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+        rp.topMargin = dp(12);
+        panel.addView(ring, rp);
 
-        // back and home
-        LinearLayout nav = new LinearLayout(this);
-        nav.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout back = rcKeyBtn(RcIcon.BACK, t("rc_back"), 0, 68, KEY_FILL, 20, SAND, null);
-        LinearLayout home = rcKeyBtn(RcIcon.HOME, t("rc_home"), 0, 68, KEY_FILL, 20, SAND, null);
-        ((LinearLayout.LayoutParams) back.getLayoutParams()).setMargins(dp(4), 0, dp(6), 0);
-        ((LinearLayout.LayoutParams) home.getLayoutParams()).setMargins(dp(6), 0, dp(4), 0);
-        rcTap(back, () -> rcKey(Remote.BACK));
-        rcTap(home, () -> rcKey(Remote.HOME));
-        nav.addView(back);
-        nav.addView(home);
-        body.addView(nav, lp(0, 6, 0, 0));
+        // Back, Home, Mute: round keys with their word printed under
+        LinearLayout round = new LinearLayout(this);
+        round.setOrientation(LinearLayout.HORIZONTAL);
+        round.setGravity(Gravity.CENTER);
+        LinearLayout back = rcRoundWithWord(RcIcon.BACK, t("rc_back"), 60, () -> rcKey(Remote.BACK));
+        LinearLayout home = rcRoundWithWord(RcIcon.HOME, t("rc_home"), 60, () -> rcKey(Remote.HOME));
+        LinearLayout mute = rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), 60, () -> rcKey(Remote.MUTE));
+        for (LinearLayout col : new LinearLayout[] {back, home, mute}) round.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        panel.addView(round, lp(0, 10, 0, 0));
 
-        // sound
-        sectionLabel(body, t("rc_sound"));
-        LinearLayout snd = new LinearLayout(this);
-        snd.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout vd = rcKeyBtn(RcIcon.VOL_DOWN, null, 0, 68, KEY_FILL, 20, SAND, t("rc_vdown"));
-        LinearLayout mu = rcKeyBtn(RcIcon.MUTE, t("rc_mute2"), 0, 68, KEY_FILL, 20, SAND, null);
-        LinearLayout vu = rcKeyBtn(RcIcon.VOL_UP, null, 0, 68, KEY_FILL, 20, SAND, t("rc_vup"));
-        ((LinearLayout.LayoutParams) vd.getLayoutParams()).setMargins(dp(4), 0, dp(6), 0);
-        ((LinearLayout.LayoutParams) mu.getLayoutParams()).setMargins(dp(6), 0, dp(6), 0);
-        ((LinearLayout.LayoutParams) mu.getLayoutParams()).weight = 1.4f;
-        ((LinearLayout.LayoutParams) vu.getLayoutParams()).setMargins(dp(6), 0, dp(4), 0);
+        // volume: one bar, minus on the left, plus on the right, VOL between
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout vd = rcHalfKey(RcIcon.VOL_DOWN, true, t("rc_vdown"));
+        LinearLayout vu = rcHalfKey(RcIcon.VOL_UP, false, t("rc_vup"));
+        TextView vol = rcPrinted("VOL");
+        vol.setBackgroundColor(0xFF081A10);
+        vol.setGravity(Gravity.CENTER);
+        bar.addView(vd, new LinearLayout.LayoutParams(0, dp(60), 1f));
+        bar.addView(vol, new LinearLayout.LayoutParams(dp(56), dp(60)));
+        bar.addView(vu, new LinearLayout.LayoutParams(0, dp(60), 1f));
         rcHold(vd, Remote.VOLUME_DOWN);
         rcHold(vu, Remote.VOLUME_UP);
-        rcTap(mu, () -> rcKey(Remote.MUTE));
-        snd.addView(vd);
-        snd.addView(mu);
-        snd.addView(vu);
-        body.addView(snd);
+        bar.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        panel.addView(rcWell(bar, 34, 4), lp(0, 8, 0, 0));
+
+        body.addView(panel, lp(0, 4, 0, 8));
 
         button.setText(t("cl_home"));
         secondaryStyle(button);
