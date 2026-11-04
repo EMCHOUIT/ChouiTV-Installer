@@ -1297,8 +1297,18 @@ public class MainActivity extends Activity {
         button.setOnClickListener(v -> {
             if (busy) return;
             if (!cleanConfirmed) { Toast.makeText(this, t("cl_conf_needed"), Toast.LENGTH_SHORT).show(); return; }
-            show(9);
+            reviewThenRun(n);
         });
+    }
+
+    /** The last look: the names of the apps about to be turned off, and a clear way to go back. */
+    private void reviewThenRun(int n) {
+        java.util.List<String> names = new ArrayList<>();
+        for (String pkg : cleanSel) names.add(cleanupData.label(pkg, Strings.lang));
+        String list = ma.chouitv.installer.cleanup.Review.lines(names, 6, t("rv_others"));
+        new AlertDialog.Builder(this).setTitle(t("rv_t", n)).setMessage(t("rv_msg") + "\n\n" + list)
+            .setPositiveButton(t("rv_do"), (d, w) -> show(9))
+            .setNegativeButton(t("rv_back"), null).show();
     }
 
     private String tvModelLine() { return (tvBrand.isEmpty() ? "" : cap(tvBrand) + " · ") + tvModel; }

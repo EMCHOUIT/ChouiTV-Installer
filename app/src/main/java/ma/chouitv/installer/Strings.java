@@ -550,6 +550,11 @@ final class Strings {
         k("fx_other", "شيء آخر بعد التنظيف", "Autre chose après un nettoyage", "Something else after a clean-up");
         k("fx_other_msg", "تعود Netflix وPrime Video عند كل تشغيل في بعض أجهزة Xiaomi، وقائمة «الصورة» تحتاج إعادة تشغيل التلفاز بعد إعادة خدمة نظام. أعد تشغيل التلفاز أولًا، ثم افتح «أعد تطبيقًا» إن لزم.", "Sur certaines Xiaomi, Netflix et Prime Video reviennent à chaque démarrage, et le menu Image demande un redémarrage de la télé après la remise d\u2019un service système. Redémarrez la télé d\u2019abord, puis ouvrez « Une appli a disparu » si besoin.", "On some Xiaomi TVs Netflix and Prime Video come back at every start, and the Picture menu needs a TV restart after a system service is put back. Restart the TV first, then open \"An app disappeared\" if needed.");
         k("jr_open", "السجل", "Journal", "Journal");
+        k("rv_t", "أوقِف %d تطبيقًا؟", "Couper %d appli(s) ?", "Turn off %d app(s)?");
+        k("rv_msg", "ستُوقَف هذه التطبيقات ولا تُحذف، ويمكنك إعادتها في أي وقت من «إصلاح»:", "Elles seront coupées, pas supprimées, et vous pouvez les remettre à tout moment depuis « Dépannage » :", "They will be turned off, not deleted, and you can put them back at any time from \"Fix a problem\":");
+        k("rv_others", "%d أخرى", "%d autres", "%d others");
+        k("rv_do", "أوقِف", "Couper", "Turn off");
+        k("rv_back", "راجع", "Revoir", "Review");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");
