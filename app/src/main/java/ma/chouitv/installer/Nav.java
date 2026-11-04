@@ -21,6 +21,7 @@ final class Nav {
             case 31: return 25;   // the preview of a set-up goes back to the remote
             case 32: return 26;   // the choice of layout goes back to «More»
             case 33: return 32;   // the editor goes back to the choice
+            case 34: return 26;   // the comfort settings go back to «More»
             case 18: return 12;   // the old mode screen is no longer reachable; if it ever shows, it goes back to the TV's page
             case 29: case 30: return 12;   // the journal and the fix screen
             case 19: return 12;
@@ -57,7 +58,7 @@ final class Nav {
     /** The screens that can be visited with no TV at all: the language, the three steps and the search, the remote (demo), Options, «My TVs», the short opening screen. */
     static boolean opensWithoutTv(int step) {
         switch (step) {
-            case 0: case 1: case 2: case 25: case 26: case 27: case 28: case 32: case 33: return true;
+            case 0: case 1: case 2: case 25: case 26: case 27: case 28: case 32: case 33: case 34: return true;
             default: return false;
         }
     }
@@ -67,7 +68,7 @@ final class Nav {
         switch (step) {
             case 25: return 0;
             case 27: case 12: case 29: case 30: return 1;
-            case 26: case 32: return 2;
+            case 26: case 32: case 34: return 2;
             default: return -1;
         }
     }

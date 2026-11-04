@@ -69,6 +69,7 @@ import ma.chouitv.installer.remote.Keycap;
 import ma.chouitv.installer.remote.RcIcon;
 import ma.chouitv.installer.remote.RemoteBody;
 import ma.chouitv.installer.remote.Socket;
+import ma.chouitv.installer.remote.Comfort;
 import ma.chouitv.installer.remote.RcLayoutView;
 import ma.chouitv.installer.remote.RcRing;
 import ma.chouitv.installer.remote.RemoteLayout;
@@ -274,9 +275,10 @@ public class MainActivity extends Activity {
             case 31: equipPreview(body, button); break;
             case 32: layoutsScreen(body, button); break;
             case 33: layoutEditor(body, button); break;
+            case 34: comfortScreen(body, button); break;
             default: done(body, button); break;
         }
-        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30 || n == 32 || n == 33) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
+        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30 || n == 32 || n == 33 || n == 34) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
         if (Nav.showsTabs(n)) { LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, dp(62)); tp.topMargin = dp(8); col.addView(tabBar(Nav.tabOf(n)), tp); }
     }
 
@@ -364,7 +366,7 @@ public class MainActivity extends Activity {
     private void moreScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("more_title"), t("more_sub"));
         Object[][] rows = {
-            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.TV, "more_layout"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.MUTE, "more_physvol"}, {RcIcon.HOME, "more_about_row"}};
+            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.TV, "more_layout"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.MUTE, "more_physvol"}, {RcIcon.GEAR, "more_comfort"}, {RcIcon.HOME, "more_about_row"}};
         for (int i = 0; i < rows.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
@@ -386,6 +388,7 @@ public class MainActivity extends Activity {
                     case 3: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
                     case 4: rcLimitDialog(); break;
                     case 5: clearGuide(); space = SPACE_REMOTE; show(1); break;
+                    case 7: show(34); break;
                     case 6: {
                         boolean on = !"0".equals(prefs().get("vol_phone"));
                         prefs().put("vol_phone", on ? "0" : "1");
@@ -1874,14 +1877,14 @@ public class MainActivity extends Activity {
     /** Taps send the key at once; a finger kept down on an arrow or the volume repeats it (after 0.4 s, then every 0.12 s). */
     private void rcHold(final View v, final int code) {
         final Runnable[] again = new Runnable[1];
-        again[0] = new Runnable() { @Override public void run() { rcKey(code); ui.postDelayed(this, 120); } };
+        again[0] = new Runnable() { @Override public void run() { rcKey(code); ui.postDelayed(this, Comfort.repeatMs(cfRepeat())); } };
         v.setOnTouchListener((x, e) -> {
             switch (e.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     x.setPressed(true);
-                    x.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                    buzz(x);
                     rcKey(code);
-                    ui.postDelayed(again[0], 400);
+                    ui.postDelayed(again[0], Comfort.FIRST_REPEAT_MS);
                     return true;
                 case android.view.MotionEvent.ACTION_UP:
                 case android.view.MotionEvent.ACTION_CANCEL:
@@ -1894,8 +1897,102 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    // ---- comfort settings of the remote: the buzz of a press, the repeat speed, high contrast, the size of the words, the remote lowered for one hand ----
+    private int cfHaptic() { return Comfort.level(prefs().get("rc_haptic"), Comfort.DEFAULT_HAPTIC, Comfort.HAPTIC_LEVELS); }
+    private int cfRepeat() { return Comfort.level(prefs().get("rc_repeat"), Comfort.DEFAULT_REPEAT, Comfort.REPEAT_LEVELS); }
+    private int cfText() { return Comfort.level(prefs().get("rc_text"), Comfort.DEFAULT_TEXT, Comfort.TEXT_LEVELS); }
+    private boolean cfContrast() { return "1".equals(prefs().get("rc_contrast")); }
+    private boolean cfLowered() { return "1".equals(prefs().get("rc_lowered")); }
+    /** The colour of the icons and printed words of the keys. */
+    private int rcIcon() { return cfContrast() ? 0xFFFFFFFF : 0xFFE9D9A6; }
+
+    /** The buzz of a press, at the strength chosen in the comfort settings (none when it is off). */
+    private void buzz(View v) {
+        int lv = cfHaptic();
+        if (lv == 0) return;
+        try {
+            android.os.Vibrator vb = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (vb != null && vb.hasVibrator()) {
+                int amp = vb.hasAmplitudeControl() ? Comfort.hapticAmplitude(lv) : android.os.VibrationEffect.DEFAULT_AMPLITUDE;
+                vb.vibrate(android.os.VibrationEffect.createOneShot(Comfort.hapticMs(lv), amp));
+                return;
+            }
+        } catch (Exception ignored) { }
+        v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+    }
+
+    private static final String[][] COMFORT_ROWS = {
+        {"rc_haptic", "cf_haptic"}, {"rc_repeat", "cf_repeat"}, {"rc_text", "cf_text"}, {"rc_contrast", "cf_contrast"}, {"rc_lowered", "cf_lowered"}};
+
+    private String comfortValue(int row) {
+        switch (row) {
+            case 0: return t(new String[] {"cf_off", "cf_light", "cf_strong"}[cfHaptic()]);
+            case 1: return t(new String[] {"cf_slow", "cf_normal", "cf_fast"}[cfRepeat()]);
+            case 2: return t(new String[] {"cf_text0", "cf_text1", "cf_text2"}[cfText()]);
+            case 3: return t(cfContrast() ? "cf_on" : "cf_dis");
+            default: return t(cfLowered() ? "cf_on" : "cf_dis");
+        }
+    }
+
+    private void comfortScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("cf_title"), t("cf_sub"));
+        for (int i = 0; i < COMFORT_ROWS.length; i++) {
+            final int which = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setBackground(rcStates(TILE_FILL, 16, true));
+            row.setPadding(dp(16), dp(10), dp(16), dp(10));
+            row.setClickable(true);
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.addView(text(t(COMFORT_ROWS[i][1]), medium, 16, SAND));
+            col.addView(text(t(COMFORT_ROWS[i][1] + "_d"), regular, 13, MUTED));
+            row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView val = text(comfortValue(i), medium, 15, GOLD);
+            val.setGravity(Gravity.END);
+            row.addView(val, new LinearLayout.LayoutParams(-2, -2));
+            row.setOnClickListener(v -> {
+                String key = COMFORT_ROWS[which][0], cur = prefs().get(key);
+                String next;
+                switch (which) {
+                    case 0: next = String.valueOf(Comfort.next(cfHaptic(), Comfort.HAPTIC_LEVELS)); break;
+                    case 1: next = String.valueOf(Comfort.next(cfRepeat(), Comfort.REPEAT_LEVELS)); break;
+                    case 2: next = String.valueOf(Comfort.next(cfText(), Comfort.TEXT_LEVELS)); break;
+                    case 3: next = cfContrast() ? "0" : "1"; break;
+                    default: next = cfLowered() ? "0" : "1"; break;
+                }
+                prefs().put(key, next);
+                if (which == 0) buzz(v);
+                show(34);
+            });
+            body.addView(row, lp(0, 8, 0, 0));
+        }
+    }
+
+    /** A shortcut key with the comfort settings applied: its words in the size and colour chosen, without the icon when the words are big. */
+    private void rcRestyleTile(LinearLayout tile, int cellWidthDp) {
+        int level = cfText();
+        for (int i = tile.getChildCount() - 1; i >= 0; i--) {
+            View c = tile.getChildAt(i);
+            if (c instanceof TextView) {
+                TextView tv = (TextView) c;
+                float base = tv.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
+                int longest = 1;
+                for (String w : tv.getText().toString().split("\\s+")) longest = Math.max(longest, w.length());
+                float room = (cellWidthDp - 14) / (longest * 0.6f) / getResources().getConfiguration().fontScale;   // the longest word must still fit on one line
+                float size = Math.max(base, Math.min(base * Comfort.textScale(level), room));
+                tv.setTextSize(Math.round(size));
+                if (cfContrast()) tv.setTextColor(0xFFFFFFFF);
+            } else if (Comfort.textOnly(level)) {
+                tile.removeViewAt(i);
+            }
+        }
+    }
+
     private void rcTap(View v, final Runnable act) {
-        v.setOnClickListener(x -> { x.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP); act.run(); });
+        v.setOnClickListener(x -> { buzz(x); act.run(); });
     }
 
     private void rcFail(final Exception e) {
@@ -2750,14 +2847,14 @@ public class MainActivity extends Activity {
 
     /** The - and + keys: a tap is one step, a finger kept down repeats (0.4 s, then every 0.15 s) and stops the moment it lifts; the level is read back at the end. */
     private void rcHoldStep(final View v, final boolean up) {
-        final Runnable again = new Runnable() { @Override public void run() { rcVolStep(up); ui.postDelayed(this, 150); } };
+        final Runnable again = new Runnable() { @Override public void run() { rcVolStep(up); ui.postDelayed(this, Math.max(150, Comfort.repeatMs(cfRepeat()))); } };
         v.setOnTouchListener((x, e) -> {
             switch (e.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     x.setPressed(true);
-                    x.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                    buzz(x);
                     rcVolStep(up);
-                    ui.postDelayed(again, 400);
+                    ui.postDelayed(again, Comfort.FIRST_REPEAT_MS);
                     return true;
                 case android.view.MotionEvent.ACTION_UP:
                 case android.view.MotionEvent.ACTION_CANCEL:
@@ -2901,7 +2998,7 @@ public class MainActivity extends Activity {
 
     /** The word printed under a key, in small spaced capitals as on a real remote. */
     private TextView rcPrinted(String word) {
-        TextView p = text(word.toUpperCase(java.util.Locale.ROOT), medium, 11, 0xFFE9D9A6);
+        TextView p = text(word.toUpperCase(java.util.Locale.ROOT), medium, Math.round(11 * Comfort.textScale(cfText())), rcIcon());
         p.setGravity(Gravity.CENTER);
         p.setLetterSpacing(0.1f);
         p.setMaxLines(1);
@@ -2913,7 +3010,7 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout key = rcCapBtn(icon, null, sizeDp, sizeDp, Keycap.hard(getResources().getDisplayMetrics().density, 100), 0xFFE9D9A6, word);
+        LinearLayout key = rcCapBtn(icon, null, sizeDp, sizeDp, Keycap.hard(getResources().getDisplayMetrics().density, 100), rcIcon(), word);
         rcTap(key, act);
         col.addView(rcWell(key, sizeDp / 2 + 4, 4), new LinearLayout.LayoutParams(-2, -2));
         TextView w = rcPrinted(word);
@@ -2989,7 +3086,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams sp0 = new LinearLayout.LayoutParams(0, dp(56), 1f);
         sp0.setMargins(dp(12), 0, dp(8), 0);
         top.addView(status, sp0);
-        LinearLayout more = rcCapBtn(RcIcon.MORE, null, 48, 48, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_more"));
+        LinearLayout more = rcCapBtn(RcIcon.MORE, null, 48, 48, Keycap.hard(density, 100), rcIcon(), t("rc_more"));
         rcTap(more, this::rcMoreMenu);
         top.addView(rcWell(more, 28, 4));
         panel.addView(top);
@@ -3014,6 +3111,7 @@ public class MainActivity extends Activity {
         rcBannerRefresh();
         body.addView(panel, lp(0, 4, 0, 8));
 
+        if (cfLowered()) body.setGravity(Gravity.BOTTOM);   // one-hand mode: the whole remote sits at the bottom, under the thumb
         button.setText(t("cl_home"));
         secondaryStyle(button);
         button.setOnClickListener(v -> show(12));
@@ -3061,8 +3159,8 @@ public class MainActivity extends Activity {
     private RemoteLayout.Kind edSelected;
 
     private static final RemoteLayout.Template[] TEMPLATES = {
-        RemoteLayout.Template.CLASSIC, RemoteLayout.Template.RIGHT, RemoteLayout.Template.LEFT, RemoteLayout.Template.ELDER, RemoteLayout.Template.COMPACT};
-    private static final String[] TEMPLATE_KEYS = {"lay_classic", "lay_right", "lay_left", "lay_elder", "lay_compact"};
+        RemoteLayout.Template.CLASSIC, RemoteLayout.Template.RIGHT, RemoteLayout.Template.LEFT, RemoteLayout.Template.ELDER, RemoteLayout.Template.COMPACT, RemoteLayout.Template.FIVE};
+    private static final String[] TEMPLATE_KEYS = {"lay_classic", "lay_right", "lay_left", "lay_elder", "lay_compact", "lay_five"};
 
     /** What a key is called on the layout (the words of the remote itself where there are). */
     private java.util.Map<RemoteLayout.Kind, String> layoutLabels() {
@@ -3120,6 +3218,47 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams cp = lp(0, 16, 0, 8);
         cp.height = dp(56);
         body.addView(custom, cp);
+        LinearLayout share = new LinearLayout(this);
+        share.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(0, -2, 1f);
+        hp.setMargins(dp(3), 0, dp(3), 0);
+        share.addView(layoutChip(t("lay_share"), this::layoutShare), hp);
+        share.addView(layoutChip(t("lay_paste"), this::layoutPaste), hp);
+        body.addView(share, lp(0, 0, 0, 12));
+    }
+
+    private static final String SHARE_PREFIX = "chouitv-layout:";
+
+    /** The layout as a short text (no server, no account): sent through any messaging app. */
+    private void layoutShare() {
+        Intent i = new Intent(Intent.ACTION_SEND);
+        i.setType("text/plain");
+        i.putExtra(Intent.EXTRA_TEXT, SHARE_PREFIX + rcLayout().encode());
+        try { startActivity(Intent.createChooser(i, t("lay_share"))); } catch (Exception ignored) { }
+    }
+
+    /** A layout received as text: it is read, checked like anything saved, and offered before it replaces the current one. */
+    private void layoutPaste() {
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setHint(t("lay_paste_hint"));
+        et.setSingleLine(false);
+        try {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0) {
+                CharSequence c = cm.getPrimaryClip().getItemAt(0).getText();
+                if (c != null && c.toString().contains(SHARE_PREFIX)) et.setText(c);
+            }
+        } catch (Exception ignored) { }
+        new AlertDialog.Builder(this).setTitle(t("lay_paste")).setView(et)
+            .setPositiveButton(t("lay_paste_ok"), (d, w) -> {
+                String s = et.getText().toString().trim();
+                int at = s.indexOf(SHARE_PREFIX);
+                RemoteLayout l = at < 0 ? null : RemoteLayout.decode(s.substring(at + SHARE_PREFIX.length()).split("\\s")[0]);
+                if (l == null) { Toast.makeText(this, t("lay_paste_bad"), Toast.LENGTH_LONG).show(); return; }
+                prefs().put("rc_layout", l.encode());
+                prefs().put("rc_template", "");
+                show(25);
+            }).setNegativeButton(t("lay_done"), null).show();
     }
 
     private LinearLayout layoutCard(RemoteLayout layout, String title, String desc, boolean on, Runnable pick) {
@@ -3322,6 +3461,7 @@ public class MainActivity extends Activity {
         LinearLayout cell = rcWell(tile, 16, 3);
         tile.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
         rcTiles[i] = tile;
+        rcRestyleTile(tile, cellW);
         rcTap(tile, () -> {
             switch (idx) {
                 case 0: rcOpen(Remote.Target.LISTEN); break;
@@ -3347,8 +3487,8 @@ public class MainActivity extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setClipChildren(false);
         final float density = getResources().getDisplayMetrics().density;
-        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
-        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), rcIcon(), t("rc_vdown"));
+        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), rcIcon(), t("rc_vup"));
         rcSlider = new RcSlider(this, display);
         rcSlider.setWords(t("rc_vol_w"), t("rc_vol_read"), t("rc_vol_release"), t("rc_vol_a11y"));
         volShowScale();
@@ -3368,7 +3508,7 @@ public class MainActivity extends Activity {
 
     /** A number between the two keys: the level of the TV; a touch on it opens the sound settings. */
     private TextView rcVolNumber(Typeface display) {
-        TextView n = text("?", display, 18, GOLD);
+        TextView n = text("?", display, 18, cfContrast() ? 0xFFFFFFFF : GOLD);
         n.setGravity(Gravity.CENTER);
         n.setClickable(true);
         rcTap(n, this::rcVolumeSettings);
@@ -3382,8 +3522,8 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
-        LinearLayout up = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
-        LinearLayout down = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
+        LinearLayout up = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), rcIcon(), t("rc_vup"));
+        LinearLayout down = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), rcIcon(), t("rc_vdown"));
         rcHoldStep(up, true);
         rcHoldStep(down, false);
         col.addView(up, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
@@ -3399,12 +3539,12 @@ public class MainActivity extends Activity {
 
     private View rcVolumePill(Typeface display, int cellW, int cellH) {
         final float density = getResources().getDisplayMetrics().density;
-        int key = Math.max(40, cellH - 6);
+        int key = Math.max(36, Math.min(cellH - 6, Math.round(cellW * 0.3f)));   // the level keeps its room between the two keys
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout down = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
-        LinearLayout up = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        LinearLayout down = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), rcIcon(), t("rc_vdown"));
+        LinearLayout up = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), rcIcon(), t("rc_vup"));
         rcHoldStep(down, false);
         rcHoldStep(up, true);
         row.addView(down, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));

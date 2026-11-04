@@ -126,4 +126,11 @@ public class NavTest {
         assertTrue(Nav.showsBack(32, false, false, false));
         assertTrue(Nav.showsBack(33, false, false, false));
     }
+
+    @Test public void theComfortScreenLivesUnderMoreAndCanBeVisitedWithNoTv() {
+        assertEquals(26, Nav.backTarget(34, false, false, false));
+        assertEquals(2, Nav.tabOf(34));
+        assertTrue(Nav.opensWithoutTv(34));
+        assertTrue(Nav.showsBack(34, false, false, false));
+    }
 }

@@ -201,4 +201,14 @@ public class RemoteLayoutTest {
         assertNull(l.problem(24));
         assertEquals("tall", l.problem(23));
     }
+
+    @Test public void theFiveKeyTemplateKeepsOnlyWhatMatters() {
+        RemoteLayout l = RemoteLayout.template(Template.FIVE);
+        assertNull(l.problem(TALL));
+        assertEquals(4, l.blocks().size());                           // the pad, Back, the volume (a pill: its two keys) and one shortcut: five keys to touch
+        assertTrue(l.has(Kind.PAD) && l.has(Kind.BACK) && l.has(Kind.VOL_PILL) && l.has(Kind.LISTEN));
+        assertFalse(l.has(Kind.HOME));
+        assertFalse(l.has(Kind.MUTE));
+        assertTrue(l.rows() <= 18);
+    }
 }

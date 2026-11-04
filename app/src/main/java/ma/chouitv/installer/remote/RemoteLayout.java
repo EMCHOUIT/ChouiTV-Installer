@@ -16,7 +16,7 @@ public final class RemoteLayout {
     public enum Kind { PAD, BACK, HOME, MUTE, POWER, VOL_ROCKER, VOL_BAR, VOL_PILL,
         LISTEN, CHANNELS, APPS, SAVER, WRITE, TVSET, CH_ROCKER, YOUTUBE, NETFLIX, KEYBOARD }
 
-    public enum Template { CLASSIC, RIGHT, LEFT, ELDER, COMPACT }
+    public enum Template { CLASSIC, RIGHT, LEFT, ELDER, COMPACT, FIVE }
 
     public enum Why { OFF_GRID, TOO_TALL, OVERLAP, REQUIRED, BAD_SIZE, ALREADY, NO_ROOM, VOLUME_FORM }
 
@@ -205,6 +205,12 @@ public final class RemoteLayout {
                 l.add(b(Kind.PAD, 0, 3, 12, 12));
                 l.add(b(Kind.BACK, 0, 15, 6, 3)); l.add(b(Kind.HOME, 6, 15, 6, 3));
                 l.add(b(Kind.VOL_PILL, 2, 18, 8, 3));
+                break;
+            case FIVE:
+                l.add(b(Kind.LISTEN, 2, 0, 8, 3));
+                l.add(b(Kind.PAD, 0, 3, 12, 12));
+                l.add(b(Kind.BACK, 0, 15, 6, 3));
+                l.add(b(Kind.VOL_PILL, 6, 15, 6, 3));
                 break;
             default:   // COMPACT
                 l.add(b(Kind.LISTEN, 0, 0, 3, 3)); l.add(b(Kind.CHANNELS, 3, 0, 3, 3)); l.add(b(Kind.APPS, 6, 0, 3, 3)); l.add(b(Kind.WRITE, 9, 0, 3, 3));
