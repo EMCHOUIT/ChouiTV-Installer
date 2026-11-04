@@ -38,6 +38,7 @@ The app is now called **ChouiTV Companion** (it was ChouiTV Installer up to 1.7)
 - **The volume follows each TV** (1.8.2): scale read from the TV or typed by hand, an adjustable step for the + and − keys, the TV's own volume bar shown on every change.
 - **A simpler app** (1.9): three tabs at the bottom (Remote, My TV, More), tasks that go straight to the last TV, and "About and update" in More.
 - **The remote first** (2.0): the app opens on the remote, "My TVs" manages several named TVs, each TV has its page, and "Options" holds language, volume and help.
+- **Never blocked again** (2.2): the remote always opens (a demo with no TV), a banner says why the TV does not answer, the app tries again by itself, and the search shows each TV the moment it answers.
 - **Setting up a TV, step by step** (2.1): a "Set up this TV" card, a "Fix a problem" that starts from the symptom, a journal per TV, and a last look before turning apps off.
 
 The remote needs "Network debugging" turned on on the TV, like the rest of the app.
@@ -249,7 +250,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 181 tests on the JVM
 ```
 
-Current version: **2.1** (`versionCode 18`), for Android 8 or newer (`minSdk 26`).
+Current version: **2.2** (`versionCode 19`), for Android 8 or newer (`minSdk 26`).
 
 The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram, the version number on the banner, the QR code) are rebuilt with `python docs/media/build_media.py` (needs Pillow and Edge or Chrome); the phone screenshots are real and are not generated.
 
@@ -259,6 +260,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 
 | Version | What changed |
 |---|---|
+| **2.2** | Never blocked: the app always opens on the remote, dimmed as a demo when there is no TV, with "Connecting…" under the name of a known TV; no waiting screen and no "not answering" window; a banner says the cause (no Wi-Fi, another Wi-Fi, TV starting, Network debugging off, TV off, a key to accept on the TV) and the app tries again by itself (every 3 s, then less often); it reconnects as soon as the Wi-Fi is back; the search for TVs shows each TV the moment it answers, with its state, a verdict and "A TV is missing?" after 4 s; a TV that changed address is found again by its serial number; another TV that answers is offered; "Set up the next one"; the search takes the Wi-Fi of the home and not the mobile data (Android 16) |
 | **2.1** | Setting up a TV: a "Set up this TV" card on each TV's page and a question at the first connection; "Fix a problem" starts from what you see (an app disappeared, the remote stopped working, something else); a journal of what the app did on each TV; shortcuts for an app the TV does not have are dimmed; a last look with the names of the apps before turning them off; "What is new" before a ChouiTV update when it has notes |
 | **2.0** | The remote first: the app opens on your TV's remote, full screen; touching the TV's name opens "My TVs" (several named TVs, to rename or forget); each TV has its page (clean up, ChouiTV, settings, fix a problem); "Options" holds language, volume and help; one touch on a TV that was found connects to it; no more "Mode" screen; the language is asked once |
 | **1.9** | A simpler app: three tabs (Remote, My TV, More); tasks go straight to the last TV, with no preparation or search; a "The TV is not answering" window with Try again or Other TV; bigger − and + volume keys; "About and update" in More; the language is asked on the first launch only; the "Network debugging" tip no longer contradicts the remote |
