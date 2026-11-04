@@ -666,6 +666,17 @@ public class MainActivity extends Activity {
                 int tvHome = -1;
                 try { tvHome = flow.installedCode(Flow.HOME); } catch (IOException unreadable) { }
                 final boolean[] skip = {false, InstallPlan.upToDate(tvHome, rel.code)};
+                // «What is new»: shown before anything is downloaded or changed, when the signed version file carries notes and there is something to install
+                final String news = ReleaseNotes.pick(rel.notes, Strings.lang);
+                if (!news.isEmpty() && !skip[1]) {
+                    final java.util.concurrent.CountDownLatch asked = new java.util.concurrent.CountDownLatch(1);
+                    final boolean[] go = {false};
+                    runOnUiThread(() -> new AlertDialog.Builder(this).setTitle(t("wn_t", ver)).setMessage(news).setCancelable(false)
+                        .setPositiveButton(t("wn_do"), (d, w) -> { go[0] = true; asked.countDown(); })
+                        .setNegativeButton(t("wn_later"), (d, w) -> asked.countDown()).show());
+                    asked.await();
+                    if (!go[0]) throw new IOException(t("wn_stopped"));
+                }
                 for (int j = 0; j < 2; j++) {
                     if (skip[j]) continue;
                     String url = null, sha = "";

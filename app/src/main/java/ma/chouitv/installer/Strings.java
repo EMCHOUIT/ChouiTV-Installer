@@ -555,6 +555,10 @@ final class Strings {
         k("rv_others", "%d أخرى", "%d autres", "%d others");
         k("rv_do", "أوقِف", "Couper", "Turn off");
         k("rv_back", "راجع", "Revoir", "Review");
+        k("wn_t", "الجديد في %s", "Quoi de neuf dans %s", "What is new in %s");
+        k("wn_do", "حدّث", "Mettre à jour", "Update");
+        k("wn_later", "لاحقًا", "Plus tard", "Later");
+        k("wn_stopped", "لم يتغيّر شيء. يمكنك التحديث لاحقًا.", "Rien n\u2019a changé. Vous pourrez mettre à jour plus tard.", "Nothing changed. You can update later.");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");

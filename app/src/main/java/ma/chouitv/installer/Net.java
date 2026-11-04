@@ -31,7 +31,7 @@ final class Net {
     /** One APK of the release: package, URL and SHA-256 from latest.json. */
     static final class Apk { String pkg, url, sha; }
 
-    static final class Release { String version; int code; String channelsSha = ""; List<Apk> apks = new ArrayList<>(); }
+    static final class Release { String version; int code; String channelsSha = ""; ReleaseNotes notes = new ReleaseNotes(); List<Apk> apks = new ArrayList<>(); }
 
     /** The version file, accepted only if every line of it passes Trust: the home app (a legacy screensaver line is ignored), our releases, a checksum each, not older than allowed. */
     static Release latest() throws Exception {
@@ -43,6 +43,7 @@ final class Net {
         r.version = j.getString("versionName");
         r.code = j.getInt("versionCode");
         Trust.requireVersion(r.code, r.version);
+        r.notes = ReleaseNotes.from(j);   // optional, inside the signed file
         JSONObject ch = j.optJSONObject("channels");
         if (ch != null) r.channelsSha = ch.optString("sha256", "");
         JSONArray a = j.getJSONArray("apks");
