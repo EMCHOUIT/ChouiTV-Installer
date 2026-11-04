@@ -603,6 +603,9 @@ final class Strings {
         k("ad_equipped", "مجهّز", "Équipée", "Set up");
         k("ad_next", "جهّز التلفاز التالي", "Équiper la suivante", "Set up the next one");
         k("ad_next_sub", "لنبحث عن تلفاز آخر في البيت.", "Cherchons une autre télé de la maison.", "Let us look for another TV in the house.");
+        k("ad_dbg", "يلزم تفعيل «تصحيح الشبكة»", "Débogage réseau à activer", "Network debugging to turn on");
+        k("bn_sleep", "%s في وضع الاستعداد", "%s est en veille", "%s is on standby");
+        k("bn_wake", "تشغيل", "Allumer", "Turn on");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");

@@ -56,4 +56,28 @@ public class AdoptionTest {
         assertEquals(2, Adoption.count(Arrays.asList("192.168.1.50", "192.168.1.51", "192.168.1.50")));
         assertEquals(0, Adoption.count(null));
     }
+
+    @Test public void aTvSeenByItsNameButWithItsPortClosedAsksForTheNetworkDebugging() {
+        assertEquals(Adoption.TvState.DEBUG_OFF, Adoption.merge(Adoption.TvState.CHECKING, Adoption.TvState.DEBUG_OFF));
+        assertEquals(Adoption.TvState.DEBUG_OFF, Adoption.merge(null, Adoption.TvState.DEBUG_OFF));
+        assertEquals(Adoption.TvState.DEBUG_OFF, Adoption.merge(Adoption.TvState.DEBUG_OFF, Adoption.TvState.CHECKING));
+    }
+
+    @Test public void theDebuggingTurnedOnMakesTheTvAnswerAndTheRowFollows() {
+        assertEquals(Adoption.TvState.ASK, Adoption.merge(Adoption.TvState.DEBUG_OFF, Adoption.TvState.ASK));
+        assertEquals(Adoption.TvState.READY, Adoption.merge(Adoption.TvState.DEBUG_OFF, Adoption.TvState.READY));
+    }
+
+    @Test public void aTvThatAnswersIsNeverSentBackToDebuggingOff() {
+        assertEquals(Adoption.TvState.READY, Adoption.merge(Adoption.TvState.READY, Adoption.TvState.DEBUG_OFF));
+        assertEquals(Adoption.TvState.ASK, Adoption.merge(Adoption.TvState.ASK, Adoption.TvState.DEBUG_OFF));
+    }
+
+    @Test public void theNameOfARowIsTheOneTheFamilyChoseThenTheOneTheTvAnnouncesThenItsModel() {
+        assertEquals("Salon", Adoption.title("Salon", "MiTV-MSSP3", "Xiaomi MiTV-MSSP3", "Télé"));
+        assertEquals("MiTV-MSSP3", Adoption.title("", "MiTV-MSSP3", "Xiaomi MiTV-MSSP3", "Télé"));
+        assertEquals("Xiaomi MiTV-MSSP3", Adoption.title(null, "  ", "Xiaomi MiTV-MSSP3", "Télé"));
+        assertEquals("Télé", Adoption.title("", "", "", "Télé"));
+        assertEquals("Télé", Adoption.title(null, null, null, "Télé"));
+    }
 }

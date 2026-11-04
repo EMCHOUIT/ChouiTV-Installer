@@ -63,4 +63,11 @@ public class HomeStateTest {
         assertEquals("a TV that does not answer is not told as found", HomeState.Banner.OFFLINE, HomeState.banner(true, HomeState.Link.OFFLINE, false, 0, true));
         assertEquals(HomeState.Banner.HIDDEN, HomeState.banner(true, HomeState.Link.ONLINE, false, 0, false));
     }
+
+    @Test public void aTvThatSleepsWithItsNetworkOnOffersToWakeIt() {
+        assertEquals(HomeState.Banner.ASLEEP, HomeState.banner(true, HomeState.Link.ONLINE, false, 0, false, true));
+        assertEquals("an unanswered TV is not told asleep", HomeState.Banner.OFFLINE, HomeState.banner(true, HomeState.Link.OFFLINE, false, 0, false, true));
+        assertEquals("no TV: nothing to wake", HomeState.Banner.NONE_FOUND, HomeState.banner(false, HomeState.Link.ONLINE, false, 0, false, true));
+        assertEquals(HomeState.Banner.HIDDEN, HomeState.banner(true, HomeState.Link.ONLINE, false, 0, false, false));
+    }
 }

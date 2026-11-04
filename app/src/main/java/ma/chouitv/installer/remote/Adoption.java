@@ -21,7 +21,11 @@ public final class Adoption {
     public enum Headline { SEARCHING, FOUND, NONE }
 
     /** What a TV found on the network says about itself. */
-    public enum TvState { CHECKING, READY, ASK }
+    public enum TvState {
+        CHECKING, READY, ASK,
+        /** Seen on the network by its name, but nothing answers on the debugging port: its network debugging is off. */
+        DEBUG_OFF
+    }
 
     public static Headline headline(int found, long elapsedMs) {
         if (found > 0) return Headline.FOUND;
@@ -34,12 +38,22 @@ public final class Adoption {
     /** The search looks again while the screen is open: every 10 s for two minutes, then every 30 s. */
     public static long rescanDelayMs(long sinceStartMs) { return sinceStartMs < 120_000 ? 10_000 : 30_000; }
 
-    /** A TV that is ready never goes back to asking or checking (a second look finds it the same); an asking TV becomes ready when the person accepted. */
+    /**
+     * A TV that is ready never goes back to asking or checking (a second look finds it the same); an asking TV becomes ready when the person accepted; a TV seen by
+     * its name with its port closed asks for the network debugging, until it answers; one that answers is never sent back to that.
+     */
     public static TvState merge(TvState old, TvState now) {
         if (old == null) return now;
         if (old == TvState.READY) return TvState.READY;
         if (now == TvState.CHECKING) return old;
+        if (now == TvState.DEBUG_OFF) return old == TvState.ASK ? TvState.ASK : TvState.DEBUG_OFF;
         return now;
+    }
+
+    /** The name of a row: the one the family chose, else the one the TV announces on the network, else its model, else {@code fallback}. */
+    public static String title(String own, String announced, String model, String fallback) {
+        for (String s : new String[] {own, announced, model}) if (s != null && !s.trim().isEmpty()) return s.trim();
+        return fallback;
     }
 
     public static int count(Collection<String> ips) {

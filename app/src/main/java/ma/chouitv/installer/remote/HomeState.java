@@ -29,14 +29,22 @@ public final class HomeState {
         }
     }
 
-    public enum Banner { HIDDEN, SEARCHING, FOUND, NONE_FOUND, OFFLINE, AUTH, MOVED }
+    public enum Banner { HIDDEN, SEARCHING, FOUND, NONE_FOUND, OFFLINE, AUTH, MOVED, ASLEEP }
 
     /** The banner under the name: what the search is doing or found when there is no TV; only an unanswered TV when there is one. */
     public static Banner banner(boolean tvKnown, Link link, boolean searching, int found) { return banner(tvKnown, link, searching, found, false); }
 
     /** {@code moved}: the TV was just found again at a new address (told for a moment, when it answers). */
-    public static Banner banner(boolean tvKnown, Link link, boolean searching, int found, boolean moved) {
-        if (tvKnown) return link == Link.OFFLINE ? Banner.OFFLINE : link == Link.ASKING ? Banner.AUTH : moved && link == Link.ONLINE ? Banner.MOVED : Banner.HIDDEN;
+    public static Banner banner(boolean tvKnown, Link link, boolean searching, int found, boolean moved) { return banner(tvKnown, link, searching, found, moved, false); }
+
+    /** {@code asleep}: the TV answers but its screen sleeps (standby with the network on): the banner offers to wake it. */
+    public static Banner banner(boolean tvKnown, Link link, boolean searching, int found, boolean moved, boolean asleep) {
+        if (tvKnown) {
+            if (link == Link.OFFLINE) return Banner.OFFLINE;
+            if (link == Link.ASKING) return Banner.AUTH;
+            if (link == Link.ONLINE && asleep) return Banner.ASLEEP;
+            return moved && link == Link.ONLINE ? Banner.MOVED : Banner.HIDDEN;
+        }
         if (found > 0) return Banner.FOUND;
         return searching ? Banner.SEARCHING : Banner.NONE_FOUND;
     }

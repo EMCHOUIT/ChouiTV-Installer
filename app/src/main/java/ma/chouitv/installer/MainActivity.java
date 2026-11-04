@@ -466,6 +466,7 @@ public class MainActivity extends Activity {
     }
 
     private int scanToken;
+    private volatile String announcedForConnect;
 
     /**
      * The search for TVs: it starts at once, each TV appears the moment it answers (with its own state: ready, to allow on the TV), all are asked at the same time,
@@ -533,7 +534,7 @@ public class MainActivity extends Activity {
         final java.util.Map<String, Adoption.TvState> states = new java.util.concurrent.ConcurrentHashMap<>();
         final java.util.Set<String> known = new java.util.HashSet<>();
         final java.util.Map<String, String> ownNames = new java.util.HashMap<>();
-        for (TvList.Tv k : TvList.load(prefs())) { known.add(k.ip); ownNames.put(k.ip, k.name); }
+        for (TvList.Tv k : TvList.load(prefs())) { known.add(k.ip); ownNames.put(k.ip, k.own); }
         final SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
 
         final Runnable update = () -> {
@@ -548,6 +549,7 @@ public class MainActivity extends Activity {
             for (String ip : cards.keySet()) {
                 Adoption.TvState st = states.get(ip);
                 String label = st == Adoption.TvState.READY ? t("ad_ready") : st == Adoption.TvState.ASK ? t("ad_ask") : t("ad_checking");
+                if (st == Adoption.TvState.DEBUG_OFF) label = t("ad_dbg");
                 if (Equip.isEquipped(prefs(), ip)) label += " · " + t("ad_equipped");
                 TextView sub = subs.get(ip);
                 if (!(busy && ip.equals(chosen))) { sub.setTextColor(MUTED); sub.setText(ip + " · " + label); }
@@ -555,20 +557,27 @@ public class MainActivity extends Activity {
         };
 
         // one row per TV, the moment it answers
+        final java.util.Map<String, String> announced = new java.util.concurrent.ConcurrentHashMap<>();
+        final java.util.Set<String> foundIps = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+        final boolean[] swept = {false};
+        final java.util.function.Function<String, String> titleOf = ip -> {
+            String seen = sp.getString("tv_" + ip, null);
+            return Adoption.title(ownNames.get(ip), announced.get(ip), seen == null ? null : seen.replace("|", " "), t("tv"));
+        };
         final java.util.function.Consumer<String> addRow = ip -> {
             if (step != 2 || cards.containsKey(ip)) return;
             final LinearLayout c = card(false);
-            String own = ownNames.get(ip), seen = sp.getString("tv_" + ip, null);
-            String name = own != null ? own : seen != null ? seen.replace("|", " ").trim() : t("tv");
-            TextView title = text(name.isEmpty() ? t("tv") : name, medium, 18, SAND);
+            TextView title = text(titleOf.apply(ip), medium, 18, SAND);
             TextView sub = text(ip, regular, 14, MUTED);
             sub.setTextDirection(View.TEXT_DIRECTION_LTR);
             c.addView(title);
             c.addView(sub);
             final TextView subF = sub;
             c.setOnClickListener(v -> {
+                if (states.get(ip) == Adoption.TvState.DEBUG_OFF) { clearGuide(); space = SPACE_REMOTE; show(1); return; }   // seen, but its network debugging is off: the three steps
                 if (busy) { Toast.makeText(this, t("ad_busy"), Toast.LENGTH_SHORT).show(); return; }
                 chosen = ip;
+                announcedForConnect = announced.get(ip);
                 for (LinearLayout o : cards.values()) o.setBackground(cardBg(false));
                 c.setBackground(cardBg(true));
                 input.setText("");
@@ -591,12 +600,21 @@ public class MainActivity extends Activity {
         final File keys = new File(getFilesDir(), "keys");
         Thread loop = new Thread(() -> {
             java.util.concurrent.ExecutorService probes = java.util.concurrent.Executors.newFixedThreadPool(4);
+            final TvDiscovery names = new TvDiscovery(this, (ip, name) -> runOnUiThread(() -> {
+                if (token != scanToken || step != 2) return;
+                announced.put(ip, name);
+                if (!cards.containsKey(ip)) addRow.accept(ip);
+                if (titles.get(ip) != null) titles.get(ip).setText(titleOf.apply(ip));
+                if (swept[0] && !foundIps.contains(ip)) { states.put(ip, Adoption.merge(states.get(ip), Adoption.TvState.DEBUG_OFF)); showStates.run(); }
+            }));
+            names.start();
             final java.util.Set<String> asked = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
             try {
                 while (token == scanToken && step == 2) {
                     runOnUiThread(() -> refresh.setText("…  " + t("searching_short")));
                     Net.scanLive(5555, ip -> {
                         if (token != scanToken) return;
+                        foundIps.add(ip);
                         runOnUiThread(() -> addRow.accept(ip));
                         if (!asked.add(ip) && states.get(ip) == Adoption.TvState.READY) return;
                         probes.execute(() -> {
@@ -607,14 +625,19 @@ public class MainActivity extends Activity {
                                 states.put(ip, Adoption.merge(states.get(ip), now));
                                 if (pr != null && pr.info != null && pr.info.length() > 1) {
                                     sp.edit().putString("tv_" + ip, pr.info).apply();
-                                    if (ownNames.get(ip) == null) titles.get(ip).setText(pr.info.replace("|", " ").trim());
+                                    titles.get(ip).setText(titleOf.apply(ip));
                                 }
                                 showStates.run();
                                 update.run();
                             });
                         });
                     });
-                    runOnUiThread(() -> refresh.setText("↻  " + t("refresh")));
+                    runOnUiThread(() -> {
+                        refresh.setText("↻  " + t("refresh"));
+                        swept[0] = true;
+                        for (String ip : cards.keySet()) if (!foundIps.contains(ip)) states.put(ip, Adoption.merge(states.get(ip), Adoption.TvState.DEBUG_OFF));   // seen by its name, nothing on the port
+                        showStates.run();
+                    });
                     long wait = Adoption.rescanDelayMs(SystemClock.elapsedRealtime() - t0);
                     again.drainPermits();
                     if (!again.tryAcquire(wait, java.util.concurrent.TimeUnit.MILLISECONDS)) { /* time for the next look */ }
@@ -622,6 +645,7 @@ public class MainActivity extends Activity {
                 }
             } catch (InterruptedException ignored) {
             } finally {
+                names.stop();
                 probes.shutdownNow();
             }
         }, "tv-search");
@@ -656,6 +680,10 @@ public class MainActivity extends Activity {
                 try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
                 getSharedPreferences("installer", MODE_PRIVATE).edit().putString("tv_" + ip, tvBrand + "|" + model).apply();
                 TvList.use(prefs(), ip, (tvBrand + " " + model).trim());
+                // the name the TV gives itself on the network (the one set in its own settings) becomes its name here, unless the family already chose one
+                String nm = announcedForConnect;
+                if (nm != null && !nm.trim().isEmpty()) for (TvList.Tv k : TvList.load(prefs())) if (k.ip.equals(ip) && k.own.isEmpty()) TvList.rename(prefs(), ip, nm.trim());
+                announcedForConnect = null;
                 curIp = ip;
                 rememberSerial(ip);
                 runOnUiThread(() -> afterConnect(button, status));
@@ -1835,9 +1863,11 @@ public class MainActivity extends Activity {
             rcOther = null;
             rcStatus(RC_OK, 0);
             runOnUiThread(() -> { if (step == 25) { rcVolRefresh(); rcDimMissing(); } });
+            rcCheckAsleep();
             return true;
         } catch (Exception e) {
             if (rcFailSince == 0) rcFailSince = android.os.SystemClock.elapsedRealtime();
+            rcAsleep = false;
             rcCause = Cause.of(e, wifiActive(), Net.ifaces().isEmpty() || Subnet.sameNetwork(last.ip, Net.ifaces()), rcAsked);
             rcStatus(RC_OFFLINE, 0);
             if (rcCause == Cause.SILENT || rcCause == Cause.REFUSED) movedNow = rcLookElsewhere(last);   // the box may have given it another address; another TV may answer
@@ -1845,6 +1875,16 @@ public class MainActivity extends Activity {
             rcTrying.set(false);
         }
         return movedNow && rcAttempt(reachMs, true);
+    }
+
+    private volatile boolean rcAsleep;
+
+    /** The TV answers: is its screen asleep (standby with the network on)? The banner then offers to wake it. */
+    private void rcCheckAsleep() {
+        try {
+            boolean a = Remote.isAsleep(flow.shell().run(Remote.wakefulnessCommand()));
+            if (a != rcAsleep) { rcAsleep = a; rcBannerRefresh(); }
+        } catch (Exception ignored) { }
     }
 
     private volatile TvList.Tv rcOther;
@@ -1935,6 +1975,7 @@ public class MainActivity extends Activity {
         super.onStart();
         rcVisible = true;
         if (rcState == RC_OFFLINE && LastTv.load(prefs()) != null) { new Thread(() -> rcReconnect(2500)).start(); }
+        else if (rcState == RC_OK && flow != null) new Thread(this::rcCheckAsleep).start();
         try {
             android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
             rcNetCb = new android.net.ConnectivityManager.NetworkCallback() {
@@ -2378,7 +2419,7 @@ public class MainActivity extends Activity {
             final LastTv last = LastTv.load(prefs());
             HomeState.Link link = rcState == RC_OFFLINE ? HomeState.Link.OFFLINE : rcState == RC_RECONNECTING ? HomeState.Link.RECONNECTING
                 : rcState == RC_ASKING ? HomeState.Link.ASKING : HomeState.Link.ONLINE;
-            HomeState.Banner b = HomeState.banner(last != null, link, rcSearching, rcFound, rcMovedUntil > android.os.SystemClock.elapsedRealtime());
+            HomeState.Banner b = HomeState.banner(last != null, link, rcSearching, rcFound, rcMovedUntil > android.os.SystemClock.elapsedRealtime(), rcAsleep);
             if (b == HomeState.Banner.HIDDEN) { rcBanner.setVisibility(View.GONE); return; }
             rcBanner.setVisibility(View.VISIBLE);
             if (b == HomeState.Banner.MOVED) {
@@ -2393,6 +2434,7 @@ public class MainActivity extends Activity {
             else if (b == HomeState.Banner.FOUND) { msg = t("bn_found", rcFound); go = t("bn_see"); linkLabel = t("bn_help"); }
             else if (b == HomeState.Banner.NONE_FOUND) { msg = t("bn_none"); go = t("nt_search"); linkLabel = t("bn_help"); }
             else if (b == HomeState.Banner.AUTH) { msg = t("bn_ask"); sub = t("bn_ask_sub"); linkLabel = t("tvs_title"); }
+            else if (b == HomeState.Banner.ASLEEP) { msg = t("bn_sleep", curName()); go = t("bn_wake"); linkLabel = t("tvs_title"); }
             else switch (why) {
                 case NO_WIFI: msg = t("bn_nowifi"); go = t("bn_openwifi"); linkLabel = t("tvs_title"); break;
                 case OTHER_NETWORK: msg = t("bn_otherwifi", curName()); go = t("bn_openwifi"); linkLabel = t("bn_here"); break;
@@ -2406,6 +2448,7 @@ public class MainActivity extends Activity {
             if (go != null) {
                 TextView goB = button(go);
                 goB.setOnClickListener(v -> {
+                    if (b == HomeState.Banner.ASLEEP) { rcKey(Remote.WAKEUP); ui.postDelayed(() -> new Thread(this::rcCheckAsleep).start(), 2500); return; }
                     if (b == HomeState.Banner.OFFLINE && (why == HomeState.Offline.NO_WIFI || why == HomeState.Offline.OTHER_NETWORK)) startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));
                     else if (b == HomeState.Banner.OFFLINE) new Thread(() -> rcReconnect(4000)).start();
                     else { clearGuide(); space = SPACE_REMOTE; show(2); }

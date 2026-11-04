@@ -168,4 +168,13 @@ public class RemoteV4Test {
         assertEquals("", Remote.parseSerial(""));
         assertEquals("", Remote.parseSerial(null));
     }
+
+    @Test public void aTvThatSleepsIsToldFromWhatItsPowerManagerPrints() {
+        assertTrue(Remote.isAsleep("mWakefulness=Asleep\n"));
+        assertTrue(Remote.isAsleep("  mWakefulness=Dozing"));
+        assertFalse(Remote.isAsleep("mWakefulness=Awake\n"));
+        assertFalse("no answer is no verdict: the TV is not said to sleep", Remote.isAsleep(""));
+        assertFalse(Remote.isAsleep(null));
+        assertEquals(224, Remote.WAKEUP);
+    }
 }

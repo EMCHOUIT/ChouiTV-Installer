@@ -17,7 +17,7 @@ public final class Remote {
     private Remote() {}
 
     public static final int UP = 19, DOWN = 20, LEFT = 21, RIGHT = 22, OK = 23, BACK = 4, HOME = 3, MENU = 82, MUTE = 164,
-        VOLUME_UP = 24, VOLUME_DOWN = 25, POWER = 26, PASTE = 279;
+        VOLUME_UP = 24, VOLUME_DOWN = 25, POWER = 26, PASTE = 279, WAKEUP = 224;
     private static final int[] KNOWN = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, MUTE, VOLUME_UP, VOLUME_DOWN, POWER, PASTE};
 
     /** Where the helper is put on the TV, and what it is called inside the phone app. */
@@ -82,6 +82,14 @@ public final class Remote {
             return l;
         }
         return "";
+    }
+
+    /** Asks the power manager of the TV whether the screen sleeps. */
+    public static String wakefulnessCommand() { return "dumpsys power | grep -m1 mWakefulness="; }
+
+    /** The TV sleeps (its network is on, its screen is off): «Asleep» or «Dozing». An empty answer is no verdict. */
+    public static boolean isAsleep(String out) {
+        return out != null && (out.contains("mWakefulness=Asleep") || out.contains("mWakefulness=Dozing"));
     }
 
     /** The settings of the TV. */
