@@ -38,6 +38,7 @@ L'appli s'appelle désormais **ChouiTV Companion** (elle s'appelait ChouiTV Inst
 - **Le volume suit chaque télé** (1.8.2) : échelle lue sur la télé ou saisie à la main, pas réglable pour les touches + et −, barre de volume de la télé affichée à chaque réglage.
 - **Une appli plus simple** (1.9) : trois onglets en bas (Télécommande, Ma télé, Plus), des tâches qui vont directement à la dernière télé, et « À propos et mise à jour » dans Plus.
 - **La télécommande d'abord** (2.0) : l'appli s'ouvre sur la télécommande, « Mes télés » gère plusieurs télés nommées, chaque télé a sa page, et « Options » regroupe langue, volume et aide.
+- **Équiper une télé, pas à pas** (2.1) : une carte « Équiper cette télé », un « Dépannage » qui part du symptôme, un journal par télé, et une dernière relecture avant de couper des applis.
 
 La télécommande a besoin que le « Débogage réseau » soit activé sur la télé, comme le reste de l'appli.
 
@@ -248,7 +249,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 181 tests sur la JVM
 ```
 
-Version actuelle : **2.0** (`versionCode 17`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **2.1** (`versionCode 18`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -258,6 +259,7 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **2.1** | Équiper une télé : une carte « Équiper cette télé » sur la page de chaque télé et une question à la première connexion ; « Dépannage » part de ce que vous voyez (une appli a disparu, la télécommande ne marche plus, autre chose) ; un journal de ce que l'appli a fait sur chaque télé ; les raccourcis dont l'appli manque sur la télé sont grisés ; une dernière relecture avec les noms des applis avant de les couper ; « Quoi de neuf » avant une mise à jour de ChouiTV quand elle a des notes |
 | **2.0** | La télécommande d'abord : l'appli s'ouvre sur la télécommande de votre télé, plein écran ; toucher le nom de la télé ouvre « Mes télés » (plusieurs télés nommées, à renommer ou oublier) ; chaque télé a sa page (nettoyer, ChouiTV, réglages, dépannage) ; « Options » regroupe langue, volume et aide ; un appui sur une télé trouvée la connecte ; plus d'écran « Mode » ; la langue n'est demandée qu'une fois ; boutons « Écrire sur la TV » et « Réglages de la TV » |
 | **1.9** | Une appli plus simple : trois onglets (Télécommande, Ma télé, Plus) ; les tâches vont directement à la dernière télé, sans préparation ni recherche ; une fenêtre « La télé ne répond pas » avec Réessayer ou Autre télé ; touches − et + du volume plus grandes ; « À propos et mise à jour » dans Plus ; la langue n'est demandée qu'au premier lancement ; le conseil sur le « Débogage réseau » ne contredit plus la télécommande |
 | **1.8.2** | Volume sur toutes les télés : l'appli lit l'échelle de la télé (15, 30 ou 100 niveaux) ou la prend à la main, un pas réglable pour les touches + et −, la barre de volume de la télé s'affiche à chaque réglage, les touches de télécommande prennent le relais si la télé ignore la commande rapide, la limite de volume est en pourcentage ; bulle du curseur toujours entière ; icônes des applis arrondies |
