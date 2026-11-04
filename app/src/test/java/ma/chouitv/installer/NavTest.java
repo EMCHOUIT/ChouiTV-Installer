@@ -17,8 +17,9 @@ public class NavTest {
         assertEquals(18, Nav.backTarget(22, false, false, false));
         assertEquals(18, Nav.backTarget(24, false, false, false));
         assertEquals(17, Nav.backTarget(15, false, false, false));
-        assertEquals(1, Nav.backTarget(2, false, false, false));
-        assertEquals(12, Nav.backTarget(1, false, false, false));
+        assertEquals("the search for a TV, opened from the remote, goes back to the remote", 25, Nav.backTarget(2, false, false, false));
+        assertEquals("the three steps, opened from the remote, go back to the remote", 25, Nav.backTarget(1, false, false, false));
+        assertEquals("a guided path keeps its own steps", 1, Nav.backTarget(2, false, true, false));
     }
 
     @Test public void aGuidedPathGoesBackToItsOwnListInsteadOfTheHub() {
@@ -78,9 +79,14 @@ public class NavTest {
         assertTrue(Nav.showsBack(30, false, false, false));
     }
 
+    @Test public void everyScreenOfTheAppCanBeVisitedWithoutAnyTv() {
+        for (int s : new int[] {0, 1, 2, 25, 26, 27, 28}) assertTrue("step " + s, Nav.opensWithoutTv(s));
+        for (int s : new int[] {3, 8, 11, 12, 14, 17, 29, 30}) assertFalse("step " + s + " works on a TV", Nav.opensWithoutTv(s));
+    }
+
     @Test public void theRemoteIsTheHomeAndNothingHasATabBar() {
         assertEquals(25, Nav.firstScreen(true, true));     // a TV is known: the app opens on its remote
-        assertEquals(1, Nav.firstScreen(true, false));     // no TV yet: find one (no mode screen any more)
+        assertEquals(25, Nav.firstScreen(true, false));    // no TV yet: still the remote (a demo), never a waiting or preparation screen
         assertEquals(0, Nav.firstScreen(false, false));    // the very first use: the language
         assertEquals(Nav.EXIT, Nav.backTarget(25, false, false, false));
         assertEquals(25, Nav.backTarget(27, false, false, false));    // «My TVs» goes back to the remote

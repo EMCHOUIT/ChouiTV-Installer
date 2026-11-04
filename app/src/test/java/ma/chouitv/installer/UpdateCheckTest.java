@@ -42,7 +42,7 @@ public class UpdateCheckTest {
         assertTrue(Nav.asksLanguage(false));
         assertFalse(Nav.asksLanguage(true));
         assertEquals(0, Nav.firstScreen(false, false));    // first use: the language
-        assertEquals(1, Nav.firstScreen(true, false));     // later, no TV yet: the search for a TV, no language, no mode screen
+        assertEquals(25, Nav.firstScreen(true, false));    // later, no TV yet: the remote as a demo, no language, no mode screen
         assertEquals(25, Nav.firstScreen(true, true));     // a known TV: its remote
     }
 }

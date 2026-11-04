@@ -559,6 +559,18 @@ final class Strings {
         k("wn_do", "حدّث", "Mettre à jour", "Update");
         k("wn_later", "لاحقًا", "Plus tard", "Later");
         k("wn_stopped", "لم يتغيّر شيء. يمكنك التحديث لاحقًا.", "Rien n\u2019a changé. Vous pourrez mettre à jour plus tard.", "Nothing changed. You can update later.");
+        k("rc_st_none", "تجريبي · لا يوجد تلفاز متصل", "Démo · aucune télé connectée", "Demo · no TV connected");
+        k("rc_name_none", "لا تلفاز", "Aucune télé", "No TV");
+        k("nt_t", "هذا الزر يحتاج إلى تلفاز", "Il faut une télé pour ça", "This needs a TV");
+        k("nt_msg", "هذا الزر يعمل على التلفاز. لنبحث عن تلفازك على الواي فاي.", "Cette touche agit sur la télé. Cherchons vos télés sur le Wi-Fi.", "This key acts on the TV. Let us look for your TVs on the Wi-Fi.");
+        k("nt_search", "ابحث عن تلفازي", "Chercher mes télés", "Find my TVs");
+        k("nt_later", "لاحقًا", "Plus tard", "Later");
+        k("bn_searching", "أبحث عن تلفازك…", "Je cherche vos télés…", "Looking for your TVs…");
+        k("bn_found", "وجدتُ %d على هذا الواي فاي", "%d télé(s) trouvée(s) sur ce Wi-Fi", "%d TV(s) found on this Wi-Fi");
+        k("bn_see", "عرض", "Les voir", "See them");
+        k("bn_none", "لا يوجد تلفاز متصل", "Aucune télé connectée", "No TV connected");
+        k("bn_help", "كيف أفعّل «تصحيح الشبكة»؟", "Comment activer le « Débogage réseau »", "How to turn on \"Network debugging\"");
+        k("tvs_empty", "لا توجد تلفازات بعد. ابحث عن تلفازك لإضافته.", "Aucune télé pour l\u2019instant. Cherchez la vôtre pour l\u2019ajouter.", "No TV yet. Look for yours to add it.");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");

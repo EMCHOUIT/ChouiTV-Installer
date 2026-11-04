@@ -55,6 +55,7 @@ import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
+import ma.chouitv.installer.remote.HomeState;
 import ma.chouitv.installer.remote.Remote;
 import ma.chouitv.installer.remote.AppSlots;
 import ma.chouitv.installer.remote.Equip;
@@ -131,8 +132,7 @@ public class MainActivity extends Activity {
         root.setBackground(background());
         setContentView(root);
         int first = Nav.firstScreen(sp.getString("lang", null) != null, LastTv.load(prefs()) != null);
-        if (first == 25) { show(28); ui.post(this::quickRemote); }   // the home of the app is the remote of the last TV
-        else if (first == 1) { space = SPACE_REMOTE; show(1); }
+        if (first == 25) openHome();   // the home of the app is the remote: the TV's, or a demo when there is none; never a waiting screen
         else show(first);
     }
 
@@ -322,7 +322,7 @@ public class MainActivity extends Activity {
             row.setOnClickListener(v -> {
                 switch (which) {
                     case 0: show(0); break;
-                    case 1: if (LastTv.load(prefs()) != null) rcVolumeDialog(); break;
+                    case 1: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
                     case 2: rcLimitDialog(); break;
                     case 3: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
                     default: aboutDialog(); break;
@@ -364,6 +364,7 @@ public class MainActivity extends Activity {
             c.setOnClickListener(v -> { if (!busy) openTv(tv); });
             body.addView(c, lp(0, 8, 0, 0));
         }
+        if (TvList.load(prefs()).isEmpty()) body.addView(text(t("tvs_empty"), regular, 15, MUTED), lp(0, 8, 0, 0));
         LinearLayout add = card(false);
         add.setGravity(Gravity.CENTER);
         add.addView(text("+  " + t("tvs_add"), medium, 17, GOLD));
@@ -381,7 +382,7 @@ public class MainActivity extends Activity {
             try { if (flow != null && tv.ip.equals(curIp)) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
             if (!ok) ok = rcReconnect();
             final boolean fine = ok;
-            runOnUiThread(() -> { busy = false; if (fine) show(12); else tvOffDialog(SPACE_REMOTE); });
+            runOnUiThread(() -> { busy = false; if (fine) show(12); else show(25); });   // a TV that does not answer: its remote, with the banner
         });
     }
 
@@ -393,7 +394,7 @@ public class MainActivity extends Activity {
         et.setPadding(dp(20), dp(12), dp(20), dp(12));
         new AlertDialog.Builder(this).setTitle(t("tvs_rename")).setView(et)
             .setPositiveButton(t("rc_vol_save"), (d, w) -> { TvList.rename(prefs(), tv.ip, et.getText().toString()); show(27); })
-            .setNeutralButton(t("tvs_forget"), (d, w) -> { TvList.forget(prefs(), tv.ip); show(LastTv.load(prefs()) == null ? 1 : 27); })
+            .setNeutralButton(t("tvs_forget"), (d, w) -> { TvList.forget(prefs(), tv.ip); show(LastTv.load(prefs()) == null ? 25 : 27); })
             .setNegativeButton(t("rc_pw_keep"), null).show();
     }
 
@@ -448,7 +449,10 @@ public class MainActivity extends Activity {
             body.addView(c, lp(0, 0, 0, 10));
         }
         button.setText(t("continue"));
-        button.setOnClickListener(v -> { if (LastTv.load(prefs()) != null) { show(28); quickRemote(); } else { space = SPACE_REMOTE; show(1); } });   // no mode screen: the remote, or the search for a TV
+        button.setOnClickListener(v -> {
+            getSharedPreferences("installer", MODE_PRIVATE).edit().putString("lang", Strings.lang).apply();   // Continue keeps the language shown (it was only saved on a touch of a language)
+            openHome();
+        });
     }
 
     private void prepare(LinearLayout body, TextView button) {
@@ -1674,16 +1678,22 @@ public class MainActivity extends Activity {
             if (rcPillSub == null) return;
             LastTv last = LastTv.load(prefs());
             String ip = last == null ? "" : last.ip;
-            String s = state == RC_OK ? t("rc_st_ok") : state == RC_RECONNECTING ? t("rc_st_re", attempt, Reconnect.MAX_TRIES) : t("rc_st_off");
-            rcPillSub.setText(ip.isEmpty() ? s : ip + " · " + s);
-            rcPillDot.setBackground(rcShape(state == RC_OK ? 0xFF4CD37F : state == RC_RECONNECTING ? 0xFFD6AF6B : 0xFFE8896B, 8, false));
+            String s = state == RC_OK ? t("rc_st_ok") : state == RC_RECONNECTING ? (attempt < 1 ? t("last_wait") : t("rc_st_re", attempt, Reconnect.MAX_TRIES)) : t("rc_st_off");
+            if (last == null) { rcPillSub.setText(t("rc_st_none")); rcPillDot.setBackground(rcShape(0xFF8A9189, 8, false)); }
+            else {
+                rcPillSub.setText(ip.isEmpty() ? s : ip + " · " + s);
+                rcPillDot.setBackground(rcShape(state == RC_OK ? 0xFF4CD37F : state == RC_RECONNECTING ? 0xFFD6AF6B : 0xFFE8896B, 8, false));
+            }
+            rcBannerRefresh();
         });
     }
 
     /** Runs a command on the TV. If the link dropped, gets it back (a few tries, growing waits) and sends the command once more. */
     private void rcRun(final Op op) {
+        if (rcBlocked()) return;
         bg.execute(() -> {
             try {
+                if (flow == null && !rcReconnect()) return;
                 op.run();
                 if (rcState != RC_OK) rcStatus(RC_OK, 0);
             } catch (Exception e) {
@@ -1700,6 +1710,7 @@ public class MainActivity extends Activity {
         LastTv last = LastTv.load(prefs());
         if (last == null) { rcStatus(RC_OFFLINE, 0); return false; }
         for (int a = 1; !Reconnect.giveUp(a); a++) {
+            rcAttempt = a;
             rcStatus(RC_RECONNECTING, a);
             try {
                 if (a > 1) Thread.sleep(Reconnect.delayMs(a - 1));
@@ -1711,6 +1722,7 @@ public class MainActivity extends Activity {
                 flow.ask = this::askRemoval;
                 identifyTv();
                 rcStatus(RC_OK, 0);
+                runOnUiThread(() -> { if (step == 25) { rcVolRefresh(); rcDimMissing(); } });
                 return true;
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
@@ -1791,6 +1803,7 @@ public class MainActivity extends Activity {
     }
 
     private void rcPowerAsk() {
+        if (rcBlocked()) return;
         LastTv l = LastTv.load(prefs());
         confirmGrave(t("rc_pw_q", l == null ? "TV" : l.name), t("rc_pw_msg"), t("rc_pw_keep"), t("rc_pw_do"), () -> rcKey(Remote.POWER));
     }
@@ -1805,6 +1818,7 @@ public class MainActivity extends Activity {
     }
 
     private void rcTextDialog() {
+        if (rcBlocked()) return;
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
         final android.app.Dialog d = rcDialog(c);
@@ -1857,6 +1871,7 @@ public class MainActivity extends Activity {
     }
 
     private void rcAppsDialog() {
+        if (rcBlocked()) return;
         rcSlots = AppSlots.load(prefs(), rcTvKey());
         showAppsDialog(false);
     }
@@ -2072,20 +2087,107 @@ public class MainActivity extends Activity {
             .show();
     }
 
-    /** One tap from the hub: reaches the remembered TV (the open link when there is one, else a few quiet tries) and opens its remote. */
-    private void quickRemote() {
+    /**
+     * Opens the remote at once, never a waiting screen. With a remembered TV it shows "Connexion…" under the name and reconnects in the background (a banner
+     * says so when the TV does not answer); with none it is a demo, and a short search for TVs runs meanwhile.
+     */
+    private void openHome() {
         space = SPACE_REMOTE;
-        Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
+        final LastTv want = LastTv.load(prefs());
+        rcSearching = false;
+        rcFound = 0;
+        if (want == null) {
+            show(25);
+            rcSearchOnOpen();
+            return;
+        }
+        final boolean alive = flow != null && want.ip.equals(curIp);
+        rcState = alive ? RC_OK : RC_RECONNECTING;
+        show(25);
         bg.execute(() -> {
-            boolean ok = false;
-            LastTv want = LastTv.load(prefs());
-            try { if (flow != null && want != null && want.ip.equals(curIp)) { flow.shell().run("echo"); ok = true; } } catch (Exception ignored) { }
-            if (!ok) ok = rcReconnect();
-            final boolean fine = ok;
-            runOnUiThread(() -> {
-                if (fine) show(25); else tvOffDialog(SPACE_REMOTE);
-            });
+            if (alive) {
+                try { flow.shell().run("echo"); return; } catch (Exception ignored) { }
+            }
+            rcReconnect();
         });
+    }
+
+    /** Kept for the callers that mean "back to the remote of the remembered TV". */
+    private void quickRemote() { openHome(); }
+
+    private volatile boolean rcSearching;
+    private volatile int rcFound;
+    private LinearLayout rcBanner;
+    private LinearLayout[] rcTiles;
+    private volatile int rcAttempt;
+    private boolean needTvShowing;
+
+    /** With no TV known: a short search at every opening. It never blocks; the banner shows it, and it gives its verdict after the budget (4 s). */
+    private void rcSearchOnOpen() {
+        if (!HomeState.searchesOnOpen(LastTv.load(prefs()) != null) || rcSearching) return;
+        rcSearching = true;
+        rcFound = 0;
+        rcBannerRefresh();
+        ui.postDelayed(() -> { if (rcSearching) { rcSearching = false; rcBannerRefresh(); } }, HomeState.SEARCH_BUDGET_MS);
+        bg.execute(() -> {
+            int n = 0;
+            try { n = Net.findTvs(5555).size(); } catch (Exception ignored) { }
+            rcFound = n;
+            rcSearching = false;
+            rcBannerRefresh();
+        });
+    }
+
+    /** The banner above the remote: what the search does or found (no TV), or that the remembered TV does not answer. Nothing otherwise. */
+    private void rcBannerRefresh() {
+        runOnUiThread(() -> {
+            if (rcBanner == null || step != 25) return;
+            rcBanner.removeAllViews();
+            final LastTv last = LastTv.load(prefs());
+            HomeState.Link link = rcState == RC_OFFLINE ? HomeState.Link.OFFLINE : rcState == RC_RECONNECTING ? HomeState.Link.RECONNECTING : HomeState.Link.ONLINE;
+            HomeState.Banner b = HomeState.banner(last != null, link, rcSearching, rcFound);
+            if (b == HomeState.Banner.HIDDEN) { rcBanner.setVisibility(View.GONE); return; }
+            rcBanner.setVisibility(View.VISIBLE);
+            String msg = b == HomeState.Banner.SEARCHING ? t("bn_searching") : b == HomeState.Banner.FOUND ? t("bn_found", rcFound)
+                : b == HomeState.Banner.OFFLINE ? t("off_q2", curName()) : t("bn_none");
+            rcBanner.addView(text(msg, medium, 16, SAND));
+            if (b == HomeState.Banner.OFFLINE) rcBanner.addView(text(t("off_msg"), regular, 13, MUTED), lp(0, 2, 0, 0));
+            if (b == HomeState.Banner.FOUND || b == HomeState.Banner.NONE_FOUND || b == HomeState.Banner.OFFLINE) {
+                TextView go = button(t(b == HomeState.Banner.FOUND ? "bn_see" : b == HomeState.Banner.NONE_FOUND ? "nt_search" : "off_retry"));
+                go.setOnClickListener(v -> {
+                    if (b == HomeState.Banner.OFFLINE) bg.execute(this::rcReconnect);
+                    else { clearGuide(); space = SPACE_REMOTE; show(2); }
+                });
+                LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, dp(48));
+                gp.topMargin = dp(10);
+                rcBanner.addView(go, gp);
+            }
+            String linkLabel = b == HomeState.Banner.OFFLINE ? t("tvs_title") : t("bn_help");
+            TextView help = text(linkLabel, medium, 14, LINK);
+            help.setPadding(0, dp(10), 0, dp(4));
+            help.setMinHeight(dp(44));
+            help.setGravity(Gravity.CENTER_VERTICAL);
+            help.setOnClickListener(v -> { if (b == HomeState.Banner.OFFLINE) show(27); else { clearGuide(); space = SPACE_REMOTE; show(1); } });
+            rcBanner.addView(help);
+        });
+    }
+
+    /** A key was touched with no TV: say why in one sentence and offer the search (or "Later", which goes back to the demo). */
+    private void needTvDialog() {
+        if (needTvShowing) return;
+        needTvShowing = true;
+        new AlertDialog.Builder(this).setTitle(t("nt_t")).setMessage(t("nt_msg"))
+            .setPositiveButton(t("nt_search"), (d, w) -> { clearGuide(); space = SPACE_REMOTE; show(2); })
+            .setNegativeButton(t("nt_later"), null)
+            .setOnDismissListener(d -> needTvShowing = false)
+            .show();
+    }
+
+    /** True (and the explanation is shown) when a key that acts on the TV is used while there is no TV. */
+    private boolean rcBlocked() {
+        if (!HomeState.keysNeedTv(LastTv.load(prefs()) != null)) return false;
+        runOnUiThread(this::needTvDialog);
+        return true;
     }
 
     // ---- volume: a level set in one command, a step at a time when held, a maximum chosen by the family; the scale is the one of the TV (or typed by hand) ----
@@ -2127,6 +2229,7 @@ public class MainActivity extends Activity {
 
     /** Reads the scale and the level of the TV and shows them; "?" when the TV never answers. */
     private void rcVolRefresh() {
+        if (LastTv.load(prefs()) == null) return;
         bg.execute(() -> {
             int l = -1;
             try {
@@ -2148,6 +2251,7 @@ public class MainActivity extends Activity {
 
     /** Sets a level in one command (the keys in one batch when the TV does not follow the command), then reads it back a little later. */
     private void rcVolSet(final int wanted) {
+        if (rcBlocked()) return;
         final int level = Volume.capped(wanted, volLimit(), volMax);
         final int from = volLevel;
         rcRun(() -> {
@@ -2178,6 +2282,7 @@ public class MainActivity extends Activity {
      * used from then on.
      */
     private void rcVolStep(final boolean up) {
+        if (rcBlocked()) return;
         final int now = volLevel, lim = volLimit(), max = volMax, n = volStep();
         if (up && lim > 0 && now >= lim) return;
         if (!volBusy.compareAndSet(false, true)) return;
@@ -2225,6 +2330,7 @@ public class MainActivity extends Activity {
 
     /** Mute remembers the level: silent when there is sound, the remembered level back when it is silent. */
     private void rcMuteToggle() {
+        if (rcBlocked()) return;
         final int now = volLevel;
         if (now < 0) { rcKey(Remote.MUTE); return; }   // the level is not known: the TV's own mute key
         if (now > 0) volPrev = now;
@@ -2426,7 +2532,7 @@ public class MainActivity extends Activity {
         status.addView(rcPillDot, new LinearLayout.LayoutParams(dp(10), dp(10)));
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
-        rcPillName = text((last == null ? "TV" : last.name).toUpperCase(java.util.Locale.ROOT), medium, 14, SAND);
+        rcPillName = text((last == null ? t("rc_name_none") : last.name).toUpperCase(java.util.Locale.ROOT), medium, 14, SAND);
         rcPillName.setMaxLines(1);
         rcPillName.setLetterSpacing(0.06f);
         rcPillSub = text("", regular, 12, MUTED);
@@ -2436,7 +2542,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1f);
         np.setMarginStart(dp(10));
         status.addView(names, np);
-        rcTap(status, () -> { if (rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else show(27); });
+        rcTap(status, () -> { if (last != null && rcState == RC_OFFLINE) bg.execute(this::rcReconnect); else show(27); });
         LinearLayout.LayoutParams sp0 = new LinearLayout.LayoutParams(0, dp(56), 1f);
         sp0.setMargins(dp(12), 0, dp(8), 0);
         top.addView(status, sp0);
@@ -2444,13 +2550,15 @@ public class MainActivity extends Activity {
         rcTap(more, this::rcMoreMenu);
         top.addView(rcWell(more, 28, 4));
         panel.addView(top);
-        rcStatus(RC_OK, 0);   // the remote only opens on a TV that has just answered
+        if (last != null && rcState == RC_OK && (flow == null || !last.ip.equals(curIp))) rcState = RC_OFFLINE;   // never claim a link that is not there
+        rcStatus(rcState, rcAttempt);
 
         // six printed keys for the shortcuts, each in its well
         Object[][] tiles = {
             {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
             {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
         final LinearLayout[] shortcutTiles = new LinearLayout[6];
+        rcTiles = shortcutTiles;
         for (int r = 0; r < 2; r++) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -2477,15 +2585,7 @@ public class MainActivity extends Activity {
         }
 
         // the shortcuts of an app the TV does not have are dimmed (a touch still explains it and offers to install)
-        bg.execute(() -> {
-            try {
-                final String out = flow.shell().run("pm list packages");
-                runOnUiThread(() -> {
-                    if (Remote.missing(out, Remote.Target.LISTEN)) shortcutTiles[0].setAlpha(0.4f);
-                    if (Remote.missing(out, Remote.Target.CHANNELS)) shortcutTiles[1].setAlpha(0.4f);
-                });
-            } catch (Exception ignored) { }
-        });
+        if (last != null) rcDimMissing();
 
         // the pad: four wedges around OK
         RcRing ring = new RcRing(this, display);
@@ -2528,6 +2628,15 @@ public class MainActivity extends Activity {
         panel.addView(volWell, lp(0, 8, 0, 0));
         rcVolRefresh();
 
+        // with no TV the whole remote is a demo: every key is shown, dimmed, and explains itself when touched
+        if (last == null) for (int i = 1; i < panel.getChildCount(); i++) panel.getChildAt(i).setAlpha(0.55f);
+
+        rcBanner = new LinearLayout(this);
+        rcBanner.setOrientation(LinearLayout.VERTICAL);
+        rcBanner.setBackground(rcShape(TILE_FILL, 16, true));
+        rcBanner.setPadding(dp(16), dp(12), dp(16), dp(8));
+        body.addView(rcBanner, lp(0, 0, 0, 10));
+        rcBannerRefresh();
         body.addView(panel, lp(0, 4, 0, 8));
 
         button.setText(t("cl_home"));
@@ -2535,8 +2644,25 @@ public class MainActivity extends Activity {
         button.setOnClickListener(v -> show(12));
     }
 
+    /** Dims the shortcuts of an app the connected TV does not have (a touch still explains it and offers to install). */
+    private void rcDimMissing() {
+        final LinearLayout[] tiles = rcTiles;
+        if (tiles == null) return;
+        bg.execute(() -> {
+            try {
+                final String out = flow.shell().run("pm list packages");
+                runOnUiThread(() -> {
+                    if (Remote.missing(out, Remote.Target.LISTEN)) tiles[0].setAlpha(0.4f);
+                    if (Remote.missing(out, Remote.Target.CHANNELS)) tiles[1].setAlpha(0.4f);
+                });
+            } catch (Exception ignored) { }
+        });
+    }
+
     /** After the TV answers, each space reads what it needs from it: the install goes straight on, the others first read the apps. */
     private void afterConnect(final TextView button, final TextView status) {
+        rcState = RC_OK;
+        rcAttempt = 0;
         if (space == SPACE_INSTALL) { busy = false; show(3); return; }
         if (space == SPACE_GET) { busy = false; show(14); return; }
         if (space == SPACE_SEND) { busy = false; show(17); return; }

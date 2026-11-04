@@ -27,8 +27,8 @@ final class Nav {
             case 11: case 13: case 14: case 17: return list;
             case 15: return 17;
             case 24: return 18;
-            case 1: return list;
-            case 2: return 1;
+            case 1: return guided ? 19 : 25;   // the three steps: back to the guided list, else back to the remote (a demo when there is no TV)
+            case 2: return guided ? 1 : 25;
             default: return EXIT;
         }
     }
@@ -45,10 +45,17 @@ final class Nav {
     /** The language is asked on the very first use only; after that it is changed from «Options». */
     static boolean asksLanguage(boolean languageSaved) { return !languageSaved; }
 
-    /** The first screen when the app opens: the language (first use), the remote (a TV is known), else the search for a TV. */
+    /** The first screen when the app opens: the language (first use), else always the remote (the TV's, or a demo when there is none). Never a waiting or preparation screen. */
     static int firstScreen(boolean languageSaved, boolean tvKnown) {
-        if (asksLanguage(languageSaved)) return 0;
-        return tvKnown ? 25 : 1;
+        return asksLanguage(languageSaved) ? 0 : 25;
+    }
+
+    /** The screens that can be visited with no TV at all: the language, the three steps and the search, the remote (demo), Options, «My TVs», the short opening screen. */
+    static boolean opensWithoutTv(int step) {
+        switch (step) {
+            case 0: case 1: case 2: case 25: case 26: case 27: case 28: return true;
+            default: return false;
+        }
     }
 
     /** A second press of Back within two seconds of the first leaves the app. */
