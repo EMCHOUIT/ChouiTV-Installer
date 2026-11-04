@@ -55,6 +55,7 @@ import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
+import ma.chouitv.installer.remote.Adoption;
 import ma.chouitv.installer.remote.Cause;
 import ma.chouitv.installer.remote.HomeState;
 import ma.chouitv.installer.remote.Remote;
@@ -369,7 +370,7 @@ public class MainActivity extends Activity {
         LinearLayout add = card(false);
         add.setGravity(Gravity.CENTER);
         add.addView(text("+  " + t("tvs_add"), medium, 17, GOLD));
-        add.setOnClickListener(v -> { if (!busy) { clearGuide(); space = SPACE_REMOTE; show(1); } });
+        add.setOnClickListener(v -> { if (!busy) { clearGuide(); space = SPACE_REMOTE; show(2); } });   // the search starts at once; the three steps stay one touch away
         body.addView(add, lp(0, 12, 0, 0));
     }
 
@@ -462,11 +463,19 @@ public class MainActivity extends Activity {
         button.setOnClickListener(v -> show(2));
     }
 
+    private int scanToken;
+
+    /**
+     * The search for TVs: it starts at once, each TV appears the moment it answers (with its own state: ready, to allow on the TV), all are asked at the same time,
+     * a verdict and a card for a missing TV come after four seconds while the search goes on, and it looks again while the screen is open.
+     */
     private void connect(final LinearLayout body, final TextView button) {
+        final long t0 = SystemClock.elapsedRealtime();
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(text(t("found"), medium, 15, GOLD), new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView headline = text(t("ad_search"), medium, 17, GOLD);
+        head.addView(headline, new LinearLayout.LayoutParams(0, -2, 1f));
         final TextView refresh = ghostButton("↻  " + t("refresh"), GOLD);
         refresh.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         refresh.setMinHeight(dp(44));
@@ -477,6 +486,20 @@ public class MainActivity extends Activity {
         final LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         body.addView(list);
+
+        // the card for a TV that does not show
+        final LinearLayout missing = card(false);
+        missing.addView(text(t("ad_miss_t"), medium, 16, SAND));
+        for (String k : new String[] {"ad_miss_1", "ad_miss_2", "ad_miss_3"}) missing.addView(text("•  " + t(k), regular, 14, MUTED), lp(0, 4, 0, 0));
+        TextView missHelp = text(t("ad_miss_help"), medium, 14, LINK);
+        missHelp.setPadding(0, dp(10), 0, dp(4));
+        missHelp.setMinHeight(dp(44));
+        missHelp.setGravity(Gravity.CENTER_VERTICAL);
+        missHelp.setOnClickListener(v -> { clearGuide(); space = SPACE_REMOTE; show(1); });
+        missing.addView(missHelp);
+        missing.setVisibility(View.GONE);
+        body.addView(missing, lp(0, 4, 0, 4));
+
         body.addView(text(t("or_type"), medium, 15, GOLD), lp(0, 16, 0, 8));
         final EditText input = new EditText(this);
         input.setHint("192.168.1.24");
@@ -502,57 +525,105 @@ public class MainActivity extends Activity {
             connectTo(ip, button, status);
         });
         chosen = "";
-        final boolean[] scanning = {false};
-        final Runnable scan = new Runnable() {
-            @Override public void run() {
-                if (scanning[0]) return;
-                scanning[0] = true;
-                chosen = "";
-                refresh.setText("…  " + t("searching_short"));
-                refresh.setAlpha(0.6f);
-                list.removeAllViews();
-                list.addView(text(t("searching"), regular, 15, MUTED));
-                bg.execute(() -> {
-                    final List<String> tvs = Net.findTvs(5555);
-                    final java.util.Map<String, String> names = new java.util.HashMap<>();
-                    final SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
-                    for (String ip : tvs) {
-                        String who = Adb.probe(ip, 5555, new File(getFilesDir(), "keys"));
-                        if (who != null) { sp.edit().putString("tv_" + ip, who).apply(); names.put(ip, who + "|known"); }
-                        else if (sp.getString("tv_" + ip, null) != null) names.put(ip, sp.getString("tv_" + ip, "") + "|seen");
-                    }
-                    runOnUiThread(() -> {
-                        scanning[0] = false;
-                        if (step != 2) return;
-                        refresh.setText("↻  " + t("refresh"));
-                        refresh.setAlpha(1f);
-                        list.removeAllViews();
-                        if (tvs.isEmpty()) list.addView(text(t("none_found"), regular, 14, MUTED));
-                        for (final String ip : tvs) {
-                            final LinearLayout c = card(false);
-                            String[] w = names.containsKey(ip) ? names.get(ip).split("\\|") : null;
-                            String title = w == null ? t("tv") : (w[0].isEmpty() ? "" : w[0] + " · ") + w[1];
-                            String state = w == null ? t("tv_first") : w[2].equals("known") ? t("tv_known") : t("tv_seen");
-                            c.addView(text(title, medium, 18, SAND));
-                            TextView a = text(ip + " · " + state, regular, 14, MUTED);
-                            a.setTextDirection(View.TEXT_DIRECTION_LTR);
-                            c.addView(a);
-                            c.setOnClickListener(v -> {
-                                if (busy) return;
-                                chosen = ip;
-                                for (int i = 0; i < list.getChildCount(); i++) list.getChildAt(i).setBackground(cardBg(false));
-                                c.setBackground(cardBg(true));
-                                input.setText("");
-                                connectTo(ip, button, status);   // one touch on a TV that was found connects to it
-                            });
-                            list.addView(c, lp(0, 0, 0, 10));
-                        }
-                    });
-                });
+
+        final java.util.Map<String, LinearLayout> cards = new java.util.HashMap<>();
+        final java.util.Map<String, TextView> titles = new java.util.HashMap<>(), subs = new java.util.HashMap<>();
+        final java.util.Map<String, Adoption.TvState> states = new java.util.concurrent.ConcurrentHashMap<>();
+        final java.util.Set<String> known = new java.util.HashSet<>();
+        final java.util.Map<String, String> ownNames = new java.util.HashMap<>();
+        for (TvList.Tv k : TvList.load(prefs())) { known.add(k.ip); ownNames.put(k.ip, k.name); }
+        final SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
+
+        final Runnable update = () -> {
+            if (step != 2) return;
+            long el = SystemClock.elapsedRealtime() - t0;
+            int n = cards.size();
+            Adoption.Headline h = Adoption.headline(n, el);
+            headline.setText(h == Adoption.Headline.SEARCHING ? t("ad_search") : h == Adoption.Headline.NONE ? t("ad_none") : n == 1 ? t("ad_found1") : t("ad_found_n", n));
+            missing.setVisibility(Adoption.showMissingCard(el) ? View.VISIBLE : View.GONE);
+        };
+        final Runnable showStates = () -> {
+            for (String ip : cards.keySet()) {
+                Adoption.TvState st = states.get(ip);
+                String label = st == Adoption.TvState.READY ? t("ad_ready") : st == Adoption.TvState.ASK ? t("ad_ask") : t("ad_checking");
+                TextView sub = subs.get(ip);
+                if (!(busy && ip.equals(chosen))) { sub.setTextColor(MUTED); sub.setText(ip + " · " + label); }
             }
         };
-        refresh.setOnClickListener(v -> { if (!busy) scan.run(); });
-        scan.run();
+
+        // one row per TV, the moment it answers
+        final java.util.function.Consumer<String> addRow = ip -> {
+            if (step != 2 || cards.containsKey(ip)) return;
+            final LinearLayout c = card(false);
+            String own = ownNames.get(ip), seen = sp.getString("tv_" + ip, null);
+            String name = own != null ? own : seen != null ? seen.replace("|", " ").trim() : t("tv");
+            TextView title = text(name.isEmpty() ? t("tv") : name, medium, 18, SAND);
+            TextView sub = text(ip, regular, 14, MUTED);
+            sub.setTextDirection(View.TEXT_DIRECTION_LTR);
+            c.addView(title);
+            c.addView(sub);
+            final TextView subF = sub;
+            c.setOnClickListener(v -> {
+                if (busy) { Toast.makeText(this, t("ad_busy"), Toast.LENGTH_SHORT).show(); return; }
+                chosen = ip;
+                for (LinearLayout o : cards.values()) o.setBackground(cardBg(false));
+                c.setBackground(cardBg(true));
+                input.setText("");
+                connectTo(ip, button, subF);   // one touch on a TV connects to it, and its own row shows the wait
+            });
+            cards.put(ip, c);
+            titles.put(ip, title);
+            subs.put(ip, sub);
+            states.put(ip, Adoption.TvState.CHECKING);
+            list.removeAllViews();
+            for (String o : Adoption.sorted(cards.keySet(), known)) list.addView(cards.get(o), lp(0, 0, 0, 10));
+            showStates.run();
+            update.run();
+        };
+
+        final int token = ++scanToken;
+        final java.util.concurrent.Semaphore again = new java.util.concurrent.Semaphore(0);
+        refresh.setOnClickListener(v -> again.release());
+        ui.postDelayed(update, Adoption.VERDICT_MS);
+        final File keys = new File(getFilesDir(), "keys");
+        Thread loop = new Thread(() -> {
+            java.util.concurrent.ExecutorService probes = java.util.concurrent.Executors.newFixedThreadPool(4);
+            final java.util.Set<String> asked = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+            try {
+                while (token == scanToken && step == 2) {
+                    runOnUiThread(() -> refresh.setText("…  " + t("searching_short")));
+                    Net.scanLive(5555, ip -> {
+                        if (token != scanToken) return;
+                        runOnUiThread(() -> addRow.accept(ip));
+                        if (!asked.add(ip) && states.get(ip) == Adoption.TvState.READY) return;
+                        probes.execute(() -> {
+                            final Adb.Probe pr = Adb.probeState(ip, 5555, keys);
+                            runOnUiThread(() -> {
+                                if (step != 2 || !cards.containsKey(ip)) return;
+                                Adoption.TvState now = pr == null ? Adoption.TvState.ASK : pr.state;
+                                states.put(ip, Adoption.merge(states.get(ip), now));
+                                if (pr != null && pr.info != null && pr.info.length() > 1) {
+                                    sp.edit().putString("tv_" + ip, pr.info).apply();
+                                    if (ownNames.get(ip) == null) titles.get(ip).setText(pr.info.replace("|", " ").trim());
+                                }
+                                showStates.run();
+                                update.run();
+                            });
+                        });
+                    });
+                    runOnUiThread(() -> refresh.setText("↻  " + t("refresh")));
+                    long wait = Adoption.rescanDelayMs(SystemClock.elapsedRealtime() - t0);
+                    again.drainPermits();
+                    if (!again.tryAcquire(wait, java.util.concurrent.TimeUnit.MILLISECONDS)) { /* time for the next look */ }
+                    while (busy && token == scanToken && step == 2) Thread.sleep(500);   // never look again while a connection is being made
+                }
+            } catch (InterruptedException ignored) {
+            } finally {
+                probes.shutdownNow();
+            }
+        }, "tv-search");
+        loop.setDaemon(true);
+        loop.start();
     }
 
     private void connectTo(final String ip, final TextView button, final TextView status) {
@@ -2140,7 +2211,7 @@ public class MainActivity extends Activity {
     /** {@code withGuide}: a guided path whose TV is known also goes straight to it (the path keeps its own steps and bar). */
     private void startSpace(final int sp, boolean withGuide) {
         space = sp;
-        if (!Nav.startsDirect(guide != null && !withGuide, LastTv.load(prefs()) != null)) { show(1); return; }
+        if (!Nav.startsDirect(guide != null && !withGuide, LastTv.load(prefs()) != null)) { show(guide != null ? 1 : 2); return; }
         Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
         busy = true;
         bg.execute(() -> {

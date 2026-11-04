@@ -127,6 +127,41 @@ final class Adb implements AutoCloseable {
         }
     }
 
+    /** What a TV on the network says about itself without ever bothering it: ready (it knows this phone's key), or it would ask the person (nothing appears on the TV). */
+    static final class Probe {
+        final ma.chouitv.installer.remote.Adoption.TvState state;
+        final String info;   // «brand|model» when ready
+        Probe(ma.chouitv.installer.remote.Adoption.TvState state, String info) { this.state = state; this.info = info; }
+    }
+
+    static Probe probeState(String host, int port, File keyDir) {
+        Socket s = new Socket();
+        try {
+            s.connect(new InetSocketAddress(host, port), 1500);
+            s.setTcpNoDelay(true);
+            s.setSoTimeout(3000);
+            Adb a = new Adb(s);
+            KeyPair kp = loadOrMakeKey(keyDir);
+            a.send(A_CNXN, VERSION, MAX_DATA, "host::features=cmd,stat_v2\0".getBytes("UTF-8"));
+            Packet p = a.read();
+            if (p.cmd == A_AUTH && p.arg0 == 1) {
+                a.send(A_AUTH, 2, 0, sign(kp.getPrivate(), p.data));
+                p = a.read();
+                if (p.cmd == A_AUTH && p.arg0 == 1) return new Probe(ma.chouitv.installer.remote.Adoption.TvState.ASK, null);   // the TV would ask the person
+            }
+            if (p.cmd != A_CNXN) return null;
+            a.maxData = (int) Math.min(Math.max(p.arg1, 4096), MAX_DATA);
+            String out = a.shell("getprop ro.product.manufacturer; getprop ro.product.model");
+            String[] l = out.trim().split("\\s*\\n\\s*");
+            String info = l.length < 2 || l[1].isEmpty() ? "|" : l[0].trim() + "|" + l[1].trim();
+            return new Probe(ma.chouitv.installer.remote.Adoption.TvState.READY, info);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            try { s.close(); } catch (IOException ignored) { }
+        }
+    }
+
     @Override public void close() {
         try { socket.close(); } catch (IOException ignored) { }
     }

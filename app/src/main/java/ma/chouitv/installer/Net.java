@@ -130,23 +130,14 @@ final class Net {
         return l;
     }
 
-    /** Hosts of this phone's Wi-Fi network (a /24) that answer on the ADB port, found in about two seconds. */
-    static List<String> findTvs(int port) {
-        List<String> found = Collections.synchronizedList(new ArrayList<String>());
+    interface Found { void host(String ip); }
+
+    /** Looks at every address of the Wi-Fi of the home (a /24) and calls {@code found} the moment a host answers on the ADB port; returns when the whole network was looked at (about three seconds). */
+    static void scanLive(int port, final Found found) {
         String base = null, self = null;
-        try {
-            List<String[]> ifaces = new ArrayList<>();
-            for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements(); ) {
-                NetworkInterface ni = e.nextElement();
-                if (!ni.isUp() || ni.isLoopback()) continue;
-                for (InetAddress a : Collections.list(ni.getInetAddresses())) {
-                    if (a instanceof java.net.Inet4Address) ifaces.add(new String[] {ni.getName(), a.getHostAddress()});
-                }
-            }
-            String[] pick = Subnet.pick(ifaces);   // the Wi-Fi of the home, never the mobile data that has a private address too
-            if (pick != null) { self = pick[0]; base = pick[1]; }
-        } catch (Exception ignored) { }
-        if (base == null) return found;
+        String[] pick = Subnet.pick(ifaces());   // the Wi-Fi of the home, never the mobile data that has a private address too
+        if (pick != null) { self = pick[0]; base = pick[1]; }
+        if (base == null) return;
         ExecutorService ex = Executors.newFixedThreadPool(48);
         List<Future<?>> fs = new ArrayList<>();
         for (int i = 1; i < 255; i++) {
@@ -154,13 +145,19 @@ final class Net {
             if (ip.equals(self)) continue;
             fs.add(ex.submit(new Callable<Void>() {
                 public Void call() {
-                    try (Socket s = new Socket()) { s.connect(new InetSocketAddress(ip, port), 600); found.add(ip); } catch (Exception ignored) { }
+                    try (Socket s = new Socket()) { s.connect(new InetSocketAddress(ip, port), 600); found.host(ip); } catch (Exception ignored) { }
                     return null;
                 }
             }));
         }
         for (Future<?> f : fs) { try { f.get(); } catch (Exception ignored) { } }
         ex.shutdown();
+    }
+
+    /** Hosts of this phone's Wi-Fi network (a /24) that answer on the ADB port, found in about two seconds. */
+    static List<String> findTvs(int port) {
+        final List<String> found = Collections.synchronizedList(new ArrayList<String>());
+        scanLive(port, new Found() { public void host(String ip) { found.add(ip); } });
         List<String> sorted = new ArrayList<>(found);
         Collections.sort(sorted, new java.util.Comparator<String>() {
             public int compare(String a, String b) { return Integer.parseInt(a.substring(a.lastIndexOf('.') + 1)) - Integer.parseInt(b.substring(b.lastIndexOf('.') + 1)); }
