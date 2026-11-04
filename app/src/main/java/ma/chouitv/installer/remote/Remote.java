@@ -86,8 +86,20 @@ public final class Remote {
     /** True when «pm list packages» lists exactly this package (not one that merely starts with its name). */
     public static boolean installed(Shell tv, String pkg) throws IOException {
         if (!Guard.validPackage(pkg)) throw new IllegalArgumentException("not a package name: " + pkg);
-        String out = tv.run("pm list packages " + pkg);
+        return hasPackage(tv.run("pm list packages " + pkg), pkg);
+    }
+
+    /** True when the answer of «pm list packages» holds exactly this package (not one that merely starts with its name). */
+    public static boolean hasPackage(String out, String pkg) {
+        if (out == null || pkg == null) return false;
         for (String line : out.split("\\r?\\n")) if (line.trim().equals("package:" + pkg)) return true;
         return false;
+    }
+
+    /** The shortcut opens an app the TV does not have (an empty answer gives no verdict, and the system screens are always there). */
+    public static boolean missing(String pmListOutput, Target t) {
+        String pkg = t.pkg();
+        if (pkg == null || pmListOutput == null || pmListOutput.trim().isEmpty()) return false;
+        return !hasPackage(pmListOutput, pkg);
     }
 }

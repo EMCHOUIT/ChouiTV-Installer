@@ -2429,6 +2429,7 @@ public class MainActivity extends Activity {
         Object[][] tiles = {
             {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
             {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
+        final LinearLayout[] shortcutTiles = new LinearLayout[6];
         for (int r = 0; r < 2; r++) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -2436,6 +2437,7 @@ public class MainActivity extends Activity {
                 final int i = r * 3 + k;
                 LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 80, Keycap.tile(density, 12), GOLD, null);
                 LinearLayout cell = rcWell(tile, 16, 3);
+                shortcutTiles[i] = tile;
                 LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
                 tp.setMargins(dp(4), dp(r == 0 ? 14 : 2), dp(4), dp(2));
                 rcTap(tile, () -> {
@@ -2452,6 +2454,17 @@ public class MainActivity extends Activity {
             }
             panel.addView(row);
         }
+
+        // the shortcuts of an app the TV does not have are dimmed (a touch still explains it and offers to install)
+        bg.execute(() -> {
+            try {
+                final String out = flow.shell().run("pm list packages");
+                runOnUiThread(() -> {
+                    if (Remote.missing(out, Remote.Target.LISTEN)) shortcutTiles[0].setAlpha(0.4f);
+                    if (Remote.missing(out, Remote.Target.CHANNELS)) shortcutTiles[1].setAlpha(0.4f);
+                });
+            } catch (Exception ignored) { }
+        });
 
         // the pad: four wedges around OK
         RcRing ring = new RcRing(this, display);

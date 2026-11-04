@@ -142,4 +142,21 @@ public class RemoteV4Test {
         assertEquals("am start -a android.settings.SETTINGS", Remote.settings());
         try { Remote.launch("x; reboot"); fail("not a package"); } catch (IllegalArgumentException expected) { }
     }
+
+    @Test public void aPackageIsFoundInThePmListOnlyWhenTheLineIsExactlyThatPackage() {
+        String out = "package:com.netflix.ninja\r\npackage:ma.chouitv.home\npackage:com.majnioui.tv.channels.beta\n";
+        assertTrue(Remote.hasPackage(out, "ma.chouitv.home"));
+        assertTrue(Remote.hasPackage(out, "com.netflix.ninja"));
+        assertFalse(Remote.hasPackage(out, "com.majnioui.tv.channels"));   // another package that only starts with its name
+        assertFalse(Remote.hasPackage("", "ma.chouitv.home"));
+        assertFalse(Remote.hasPackage(null, "ma.chouitv.home"));
+    }
+
+    @Test public void theShortcutsOfAnAppThatIsMissingAreTheOnesToDim() {
+        String out = "package:ma.chouitv.home\n";
+        assertFalse(Remote.missing(out, Remote.Target.LISTEN));
+        assertTrue(Remote.missing(out, Remote.Target.CHANNELS));
+        assertFalse(Remote.missing(out, Remote.Target.SAVER));      // the system always has it
+        assertFalse(Remote.missing("", Remote.Target.LISTEN));       // an empty answer is no verdict: nothing is dimmed
+    }
 }
