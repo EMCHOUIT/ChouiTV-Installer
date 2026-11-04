@@ -55,6 +55,8 @@ import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
+import ma.chouitv.installer.remote.TvMatch;
+import ma.chouitv.installer.remote.Others;
 import ma.chouitv.installer.remote.Adoption;
 import ma.chouitv.installer.remote.Cause;
 import ma.chouitv.installer.remote.HomeState;
@@ -224,7 +226,7 @@ public class MainActivity extends Activity {
             if (guide.path == Guide.Path.EQUIP && n == 4) { guide.step = 2; saveGuide(); }
             guideBar(body);
         }
-        if (guide != null && n == 5 && guide.path == Guide.Path.EQUIP) Equip.markEquipped(prefs(), curIp);
+        if (guide != null && n == 5 && guide.path == Guide.Path.EQUIP) { Equip.markEquipped(prefs(), curIp); justEquipped = true; }
         if (guide != null && ((n == 5 && guide.path == Guide.Path.EQUIP) || n == 13)) clearGuide();
         switch (n) {
             case 0: language(body, button); break;
@@ -546,6 +548,7 @@ public class MainActivity extends Activity {
             for (String ip : cards.keySet()) {
                 Adoption.TvState st = states.get(ip);
                 String label = st == Adoption.TvState.READY ? t("ad_ready") : st == Adoption.TvState.ASK ? t("ad_ask") : t("ad_checking");
+                if (Equip.isEquipped(prefs(), ip)) label += " · " + t("ad_equipped");
                 TextView sub = subs.get(ip);
                 if (!(busy && ip.equals(chosen))) { sub.setTextColor(MUTED); sub.setText(ip + " · " + label); }
             }
@@ -654,6 +657,7 @@ public class MainActivity extends Activity {
                 getSharedPreferences("installer", MODE_PRIVATE).edit().putString("tv_" + ip, tvBrand + "|" + model).apply();
                 TvList.use(prefs(), ip, (tvBrand + " " + model).trim());
                 curIp = ip;
+                rememberSerial(ip);
                 runOnUiThread(() -> afterConnect(button, status));
             } catch (final Exception e) {
                 runOnUiThread(() -> {
@@ -988,6 +992,8 @@ public class MainActivity extends Activity {
         });
     }
 
+    private boolean justEquipped;
+
     private void done(LinearLayout body, TextView button) {
         body.setGravity(Gravity.CENTER_HORIZONTAL);
         Orn.Arch arch = new Orn.Arch(this);
@@ -1018,6 +1024,14 @@ public class MainActivity extends Activity {
         TextView s = text(t("thanks_sub"), regular, 15, MUTED);
         s.setGravity(Gravity.CENTER);
         body.addView(s);
+        if (justEquipped) {   // «Set up the next one»: one touch to the search for another TV of the house
+            justEquipped = false;
+            LinearLayout next = card(true);
+            next.addView(text(t("ad_next"), medium, 18, GOLD));
+            next.addView(text(t("ad_next_sub"), regular, 14, SAND), lp(0, 2, 0, 0));
+            next.setOnClickListener(v -> { clearGuide(); space = SPACE_REMOTE; show(2); });
+            body.addView(next, lp(0, 14, 0, 4));
+        }
         // the ask: a star on GitHub
         LinearLayout ask = card(false);
         ask.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
@@ -1805,6 +1819,7 @@ public class MainActivity extends Activity {
         final LastTv last = LastTv.load(prefs());
         if (last == null) { rcStatus(RC_OFFLINE, 0); return false; }
         if (!rcTrying.compareAndSet(false, true)) return rcState == RC_OK;   // another try is running: it will say
+        boolean movedNow = false;
         try {
             rcAsked = false;
             if (!quiet) rcStatus(RC_RECONNECTING, 0);
@@ -1817,6 +1832,7 @@ public class MainActivity extends Activity {
             identifyTv();
             rcFailSince = 0;
             rcCause = null;
+            rcOther = null;
             rcStatus(RC_OK, 0);
             runOnUiThread(() -> { if (step == 25) { rcVolRefresh(); rcDimMissing(); } });
             return true;
@@ -1824,10 +1840,66 @@ public class MainActivity extends Activity {
             if (rcFailSince == 0) rcFailSince = android.os.SystemClock.elapsedRealtime();
             rcCause = Cause.of(e, wifiActive(), Net.ifaces().isEmpty() || Subnet.sameNetwork(last.ip, Net.ifaces()), rcAsked);
             rcStatus(RC_OFFLINE, 0);
-            return false;
+            if (rcCause == Cause.SILENT || rcCause == Cause.REFUSED) movedNow = rcLookElsewhere(last);   // the box may have given it another address; another TV may answer
         } finally {
             rcTrying.set(false);
         }
+        return movedNow && rcAttempt(reachMs, true);
+    }
+
+    private volatile TvList.Tv rcOther;
+    private volatile long rcLook, rcMovedUntil;
+
+    /** The TV does not answer where it was: look at the network once a minute for the same TV at another address (by serial number), and see whether another TV of the family answers. True when it was found and its address updated. */
+    private boolean rcLookElsewhere(LastTv last) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (rcLook != 0 && now - rcLook < 60_000) return false;
+        rcLook = now;
+        TvList.Tv saved = null;
+        java.util.List<TvList.Tv> all = TvList.load(prefs());
+        for (TvList.Tv t : all) if (t.ip.equals(last.ip)) saved = t;
+        // another TV of the family that answers (offered, never taken on its own)
+        java.util.Set<String> up = new java.util.HashSet<>();
+        for (TvList.Tv t : all) if (!t.ip.equals(last.ip) && Net.reachable(t.ip, 5555, 700)) up.add(t.ip);
+        java.util.List<TvList.Tv> others = Others.answering(all, last.ip, up);
+        rcOther = others.isEmpty() ? null : others.get(0);
+        rcBannerRefresh();
+        // the same TV at another address
+        final java.util.List<String> hosts = java.util.Collections.synchronizedList(new ArrayList<String>());
+        Net.scanLive(5555, ip -> hosts.add(ip));
+        java.util.List<TvMatch.Candidate> cands = new ArrayList<>();
+        for (String ip : new ArrayList<>(hosts)) {
+            if (ip.equals(last.ip) || up.contains(ip)) continue;   // an address of another TV of the family is not a lost one
+            Adb.Probe pr = Adb.probeState(ip, 5555, new File(getFilesDir(), "keys"));
+            if (pr != null && pr.state == Adoption.TvState.READY) cands.add(new TvMatch.Candidate(ip, pr.serial, pr.info == null ? "" : pr.info.replace("|", " ").trim()));
+        }
+        int k = TvMatch.pick(saved == null ? "" : saved.serial, saved == null ? "" : saved.model, cands);
+        if (k < 0) return false;
+        String newIp = cands.get(k).ip;
+        migrateTvKeys(last.ip, newIp);
+        TvList.moveIp(prefs(), last.ip, newIp);
+        rcMovedUntil = android.os.SystemClock.elapsedRealtime() + 7000;
+        rcFailSince = 0;
+        ui.postDelayed(this::rcBannerRefresh, 7200);
+        return true;
+    }
+
+    /** The settings of a TV (volume scale, the six app buttons, what was asked, the model seen) follow it to its new address. */
+    private void migrateTvKeys(String oldIp, String newIp) {
+        SharedPreferences sp = getSharedPreferences("installer", MODE_PRIVATE);
+        SharedPreferences.Editor ed = sp.edit();
+        for (java.util.Map.Entry<String, ?> e : sp.getAll().entrySet()) {
+            String nk = TvList.migrateKey(e.getKey(), oldIp, newIp);
+            if (nk == null) continue;
+            Object v = e.getValue();
+            if (v instanceof String) ed.putString(nk, (String) v);
+            else if (v instanceof Integer) ed.putInt(nk, (Integer) v);
+            else if (v instanceof Boolean) ed.putBoolean(nk, (Boolean) v);
+            else if (v instanceof Long) ed.putLong(nk, (Long) v);
+            else if (v instanceof Float) ed.putFloat(nk, (Float) v);
+            ed.remove(e.getKey());
+        }
+        ed.apply();
     }
 
     /** Reconnects now (a short try first, then the quiet tries in the background when it fails). False when the TV does not answer. */
@@ -2203,6 +2275,15 @@ public class MainActivity extends Activity {
             tvModel = model;
             try { tvBrand = flow.prop("ro.product.manufacturer"); } catch (IOException ignored) { }
         } catch (Exception ignored) { }
+        rememberSerial(curIp);
+    }
+
+    /** The serial number of the TV that answers is kept with it, to recognise it again if the box gives it another address. */
+    private void rememberSerial(String ip) {
+        try {
+            String sn = Remote.parseSerial(flow.shell().run(Remote.serialCommand()));
+            if (!sn.isEmpty() && ip != null && !ip.isEmpty()) TvList.setSerial(prefs(), ip, sn);
+        } catch (Exception ignored) { }
     }
 
     /** A task chosen on the home: straight to the TV used last (no preparation screen, no scan) when the user is not guided and a TV is known. */
@@ -2297,9 +2378,14 @@ public class MainActivity extends Activity {
             final LastTv last = LastTv.load(prefs());
             HomeState.Link link = rcState == RC_OFFLINE ? HomeState.Link.OFFLINE : rcState == RC_RECONNECTING ? HomeState.Link.RECONNECTING
                 : rcState == RC_ASKING ? HomeState.Link.ASKING : HomeState.Link.ONLINE;
-            HomeState.Banner b = HomeState.banner(last != null, link, rcSearching, rcFound);
+            HomeState.Banner b = HomeState.banner(last != null, link, rcSearching, rcFound, rcMovedUntil > android.os.SystemClock.elapsedRealtime());
             if (b == HomeState.Banner.HIDDEN) { rcBanner.setVisibility(View.GONE); return; }
             rcBanner.setVisibility(View.VISIBLE);
+            if (b == HomeState.Banner.MOVED) {
+                rcBanner.addView(text(t("bn_moved", curName()), medium, 16, 0xFF7CD9A0));
+                rcBanner.addView(text(t("bn_moved_sub"), regular, 13, MUTED), lp(0, 2, 0, 8));
+                return;
+            }
             final long failing = rcFailSince == 0 ? 0 : android.os.SystemClock.elapsedRealtime() - rcFailSince;
             final HomeState.Offline why = b == HomeState.Banner.OFFLINE ? HomeState.offline(rcCause, failing) : null;
             String msg, sub = null, go = null, linkLabel;
@@ -2327,6 +2413,15 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, dp(48));
                 gp.topMargin = dp(10);
                 rcBanner.addView(goB, gp);
+            }
+            final TvList.Tv other = rcOther;
+            if (b == HomeState.Banner.OFFLINE && other != null && why != HomeState.Offline.NO_WIFI && why != HomeState.Offline.OTHER_NETWORK) {
+                TextView o = text(t("bn_other", other.name), medium, 15, GOLD);
+                o.setPadding(0, dp(10), 0, dp(2));
+                o.setMinHeight(dp(44));
+                o.setGravity(Gravity.CENTER_VERTICAL);
+                o.setOnClickListener(v -> { TvList.use(prefs(), other.ip, other.model); rcFailSince = 0; rcCause = null; rcOther = null; openHome(); });   // offered, never taken on its own
+                rcBanner.addView(o);
             }
             TextView help = text(linkLabel, medium, 14, LINK);
             help.setPadding(0, dp(10), 0, dp(4));

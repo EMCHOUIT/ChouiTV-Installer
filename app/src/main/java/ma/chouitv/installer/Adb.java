@@ -131,7 +131,9 @@ final class Adb implements AutoCloseable {
     static final class Probe {
         final ma.chouitv.installer.remote.Adoption.TvState state;
         final String info;   // «brand|model» when ready
-        Probe(ma.chouitv.installer.remote.Adoption.TvState state, String info) { this.state = state; this.info = info; }
+        final String serial; // its serial number (or system identifier) when ready, else empty
+        Probe(ma.chouitv.installer.remote.Adoption.TvState state, String info) { this(state, info, ""); }
+        Probe(ma.chouitv.installer.remote.Adoption.TvState state, String info, String serial) { this.state = state; this.info = info; this.serial = serial == null ? "" : serial; }
     }
 
     static Probe probeState(String host, int port, File keyDir) {
@@ -154,7 +156,9 @@ final class Adb implements AutoCloseable {
             String out = a.shell("getprop ro.product.manufacturer; getprop ro.product.model");
             String[] l = out.trim().split("\\s*\\n\\s*");
             String info = l.length < 2 || l[1].isEmpty() ? "|" : l[0].trim() + "|" + l[1].trim();
-            return new Probe(ma.chouitv.installer.remote.Adoption.TvState.READY, info);
+            String serial = "";
+            try { serial = ma.chouitv.installer.remote.Remote.parseSerial(a.shell(ma.chouitv.installer.remote.Remote.serialCommand())); } catch (Exception ignored) { }
+            return new Probe(ma.chouitv.installer.remote.Adoption.TvState.READY, info, serial);
         } catch (Exception e) {
             return null;
         } finally {

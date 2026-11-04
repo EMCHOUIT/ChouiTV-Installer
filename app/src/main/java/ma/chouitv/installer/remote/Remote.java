@@ -70,6 +70,20 @@ public final class Remote {
         return b.toString();
     }
 
+    /** What a TV prints for its serial number (or, failing that, the identifier of its system), to recognise it again if its address changes. */
+    public static String serialCommand() { return "getprop ro.serialno; getprop ro.boot.serialno; settings get secure android_id"; }
+
+    /** The first usable line of {@link #serialCommand()}: not empty, not «unknown», not «null», not the placeholder some TVs print. */
+    public static String parseSerial(String out) {
+        if (out == null) return "";
+        for (String line : out.split("\\r?\\n")) {
+            String l = line.trim();
+            if (l.isEmpty() || l.equalsIgnoreCase("unknown") || l.equalsIgnoreCase("null") || l.equals("0") || l.equalsIgnoreCase("0123456789ABCDEF")) continue;
+            return l;
+        }
+        return "";
+    }
+
     /** The settings of the TV. */
     public static String settings() { return "am start -a android.settings.SETTINGS"; }
 

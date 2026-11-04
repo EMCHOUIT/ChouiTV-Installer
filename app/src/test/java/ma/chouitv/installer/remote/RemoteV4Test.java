@@ -159,4 +159,13 @@ public class RemoteV4Test {
         assertFalse(Remote.missing(out, Remote.Target.SAVER));      // the system always has it
         assertFalse(Remote.missing("", Remote.Target.LISTEN));       // an empty answer is no verdict: nothing is dimmed
     }
+
+    @Test public void theSerialOfATvIsReadFromWhatItPrints() {
+        assertEquals("SN123456", Remote.parseSerial("SN123456\nSN123456\n8f3a1b2c\n"));
+        assertEquals("the second one when the first is empty or unknown", "SN999", Remote.parseSerial("\nunknown\nSN999\n"));
+        assertEquals("the identifier of the system when there is no serial", "8f3a1b2c4d5e6f70", Remote.parseSerial("\n\n8f3a1b2c4d5e6f70\n"));
+        assertEquals("", Remote.parseSerial("unknown\nnull\n0123456789ABCDEF\n"));
+        assertEquals("", Remote.parseSerial(""));
+        assertEquals("", Remote.parseSerial(null));
+    }
 }

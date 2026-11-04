@@ -11,8 +11,9 @@ public final class TvList {
     private static final Pattern IPV4 = Pattern.compile("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
 
     public static final class Tv {
-        public final String ip, model, own;
-        Tv(String ip, String model, String own) { this.ip = ip; this.model = model; this.own = own; }
+        public final String ip, model, own, serial;
+        Tv(String ip, String model, String own, String serial) { this.ip = ip; this.model = model; this.own = own; this.serial = serial == null ? "" : serial; }
+        Tv(String ip, String model, String own) { this(ip, model, own, ""); }
         /** What the family sees: the name it chose, else the model the TV told, else the address. */
         public String name = null;
         Tv named() { name = !own.isEmpty() ? own : !model.isEmpty() ? model : ip; return this; }
@@ -27,7 +28,7 @@ public final class TvList {
             for (String line : raw.split("\n")) {
                 String[] p = line.split("\\|", -1);
                 if (p.length < 3 || !IPV4.matcher(p[0]).matches()) continue;
-                r.add(new Tv(p[0], p[1], p[2]).named());
+                r.add(new Tv(p[0], p[1], p[2], p.length > 3 ? clean(p[3]) : "").named());
             }
         }
         if (r.isEmpty()) {   // a version that remembered one TV only
@@ -39,7 +40,7 @@ public final class TvList {
 
     private static void save(LastTv.Store s, List<Tv> l) {
         StringBuilder b = new StringBuilder();
-        for (Tv t : l) { if (b.length() > 0) b.append('\n'); b.append(t.ip).append('|').append(t.model).append('|').append(t.own); }
+        for (Tv t : l) { if (b.length() > 0) b.append('\n'); b.append(t.ip).append('|').append(t.model).append('|').append(t.own).append('|').append(t.serial); }
         s.put("tvs", b.toString());
         if (l.isEmpty()) LastTv.forget(s); else LastTv.save(s, l.get(0).ip, l.get(0).name);
     }
@@ -47,16 +48,16 @@ public final class TvList {
     /** This TV was just used: it goes to the front (added if new); the name chosen by the family is kept. */
     public static void use(LastTv.Store s, String ip, String model) {
         List<Tv> l = load(s);
-        String own = "";
-        for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(ip)) { own = l.get(i).own; l.remove(i); break; }
-        l.add(0, new Tv(ip, clean(model), own).named());
+        String own = "", serial = "";
+        for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(ip)) { own = l.get(i).own; serial = l.get(i).serial; l.remove(i); break; }
+        l.add(0, new Tv(ip, clean(model), own, serial).named());
         save(s, l);
     }
 
     /** A name chosen by the family (empty: back to the model). */
     public static void rename(LastTv.Store s, String ip, String name) {
         List<Tv> l = load(s);
-        for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(ip)) { Tv t = l.get(i); l.set(i, new Tv(t.ip, t.model, clean(name)).named()); break; }
+        for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(ip)) { Tv t = l.get(i); l.set(i, new Tv(t.ip, t.model, clean(name), t.serial).named()); break; }
         save(s, l);
     }
 
@@ -64,5 +65,25 @@ public final class TvList {
         List<Tv> l = load(s);
         for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(ip)) { l.remove(i); break; }
         save(s, l);
+    }
+
+    /** The serial number of this TV (to recognise it if its address changes). */
+    public static void setSerial(LastTv.Store s, String ip, String serial) {
+        List<Tv> l = load(s);
+        for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(ip)) { Tv t = l.get(i); l.set(i, new Tv(t.ip, t.model, t.own, clean(serial)).named()); break; }
+        save(s, l);
+    }
+
+    /** The box gave this TV a new address: the name, the model, the serial and the place in the list stay (the one used last stays the one used last). */
+    public static void moveIp(LastTv.Store s, String oldIp, String newIp) {
+        List<Tv> l = load(s);
+        for (int i = 0; i < l.size(); i++) if (l.get(i).ip.equals(oldIp)) { Tv t = l.get(i); l.set(i, new Tv(newIp, t.model, t.own, t.serial).named()); break; }
+        save(s, l);
+    }
+
+    /** The key a setting of a TV (named «something_<address>») has under the new address; null for a key that is not that TV's. */
+    public static String migrateKey(String key, String oldIp, String newIp) {
+        if (key == null || !key.endsWith("_" + oldIp)) return null;
+        return key.substring(0, key.length() - oldIp.length()) + newIp;
     }
 }

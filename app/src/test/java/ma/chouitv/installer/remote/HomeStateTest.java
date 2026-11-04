@@ -57,4 +57,10 @@ public class HomeStateTest {
         assertEquals(HomeState.Offline.DEBUG_OFF, HomeState.offline(Cause.REFUSED, 30_000));
         assertEquals(HomeState.Offline.DEBUG_OFF, HomeState.offline(Cause.REFUSED, 600_000));
     }
+
+    @Test public void aTvFoundAgainAtANewAddressIsToldForAMoment() {
+        assertEquals(HomeState.Banner.MOVED, HomeState.banner(true, HomeState.Link.ONLINE, false, 0, true));
+        assertEquals("a TV that does not answer is not told as found", HomeState.Banner.OFFLINE, HomeState.banner(true, HomeState.Link.OFFLINE, false, 0, true));
+        assertEquals(HomeState.Banner.HIDDEN, HomeState.banner(true, HomeState.Link.ONLINE, false, 0, false));
+    }
 }

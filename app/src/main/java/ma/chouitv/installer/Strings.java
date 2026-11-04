@@ -597,6 +597,12 @@ final class Strings {
         k("ad_miss_3", "«تصحيح الشبكة» فيه معطّل.", "Son « Débogage réseau » est coupé.", "Its \"Network debugging\" is off.");
         k("ad_miss_help", "كيف أفعّله", "Comment l\u2019activer", "How to turn it on");
         k("ad_busy", "اتصال جارٍ، انتظر لحظة", "Une connexion est en cours, un instant", "A connection is in progress, one moment");
+        k("bn_moved", "وُجد %s", "%s retrouvée", "%s found again");
+        k("bn_moved_sub", "تغيّر مكانه على الواي فاي.", "Elle avait changé de place sur le Wi-Fi.", "It had moved on the Wi-Fi.");
+        k("bn_other", "%s يجيب: استعمله", "%s répond : l\u2019utiliser", "%s is answering: use it");
+        k("ad_equipped", "مجهّز", "Équipée", "Set up");
+        k("ad_next", "جهّز التلفاز التالي", "Équiper la suivante", "Set up the next one");
+        k("ad_next_sub", "لنبحث عن تلفاز آخر في البيت.", "Cherchons une autre télé de la maison.", "Let us look for another TV in the house.");
         k("rc_apps", "التطبيقات", "Applications", "Apps");
         k("rc_tvset", "إعدادات التلفاز", "Réglages de la TV", "TV settings");
         k("rc_write", "اكتب على التلفاز", "Écrire sur la TV", "Type on TV");

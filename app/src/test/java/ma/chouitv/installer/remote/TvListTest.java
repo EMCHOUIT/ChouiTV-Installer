@@ -77,4 +77,49 @@ public class TvListTest {
         assertEquals(1, l.size());
         assertEquals("192.168.1.9", l.get(0).ip);
     }
+
+    @Test public void theSerialIsKeptWithTheTvAndSurvivesRenamingAndUse() {
+        Mem s = new Mem();
+        TvList.use(s, "192.168.1.50", "Xiaomi MiTV-MSSP3");
+        TvList.setSerial(s, "192.168.1.50", "SN123");
+        assertEquals("SN123", TvList.load(s).get(0).serial);
+        TvList.rename(s, "192.168.1.50", "Salon");
+        TvList.use(s, "192.168.1.50", "Xiaomi MiTV-MSSP3");
+        assertEquals("SN123", TvList.load(s).get(0).serial);
+        assertEquals("Salon", TvList.load(s).get(0).name);
+    }
+
+    @Test public void aListSavedBeforeTheSerialExistedStillLoads() {
+        Mem s = new Mem();
+        s.put("tvs", "192.168.1.50|Xiaomi MiTV-MSSP3|Salon\n192.168.1.51|TCL|");
+        List<TvList.Tv> l = TvList.load(s);
+        assertEquals(2, l.size());
+        assertEquals("", l.get(0).serial);
+        assertEquals("Salon", l.get(0).name);
+    }
+
+    @Test public void aTvThatMovedKeepsItsNameItsSerialAndItsPlaceInTheList() {
+        Mem s = new Mem();
+        TvList.use(s, "192.168.1.51", "TCL");
+        TvList.use(s, "192.168.1.50", "Xiaomi MiTV-MSSP3");
+        TvList.rename(s, "192.168.1.50", "Salon");
+        TvList.setSerial(s, "192.168.1.50", "SN123");
+        TvList.moveIp(s, "192.168.1.50", "192.168.1.77");
+        List<TvList.Tv> l = TvList.load(s);
+        assertEquals(2, l.size());
+        assertEquals("192.168.1.77", l.get(0).ip);
+        assertEquals("Salon", l.get(0).name);
+        assertEquals("SN123", l.get(0).serial);
+        assertEquals("the TV that was used last is still the one used last", "192.168.1.77", LastTv.load(s).ip);
+        assertEquals("192.168.1.51", l.get(1).ip);
+    }
+
+    @Test public void theSettingsOfATvFollowItToItsNewAddress() {
+        assertEquals("slots_192.168.1.77", TvList.migrateKey("slots_192.168.1.50", "192.168.1.50", "192.168.1.77"));
+        assertEquals("vol_scale_192.168.1.77", TvList.migrateKey("vol_scale_192.168.1.50", "192.168.1.50", "192.168.1.77"));
+        assertEquals("equipped_192.168.1.77", TvList.migrateKey("equipped_192.168.1.50", "192.168.1.50", "192.168.1.77"));
+        assertNull("another TV", TvList.migrateKey("slots_192.168.1.5", "192.168.1.50", "192.168.1.77"));
+        assertNull("a key of the app", TvList.migrateKey("vol_limit", "192.168.1.50", "192.168.1.77"));
+        assertNull("not for a longer address", TvList.migrateKey("slots_192.168.1.150", "192.168.1.50", "192.168.1.77"));
+    }
 }

@@ -132,6 +132,11 @@ final class Net {
 
     interface Found { void host(String ip); }
 
+    /** Does something answer on this port at this address (a short try)? */
+    static boolean reachable(String ip, int port, int ms) {
+        try (Socket s = new Socket()) { s.connect(new InetSocketAddress(ip, port), ms); return true; } catch (Exception e) { return false; }
+    }
+
     /** Looks at every address of the Wi-Fi of the home (a /24) and calls {@code found} the moment a host answers on the ADB port; returns when the whole network was looked at (about three seconds). */
     static void scanLive(int port, final Found found) {
         String base = null, self = null;
