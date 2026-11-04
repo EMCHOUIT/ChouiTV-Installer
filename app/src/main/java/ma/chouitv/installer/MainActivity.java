@@ -237,7 +237,7 @@ public class MainActivity extends Activity {
             case 22: kept(body, button); break;
             case 1: prepare(body, button); break;
             case 2: connect(body, button); break;
-            case 3: install(body, button); break;
+            case 3: settingsSent = null; srcMode = null; install(body, button); break;
             case 4: personalise(body, button); break;
             case 12: hub(body, button); break;
             case 8: cleanupPlan(body, button); break;
@@ -259,6 +259,35 @@ public class MainActivity extends Activity {
             default: done(body, button); break;
         }
         if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
+        if (Nav.showsTabs(n)) { LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, dp(62)); tp.topMargin = dp(8); col.addView(tabBar(Nav.tabOf(n)), tp); }
+    }
+
+    /** The three tabs: the remote, «My TVs», «More». They are roots; the remote is where the app opens. */
+    private View tabBar(final int active) {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setBackground(rcShape(0xFF12331F, 22, true));
+        bar.setPadding(dp(6), dp(5), dp(6), dp(5));
+        int[] icons = {RcIcon.REMOTE, RcIcon.TV, RcIcon.DOTS};
+        String[] names = {t("tab_remote"), t("tab_tvs"), t("tab_more")};
+        for (int i = 0; i < 3; i++) {
+            final int tab = i;
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setClickable(true);
+            item.setContentDescription(names[i]);
+            int color = i == active ? GOLD : MUTED;
+            if (i == active) item.setBackground(rcShape(0x33D6AF6B, 16, false));
+            item.addView(new RcIcon(this, icons[i], color), new LinearLayout.LayoutParams(dp(26), dp(26)));
+            TextView label = text(names[i], medium, 12, color);
+            label.setGravity(Gravity.CENTER);
+            label.setMaxLines(1);
+            item.addView(label);
+            item.setOnClickListener(v -> { if (tab != active || step != Nav.tabRoot(tab)) show(Nav.tabRoot(tab)); });
+            bar.addView(item, new LinearLayout.LayoutParams(0, -1, 1f));
+        }
+        return bar;
     }
 
     /** About: the version, and a button that asks GitHub whether a newer one exists (then offers to download it). */
@@ -302,6 +331,11 @@ public class MainActivity extends Activity {
         });
         c.addView(check, lp(0, 14, 0, 0));
         ((LinearLayout.LayoutParams) check.getLayoutParams()).height = dp(52);
+        TextView starLink = text("★  " + t("star_btn"), medium, 16, GOLD);
+        starLink.setGravity(Gravity.CENTER);
+        starLink.setMinHeight(dp(48));
+        starLink.setOnClickListener(v -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/EMCHOUIT/ChouiTV"))); } catch (Exception ignored) { } });
+        c.addView(starLink, lp(0, 8, 0, 0));
         d.show();
     }
 
@@ -359,6 +393,8 @@ public class MainActivity extends Activity {
             col.setOrientation(LinearLayout.VERTICAL);
             col.addView(text(tv.name, display, 21, SAND));
             col.addView(text(current ? t("tvs_now") : t("tvs_touch"), regular, 13, current ? GOLD : MUTED), lp(0, 2, 0, 0));
+            boolean equipped = Equip.isEquipped(prefs(), tv.ip);
+            col.addView(text(equipped ? "✓  " + t("tvs_equipped") : "●  " + t("tvs_toequip"), medium, 13, equipped ? MUTED : GOLD), lp(0, 4, 0, 0));
             c.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
             TextView pen = text("✎", medium, 22, GOLD);
             pen.setGravity(Gravity.CENTER);
@@ -973,47 +1009,94 @@ public class MainActivity extends Activity {
 
     private String eta(long sec) { return sec < 45 ? t("eta_lt1") : t("eta_min", Math.max(1, Math.round(sec / 60f))); }
 
+    private SettingsSource.Mode srcMode;
+    private String srcProfileId;
+    private String settingsSent;
+
+    /** The settings step: the saved settings first (what the family already made), the city and the prayer by hand, or a file; the way sent is told on the success screen. */
     private void personalise(LinearLayout body, final TextView button) {
-        sectionLabel(body, t("sec_choose"));
-        cityV = addChoice(body, t("city"), city, v -> pickCity());
-        tzV = addChoice(body, t("tz"), label("z_", tz), v -> pick(t("tz"), ZONES, "z_", x -> { tz = x; tzV.setText(label("z_", tz)); }));
-        methodV = addChoice(body, t("method"), label("m_", method), v -> pick(t("method"), METHODS, "m_", x -> { method = x; methodV.setText(label("m_", method)); }));
-        adhanV = addChoice(body, t("adhan"), adhanOn ? t("on") : t("off"), v -> { adhanOn = !adhanOn; adhanV.setText(adhanOn ? t("on") : t("off")); });
-        LinearLayout c = card(false);
-        c.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
-        c.addView(text(t("import"), medium, 17, GOLD));
-        importV = text(importedB64 != null ? t("import_ready") : t("import_sub"), regular, 13, MUTED);
-        c.addView(importV);
-        c.setOnClickListener(v -> {
-            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            i.setType("*/*");
-            startActivityForResult(i, PICK_SETTINGS);
+        final java.util.List<Profile> saved = store().list();
+        final String[] ids = new String[saved.size()];
+        for (int k = 0; k < ids.length; k++) ids[k] = saved.get(k).id;
+        if (srcMode == null || (srcMode == SettingsSource.Mode.PROFILE && saved.isEmpty())) srcMode = SettingsSource.defaultMode(saved.size(), importedB64 != null);
+        srcProfileId = SettingsSource.pickProfile(ids, srcProfileId);
+        sectionLabel(body, t("st_which"));
+        if (!saved.isEmpty()) {
+            body.addView(text(t("st_mine"), medium, 15, GOLD), lp(4, 4, 0, 6));
+            for (final Profile pr : saved) {
+                LinearLayout c = card(srcMode == SettingsSource.Mode.PROFILE && pr.id.equals(srcProfileId));
+                TextView nm = text(pr.name, medium, 18, SAND);
+                nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+                c.addView(nm);
+                String city = ProfileLabel.city(pr.settingsJson), meta = ProfileLabel.meta(pr.tv, pr.date, Strings.lang);
+                if (!city.isEmpty()) {
+                    TextView cv = text(city, regular, 14, SAND);
+                    cv.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+                    cv.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+                    c.addView(cv);
+                }
+                TextView sub = text(meta, regular, 12, MUTED);
+                sub.setTextDirection(View.TEXT_DIRECTION_LTR);
+                c.addView(sub);
+                c.setOnClickListener(v -> { srcMode = SettingsSource.Mode.PROFILE; srcProfileId = pr.id; show(4); });
+                body.addView(c, lp(0, 0, 0, 8));
+            }
+        }
+        LinearLayout hand = card(srcMode == SettingsSource.Mode.MANUAL);
+        hand.addView(text(t("st_hand"), medium, 18, SAND));
+        hand.setOnClickListener(v -> { srcMode = SettingsSource.Mode.MANUAL; show(4); });
+        body.addView(hand, lp(0, saved.isEmpty() ? 0 : 4, 0, 8));
+        if (SettingsSource.showsFields(srcMode)) {
+            cityV = addChoice(body, t("city"), city, v -> pickCity());
+            tzV = addChoice(body, t("tz"), label("z_", tz), v -> pick(t("tz"), ZONES, "z_", x -> { tz = x; tzV.setText(label("z_", tz)); }));
+            methodV = addChoice(body, t("method"), label("m_", method), v -> pick(t("method"), METHODS, "m_", x -> { method = x; methodV.setText(label("m_", method)); }));
+            adhanV = addChoice(body, t("adhan"), adhanOn ? t("on") : t("off"), v -> { adhanOn = !adhanOn; adhanV.setText(adhanOn ? t("on") : t("off")); });
+        }
+        final boolean fileOn = srcMode == SettingsSource.Mode.FILE && importedB64 != null;
+        importV = text(fileOn ? "✓  " + t("import_ready") : t("st_file"), medium, 15, LINK);
+        importV.setPadding(dp(4), dp(8), dp(4), dp(8));
+        importV.setMinHeight(dp(44));
+        importV.setGravity(Gravity.CENTER_VERTICAL);
+        importV.setOnClickListener(v -> {
+            Intent i2 = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i2.addCategory(Intent.CATEGORY_OPENABLE);
+            i2.setType("*/*");
+            startActivityForResult(i2, PICK_SETTINGS);
         });
-        body.addView(c, lp(0, 6, 0, 0));
-        button.setText(t("apply"));
+        body.addView(importV, lp(0, 4, 0, 0));
+        button.setText(srcMode == SettingsSource.Mode.MANUAL ? t("apply") : t("st_send_these"));
         button.setOnClickListener(v -> {
             if (busy) return;
+            if (srcMode == SettingsSource.Mode.FILE && importedB64 == null) { Toast.makeText(this, t("st_file"), Toast.LENGTH_SHORT).show(); return; }
             busy = true;
             button.setAlpha(0.6f);
             button.setText(t("applying"));
+            final SettingsSource.Mode mode = srcMode;
+            final Profile chosen = pickedProfile(saved);
             bg.execute(() -> {
                 try {
-                    if (importedB64 != null) {
+                    String sent;
+                    if (mode == SettingsSource.Mode.PROFILE && chosen != null) {
+                        flow.importSettings(Base64.encodeToString(chosen.settingsJson.getBytes("UTF-8"), Base64.NO_WRAP), true);
+                        sent = chosen.name;
+                    } else if (mode == SettingsSource.Mode.FILE) {
                         flow.importSettings(importedB64, true);
+                        sent = t("st_file_name");
                     } else {
                         flow.setCity(city);
                         flow.setTz(tz);
                         flow.setMethod(method);
                         flow.adhan(adhanOn);
+                        sent = city;
                     }
                     flow.rescheduleAdhan();
+                    settingsSent = sent;
                     runOnUiThread(() -> { busy = false; show(5); });
                 } catch (final Exception e) {
                     runOnUiThread(() -> {
                         busy = false;
                         button.setAlpha(1f);
-                        button.setText(t("apply"));
+                        button.setText(srcMode == SettingsSource.Mode.MANUAL ? t("apply") : t("st_send_these"));
                         Toast.makeText(this, t("err_apply", friendly(e, "", false)), Toast.LENGTH_LONG).show();
                     });
                 }
@@ -1021,15 +1104,16 @@ public class MainActivity extends Activity {
         });
     }
 
+    private Profile pickedProfile(java.util.List<Profile> saved) {
+        for (Profile pr : saved) if (pr.id.equals(srcProfileId)) return pr;
+        return null;
+    }
+
     private boolean justEquipped;
 
+    /** The success screen: what was done on which TV, what is left, how to undo, and what comes next. No ask: the star is in More › About. */
     private void done(LinearLayout body, TextView button) {
         body.setGravity(Gravity.CENTER_HORIZONTAL);
-        Orn.Arch arch = new Orn.Arch(this);
-        LinearLayout in = new LinearLayout(this);
-        in.setOrientation(LinearLayout.VERTICAL);
-        in.setGravity(Gravity.CENTER);
-        in.setPadding(dp(18), dp(36), dp(18), dp(16));
         TextView check = text("✓", medium, 40, GOLD);
         check.setGravity(Gravity.CENTER);
         GradientDrawable ring = new GradientDrawable();
@@ -1037,73 +1121,70 @@ public class MainActivity extends Activity {
         ring.setColor(0xFF142C1F);
         ring.setStroke(dp(3), GOLD);
         check.setBackground(ring);
-        in.addView(check, new LinearLayout.LayoutParams(dp(84), dp(84)));
-        TextView logo = text("ChouiTV", script, 38, SAND);
-        logo.setGravity(Gravity.CENTER);
-        gold(logo);
-        in.addView(logo, lp(0, 10, 0, 0));
-        arch.addView(in, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(230), dp(230));
-        ap.gravity = Gravity.CENTER_HORIZONTAL;
-        ap.topMargin = dp(10);
-        body.addView(arch, ap);
-        TextView title = text(t("thanks_title"), display, 24, SAND);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(dp(84), dp(84));
+        cp.gravity = Gravity.CENTER_HORIZONTAL;
+        cp.topMargin = dp(8);
+        body.addView(check, cp);
+        TextView title = text(t("su_title"), display, 30, SAND);
         title.setGravity(Gravity.CENTER);
-        body.addView(title, lp(0, 16, 0, 4));
-        TextView s = text(t("thanks_sub"), regular, 15, MUTED);
-        s.setGravity(Gravity.CENTER);
-        body.addView(s);
-        if (justEquipped) {   // «Set up the next one»: one touch to the search for another TV of the house
-            justEquipped = false;
-            LinearLayout next = card(true);
-            next.addView(text(t("ad_next"), medium, 18, GOLD));
-            next.addView(text(t("ad_next_sub"), regular, 14, SAND), lp(0, 2, 0, 0));
-            next.setOnClickListener(v -> { clearGuide(); space = SPACE_REMOTE; show(2); });
-            body.addView(next, lp(0, 14, 0, 4));
+        body.addView(title, lp(0, 14, 0, 2));
+        TextView sub = text(t("su_sub", curName()), regular, 15, MUTED);
+        sub.setGravity(Gravity.CENTER);
+        body.addView(sub);
+
+        final int off = cleanedHere && cleanResult != null ? cleanResult.disabled.size() : 0;
+        sectionLabel(body, t("su_done_h"));
+        LinearLayout list = card(false);
+        for (SetupSummary.Line l : SetupSummary.lines(settingsSent, off)) {
+            String line = l.kind == SetupSummary.Kind.INSTALLED ? t("su_inst", curName())
+                : l.kind == SetupSummary.Kind.SETTINGS ? t("su_set", l.arg) : t("su_off", Integer.parseInt(l.arg));
+            TextView r = text("✓  " + line, regular, 16, SAND);
+            r.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            list.addView(r, lp(0, 5, 0, 5));
         }
-        // the ask: a star on GitHub
-        LinearLayout ask = card(false);
-        ask.setBackground(cardBg(false, 0x1FD6AF6B, 0xCCD6AF6B));
-        ask.setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView st = text("★", medium, 26, GOLD);
-        st.setGravity(Gravity.CENTER);
-        ask.addView(st, new LinearLayout.LayoutParams(-1, -2));
-        TextView q = text(t("star_title"), medium, 18, GOLD);
-        q.setGravity(Gravity.CENTER);
-        ask.addView(q);
-        TextView qt = text(t("star_text"), regular, 14, SAND);
-        qt.setGravity(Gravity.CENTER);
-        ask.addView(qt, lp(0, 4, 0, 0));
-        body.addView(ask, lp(0, 18, 0, 10));
-        TextView star = text("★  " + t("star_btn"), medium, 17, GOLD);
-        star.setGravity(Gravity.CENTER);
-        GradientDrawable sb = new GradientDrawable();
-        sb.setCornerRadius(dp(28));
-        sb.setColor(0xFF142C1F);
-        sb.setStroke(dp(2), GOLD);
-        star.setBackground(sb);
-        star.setOnClickListener(v -> {
-            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/EMCHOUIT/ChouiTV"))); } catch (Exception ignored) { }
-        });
-        body.addView(star, new LinearLayout.LayoutParams(-1, dp(BTN_H)));
-        boolean offer = cleanNowCard(body, button);
+        body.addView(list, lp(0, 4, 0, 6));
         if (homeResult != null && homeResult != Flow.Home.OURS) {
             sectionLabel(body, t("sec_left"));
             infoBar(body, homeResult == Flow.Home.UNSURE || homeResult == Flow.Home.FAILED ? t("home_unsure") : t("home_kept"));
         }
+        if (SetupSummary.canUndoApps(off) || SetupSummary.canUndoSettings(settingsSent)) {
+            sectionLabel(body, t("su_undo_h"));
+            if (SetupSummary.canUndoApps(off)) body.addView(undoLink(t("su_undo_apps"), () -> { space = SPACE_REACT; startSpace(SPACE_REACT); }));
+            if (SetupSummary.canUndoSettings(settingsSent)) body.addView(undoLink(t("su_undo_set"), () ->
+                new AlertDialog.Builder(this).setTitle(t("su_undo_set")).setMessage(t("su_undo_set_q"))
+                    .setPositiveButton(t("su_undo_set"), (d, w) -> bg.execute(() -> {
+                        try { flow.undoImport(); settingsSent = null; runOnUiThread(() -> { Toast.makeText(this, t("su_undone"), Toast.LENGTH_SHORT).show(); show(5); }); }
+                        catch (Exception e) { rcFail(e); }
+                    })).setNegativeButton(t("cancel"), null).show()));
+        }
         sectionLabel(body, t("sec_know"));
         infoBar(body, t("tip") + " : " + t("tip_text"));
+        LinearLayout next = card(true);
+        next.addView(text(t("ad_next"), medium, 18, GOLD));
+        next.addView(text(t("ad_next_sub"), regular, 14, SAND), lp(0, 2, 0, 0));
+        next.setOnClickListener(v -> { clearGuide(); space = SPACE_REMOTE; show(2); });
+        body.addView(next, lp(0, 14, 0, 4));
         TextView open = ghostButton(t("open_tv"), GOLD);
         open.setOnClickListener(v -> bg.execute(() -> { try { flow.openOnTv(); } catch (Exception ignored) { } }));
-        body.addView(open, lp(0, 14, 0, 0));
+        body.addView(open, lp(0, 10, 0, 0));
+        boolean offer = cleanNowCard(body, button);
         if (offer) {
-            // the cleanup is the next step: it is the bottom button, and the way back to the menu sits quietly under it
-            secondaryBelow(button, t("cl_home"), () -> show(18));
+            // the cleanup is the next step: it is the bottom button, and the way to the remote sits quietly under it
+            secondaryBelow(button, t("su_remote"), this::openHome);
         } else {
-            button.setText(t("cl_home"));
+            button.setText(t("su_remote"));
             ready(button, true);
-            button.setOnClickListener(v -> show(18));
+            button.setOnClickListener(v -> openHome());
         }
+    }
+
+    private TextView undoLink(String label, final Runnable act) {
+        TextView l = text(label, medium, 15, LINK);
+        l.setPadding(dp(4), dp(6), dp(4), dp(6));
+        l.setMinHeight(dp(44));
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        l.setOnClickListener(v -> act.run());
+        return l;
     }
 
     private static String cap(String s) { return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1); }
@@ -3246,7 +3327,7 @@ public class MainActivity extends Activity {
             TextView nm = text(p.name, medium, 19, SAND);
             nm.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
             c.addView(nm);
-            TextView meta = text((p.tv.isEmpty() ? "" : p.tv + " · ") + "ChouiTV " + p.version + " · " + p.date, regular, 12, MUTED);
+            TextView meta = text(ProfileLabel.meta(p.tv, p.date, Strings.lang), regular, 12, MUTED);
             meta.setTextDirection(View.TEXT_DIRECTION_LTR);
             c.addView(meta, lp(0, 2, 0, 10));
             LinearLayout row = new LinearLayout(this);
@@ -3524,7 +3605,7 @@ public class MainActivity extends Activity {
         }
         button.setText(t("pt_back"));
         secondaryStyle(button);
-        button.setOnClickListener(v -> show(18));
+        button.setOnClickListener(v -> openHome());
     }
 
     /** A guided path that was left in the middle: one tap to go on, one to give up. */
@@ -3848,11 +3929,11 @@ public class MainActivity extends Activity {
             button.setText(endNextLabel);
             ready(button, true);
             button.setOnClickListener(v -> { if (!busy) run.run(); });
-            secondaryBelow(button, t("cl_home"), () -> show(18));
+            secondaryBelow(button, t("cl_home"), this::openHome);
         } else {
             button.setText(t("cl_home"));
             ready(button, true);
-            button.setOnClickListener(v -> { if (!busy) show(18); });
+            button.setOnClickListener(v -> { if (!busy) openHome(); });
         }
     }
 
@@ -3966,7 +4047,7 @@ public class MainActivity extends Activity {
                 final String preview = ZoneDisplay.show(flow.importSettings(b64, false), new String(o.toByteArray(), "UTF-8"));   // nothing is applied yet: what would change
                 runOnUiThread(() -> new AlertDialog.Builder(this).setTitle(t("will_change"))
                     .setMessage(preview.isEmpty() ? t("no_change") : preview)
-                    .setPositiveButton(t("use_file"), (d, w) -> { importedB64 = b64; if (importV != null) importV.setText(t("import_ready")); })
+                    .setPositiveButton(t("use_file"), (d, w) -> { importedB64 = b64; srcMode = SettingsSource.Mode.FILE; if (step == 4) show(4); })
                     .setNegativeButton(t("cancel"), null).show());
             } catch (final Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, t("err_read", e.getMessage()), Toast.LENGTH_LONG).show());

@@ -94,8 +94,25 @@ public class NavTest {
         assertEquals(25, Nav.backTarget(26, false, false, false));    // «Options» goes back to the remote
         assertEquals(12, Nav.backTarget(14, false, false, false));    // a task goes back to the TV's page
         assertFalse(Nav.showsBack(25, false, false, false));
-        assertTrue(Nav.showsBack(27, false, false, false));
-        assertTrue(Nav.showsBack(26, false, false, false));
+        assertFalse("the three tabs are roots: no visible Back", Nav.showsBack(27, false, false, false));
+        assertFalse(Nav.showsBack(26, false, false, false));
         assertTrue(Nav.showsBack(12, false, false, false));
+    }
+
+    @Test public void theThreeTabsAreTheRemoteTheTvsAndMore() {
+        assertEquals(0, Nav.tabOf(25));
+        assertEquals(1, Nav.tabOf(27));
+        assertEquals(2, Nav.tabOf(26));
+        assertEquals("a TV's page, its journal and its fix belong to «My TVs»", 1, Nav.tabOf(12));
+        assertEquals(1, Nav.tabOf(29));
+        assertEquals(1, Nav.tabOf(30));
+        assertEquals(25, Nav.tabRoot(0));
+        assertEquals(27, Nav.tabRoot(1));
+        assertEquals(26, Nav.tabRoot(2));
+    }
+
+    @Test public void theBarIsOnlyWhereTheFamilyLivesNotInASetUpOrACleanUp() {
+        for (int s : new int[] {25, 26, 27, 12, 29, 30}) assertTrue("step " + s, Nav.showsTabs(s));
+        for (int s : new int[] {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15, 17, 23, 24}) assertFalse("step " + s, Nav.showsTabs(s));
     }
 }

@@ -36,6 +36,7 @@ final class Nav {
     /** The visible control shows where Back goes somewhere safe: not on the first screen, not over a running install or cleanup, not where Back would leave the app. */
     static boolean showsBack(int step, boolean busy, boolean guided, boolean cleanFromDone) {
         if (step == 3 || step == 9) return false;
+        if (step == 26 || step == 27) return false;   // roots of a tab: the bar is the way around
         return backTarget(step, busy, guided, cleanFromDone) >= 0;
     }
 
@@ -57,6 +58,21 @@ final class Nav {
             default: return false;
         }
     }
+
+    /** The tab a screen belongs to (0 the remote, 1 «My TVs», 2 «More»), or -1 where there is no bar (a set-up, a clean-up, the language). */
+    static int tabOf(int step) {
+        switch (step) {
+            case 25: return 0;
+            case 27: case 12: case 29: case 30: return 1;
+            case 26: return 2;
+            default: return -1;
+        }
+    }
+
+    static boolean showsTabs(int step) { return tabOf(step) >= 0; }
+
+    /** The first screen of a tab. */
+    static int tabRoot(int tab) { return tab == 0 ? 25 : tab == 1 ? 27 : 26; }
 
     /** A second press of Back within two seconds of the first leaves the app. */
     static boolean exitNow(long lastPress, long now) {
