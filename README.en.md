@@ -252,7 +252,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 181 tests on the JVM
 ```
 
-Current version: **2.2.1** (`versionCode 20`), for Android 8 or newer (`minSdk 26`).
+Current version: **2.2.2** (`versionCode 21`), for Android 8 or newer (`minSdk 26`).
 
 The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram, the version number on the banner, the QR code) are rebuilt with `python docs/media/build_media.py` (needs Pillow and Edge or Chrome); the phone screenshots are real and are not generated.
 
@@ -262,6 +262,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 
 | Version | What changed |
 |---|---|
+| **2.2.2** | The display fits every screen: the remote takes the room that is left (the pad shrinks on a short screen), the keys grow with the text size and their words scale to the width, a tablet keeps the content narrow and centred |
 | **2.2.1** | The README images are redone with the three tabs (in Arabic, French and English, from real screenshots); the saved-settings screen says "Back" when opened from More |
 | **2.2** | Never blocked: the app always opens on the remote, dimmed as a demo when there is no TV, with "Connecting…" under the name of a known TV; no waiting screen and no "not answering" window; a banner says the cause (no Wi-Fi, another Wi-Fi, TV starting, Network debugging off, TV off, a key to accept on the TV) and the app tries again by itself (every 3 s, then less often); it reconnects as soon as the Wi-Fi is back; the search for TVs shows each TV the moment it answers, with its state, a verdict and "A TV is missing?" after 4 s; a TV that changed address is found again by its serial number; another TV that answers is offered; "Set up the next one"; the search takes the Wi-Fi of the home and not the mobile data (Android 16); TVs are named by what they announce on the network ("Living room"), even before the authorisation; a TV that is seen but has its debugging off says so ("Network debugging to turn on"); "Turn on" for a TV that sleeps with its network on; three tabs (Remote, My TVs, More); the settings step offers your saved settings first; a success screen says what was done and how to undo it (the star ask is in More › About); "Morocco time" instead of Africa/Abidjan, and Africa/Casablanca for a file of Casablanca; a "Set up Salon" preview (steps, duration, optional clean-up) instead of the window at the first connection; "My saved settings" in More |
 | **2.1** | Setting up a TV: a "Set up this TV" card on each TV's page and a question at the first connection; "Fix a problem" starts from what you see (an app disappeared, the remote stopped working, something else); a journal of what the app did on each TV; shortcuts for an app the TV does not have are dimmed; a last look with the names of the apps before turning them off; "What is new" before a ChouiTV update when it has notes |
