@@ -62,8 +62,13 @@ public final class RcRing extends View {
 
     public void setListener(Listener l) { listener = l; }
 
+    private int maxSide = Integer.MAX_VALUE;
+
+    /** The pad is a square as wide as its room, but no bigger than this (px): the remote fits screens of any height. */
+    public void setMaxSidePx(int px) { if (px != maxSide) { maxSide = px; requestLayout(); } }
+
     @Override protected void onMeasure(int w, int h) {
-        int side = MeasureSpec.getSize(w);
+        int side = Math.min(MeasureSpec.getSize(w), maxSide);
         setMeasuredDimension(side, side);
     }
 

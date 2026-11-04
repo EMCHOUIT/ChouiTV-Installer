@@ -196,7 +196,8 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         boolean back = Nav.showsBack(n, busy, guide != null, cleanFromDone);
-        col.setPadding(dp(22), dp(back ? 28 : 48), dp(22), dp(18));
+        int side = Fit.sidePaddingDp(screenW(), 22, 560);   // a wide screen keeps the content narrow and centred
+        col.setPadding(dp(side), dp(back ? 28 : 48), dp(side), dp(18));
         root.addView(col, new FrameLayout.LayoutParams(-1, -1));
         if (back) col.addView(backControl(), new LinearLayout.LayoutParams(-2, dp(48)));
         if (n >= 1 && n <= 4) {
@@ -282,7 +283,7 @@ public class MainActivity extends Activity {
             int color = i == active ? GOLD : MUTED;
             if (i == active) item.setBackground(rcShape(0x33D6AF6B, 16, false));
             item.addView(new RcIcon(this, icons[i], color), new LinearLayout.LayoutParams(dp(26), dp(26)));
-            TextView label = text(names[i], medium, 12, color);
+            TextView label = text(names[i], medium, Math.round(Fit.labelSp(12, screenW(), getResources().getConfiguration().fontScale)), color);
             label.setGravity(Gravity.CENTER);
             label.setMaxLines(1);
             item.addView(label);
@@ -1834,12 +1835,17 @@ public class MainActivity extends Activity {
             b.addView(new RcIcon(this, icon, iconColor), new LinearLayout.LayoutParams(dp(isz), dp(isz)));
         }
         if (label != null) {
-            TextView tv1 = text(label, medium, getResources().getConfiguration().screenWidthDp < 380 ? 11 : 14, SAND);   // a small phone: the longest word still fits on one line
+            TextView tv1 = text(label, medium, Math.round(Fit.labelSp(14, screenW(), getResources().getConfiguration().fontScale)), SAND);   // the longest word still fits on one line at any width and font size
             tv1.setGravity(Gravity.CENTER);
             tv1.setMaxLines(2);
             b.addView(tv1, lp(4, 3, 4, 0));
         }
-        b.setLayoutParams(new LinearLayout.LayoutParams(w <= 0 ? 0 : dp(w), dp(h), w <= 0 ? 1f : 0f));
+        if (label != null && h < 90) {   // a shortcut tile: tall enough for its icon and two lines at the font size of this phone
+            b.setMinimumHeight(dp(Fit.keyHeightDp(h, 14, getResources().getConfiguration().fontScale)));
+            b.setLayoutParams(new LinearLayout.LayoutParams(w <= 0 ? 0 : dp(w), ViewGroup.LayoutParams.WRAP_CONTENT, w <= 0 ? 1f : 0f));
+        } else {
+            b.setLayoutParams(new LinearLayout.LayoutParams(w <= 0 ? 0 : dp(w), dp(h), w <= 0 ? 1f : 0f));
+        }
         return b;
     }
 
@@ -2971,7 +2977,7 @@ public class MainActivity extends Activity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (int k = 0; k < 3; k++) {
                 final int i = r * 3 + k;
-                LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 80, Keycap.tile(density, 12), GOLD, null);
+                LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, Fit.tileHeight(screenH(), 80), Keycap.tile(density, 12), GOLD, null);
                 LinearLayout cell = rcWell(tile, 16, 3);
                 shortcutTiles[i] = tile;
                 LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
@@ -3000,15 +3006,18 @@ public class MainActivity extends Activity {
         ring.setNames(t("rc_a_up"), t("rc_a_right"), t("rc_a_down"), t("rc_a_left"), t("rc_a_ok"));
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
         rp.topMargin = dp(12);
+        rp.gravity = Gravity.CENTER_HORIZONTAL;
+        ring.setMaxSidePx(dp(340));
         panel.addView(ring, rp);
+        rcFitRing(ring, panel);
 
         // Back, Home, Mute: round keys with their word printed under
         LinearLayout round = new LinearLayout(this);
         round.setOrientation(LinearLayout.HORIZONTAL);
         round.setGravity(Gravity.CENTER);
-        LinearLayout back = rcRoundWithWord(RcIcon.BACK, t("rc_back"), 60, () -> rcKey(Remote.BACK));
-        LinearLayout home = rcRoundWithWord(RcIcon.HOME, t("rc_home"), 60, () -> rcKey(Remote.HOME));
-        LinearLayout mute = rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), 60, this::rcMuteToggle);
+        LinearLayout back = rcRoundWithWord(RcIcon.BACK, t("rc_back"), Fit.roundSize(screenH(), 60), () -> rcKey(Remote.BACK));
+        LinearLayout home = rcRoundWithWord(RcIcon.HOME, t("rc_home"), Fit.roundSize(screenH(), 60), () -> rcKey(Remote.HOME));
+        LinearLayout mute = rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), Fit.roundSize(screenH(), 60), this::rcMuteToggle);
         for (LinearLayout col : new LinearLayout[] {back, home, mute}) round.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
         panel.addView(round, lp(0, 10, 0, 0));
 
@@ -3049,6 +3058,27 @@ public class MainActivity extends Activity {
         button.setText(t("cl_home"));
         secondaryStyle(button);
         button.setOnClickListener(v -> show(12));
+    }
+
+    /**
+     * The remote takes the screen it is on: after the first layout, if the page is taller than what is visible, the pad shrinks by that much (and again if needed),
+     * down to a floor; below that the page scrolls. It follows any height, any density and any font scale.
+     */
+    private void rcFitRing(final RcRing ring, final View panel) {
+        final int[] tries = {0};
+        panel.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override public void onGlobalLayout() {
+                View body = (View) panel.getParent();
+                View sv = body == null ? null : (View) body.getParent();
+                if (!(sv instanceof ScrollView) || step != 25 || ring.getWidth() <= 0 || sv.getHeight() <= 0) return;
+                int over = Fit.overflow(panel.getBottom() + dp(8), sv.getHeight());
+                if (over <= 0 || tries[0] >= 4) { if (over <= 0) panel.getViewTreeObserver().removeOnGlobalLayoutListener(this); return; }
+                tries[0]++;
+                int d = Math.round(getResources().getDisplayMetrics().density);
+                int side = Fit.ringSide(Integer.MAX_VALUE / 2, ring.getWidth() - over, 100000, dp(Fit.compact(screenH()) ? 150 : 180));
+                ring.setMaxSidePx(side);
+            }
+        });
     }
 
     /** Dims the shortcuts of an app the connected TV does not have (a touch still explains it and offers to install). */
@@ -4238,4 +4268,8 @@ public class MainActivity extends Activity {
     }
 
     private int dp(int v) { return Math.round(v * getResources().getDisplayMetrics().density); }
+
+    /** The width and the height of the screen in dp (what the layout has to fit). */
+    private int screenW() { return getResources().getConfiguration().screenWidthDp; }
+    private int screenH() { return getResources().getConfiguration().screenHeightDp; }
 }
