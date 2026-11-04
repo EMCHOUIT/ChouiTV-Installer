@@ -115,4 +115,15 @@ public class NavTest {
         for (int s : new int[] {25, 26, 27, 12, 29, 30}) assertTrue("step " + s, Nav.showsTabs(s));
         for (int s : new int[] {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15, 17, 23, 24}) assertFalse("step " + s, Nav.showsTabs(s));
     }
+
+    @Test public void theLayoutScreensLiveUnderMoreAndCanBeVisitedWithNoTv() {
+        assertEquals("the choice of layout goes back to «More»", 26, Nav.backTarget(32, false, false, false));
+        assertEquals("the editor goes back to the choice", 32, Nav.backTarget(33, false, false, false));
+        assertEquals(2, Nav.tabOf(32));
+        assertEquals("the editor takes the whole screen", -1, Nav.tabOf(33));
+        assertTrue(Nav.opensWithoutTv(32));
+        assertTrue(Nav.opensWithoutTv(33));
+        assertTrue(Nav.showsBack(32, false, false, false));
+        assertTrue(Nav.showsBack(33, false, false, false));
+    }
 }

@@ -69,7 +69,9 @@ import ma.chouitv.installer.remote.Keycap;
 import ma.chouitv.installer.remote.RcIcon;
 import ma.chouitv.installer.remote.RemoteBody;
 import ma.chouitv.installer.remote.Socket;
+import ma.chouitv.installer.remote.RcLayoutView;
 import ma.chouitv.installer.remote.RcRing;
+import ma.chouitv.installer.remote.RemoteLayout;
 import ma.chouitv.installer.remote.RcSlider;
 import ma.chouitv.installer.remote.TvList;
 import ma.chouitv.installer.remote.TvLog;
@@ -146,6 +148,17 @@ public class MainActivity extends Activity {
         stopTicker();
         if (tv != null) tv.close();
         bg.shutdownNow();
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        // the volume buttons of the phone drive the TV while the remote is on screen and a TV answers (a setting in «More», on by default)
+        if ((keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)
+                && step == 25 && rcState == RC_OK && !"0".equals(prefs().get("vol_phone")) && LastTv.load(prefs()) != null) {
+            rcVolStep(keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     @Override
@@ -259,9 +272,11 @@ public class MainActivity extends Activity {
             case 29: journalScreen(body, button); break;
             case 30: fixScreen(body, button); break;
             case 31: equipPreview(body, button); break;
+            case 32: layoutsScreen(body, button); break;
+            case 33: layoutEditor(body, button); break;
             default: done(body, button); break;
         }
-        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
+        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30 || n == 32 || n == 33) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
         if (Nav.showsTabs(n)) { LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, dp(62)); tp.topMargin = dp(8); col.addView(tabBar(Nav.tabOf(n)), tp); }
     }
 
@@ -349,7 +364,7 @@ public class MainActivity extends Activity {
     private void moreScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("more_title"), t("more_sub"));
         Object[][] rows = {
-            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.HOME, "more_about_row"}};
+            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.TV, "more_layout"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.MUTE, "more_physvol"}, {RcIcon.HOME, "more_about_row"}};
         for (int i = 0; i < rows.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
@@ -367,9 +382,16 @@ public class MainActivity extends Activity {
                 switch (which) {
                     case 0: show(0); break;
                     case 1: profilesFromMore = true; show(17); break;
-                    case 2: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
-                    case 3: rcLimitDialog(); break;
-                    case 4: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
+                    case 2: show(32); break;
+                    case 3: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
+                    case 4: rcLimitDialog(); break;
+                    case 5: clearGuide(); space = SPACE_REMOTE; show(1); break;
+                    case 6: {
+                        boolean on = !"0".equals(prefs().get("vol_phone"));
+                        prefs().put("vol_phone", on ? "0" : "1");
+                        Toast.makeText(this, t(on ? "more_physvol_off" : "more_physvol_on"), Toast.LENGTH_SHORT).show();
+                        break;
+                    }   // the three steps with the network debugging, then the connection
                     default: aboutDialog(); break;
                 }
             });
@@ -2632,6 +2654,14 @@ public class MainActivity extends Activity {
         return l;
     }
 
+    private final java.util.List<TextView> rcVolNums = new java.util.ArrayList<>();   // the level written on a rocker or a pill
+
+    /** Shows a level wherever the volume is drawn: the slider of the bar, the number of a rocker or a pill ("?" when the TV does not answer). */
+    private void rcVolShowLevel(int level, boolean notAnswering) {
+        if (rcSlider != null) rcSlider.setLevel(level, notAnswering);
+        for (TextView n : rcVolNums) n.setText(level < 0 ? "?" : String.valueOf(level));
+    }
+
     /** Puts the scale, the limit and the step on the slider. */
     private void volShowScale() {
         if (rcSlider == null) return;
@@ -2655,9 +2685,9 @@ public class MainActivity extends Activity {
             final int lv = l;
             volLevel = lv;
             runOnUiThread(() -> {
-                if (rcSlider == null) return;
+                if (rcSlider == null && rcVolNums.isEmpty()) return;
                 volShowScale();
-                rcSlider.setLevel(lv, true);
+                rcVolShowLevel(lv, true);
             });
         });
     }
@@ -2677,7 +2707,7 @@ public class MainActivity extends Activity {
             // the TV's setting is slow to follow: trust what was set now, and read it back later
             volLevel = level;
             runOnUiThread(() -> {
-                if (rcSlider != null) rcSlider.setLevel(level, false);
+                rcVolShowLevel(level, false);
                 ui.postDelayed(this::rcVolRefresh, 1500);
             });
         });
@@ -2700,7 +2730,7 @@ public class MainActivity extends Activity {
         if (up && lim > 0 && now >= lim) return;
         if (!volBusy.compareAndSet(false, true)) return;
         final int target = now < 0 ? -1 : Volume.stepTarget(now, n, up, lim, max);
-        if (target >= 0) { volLevel = target; if (rcSlider != null) rcSlider.setLevel(target, false); }
+        if (target >= 0) { volLevel = target; rcVolShowLevel(target, false); }
         rcRun(() -> {
             try {
                 boolean keys = volKeysMode(), sentKeys = false;
@@ -2748,7 +2778,7 @@ public class MainActivity extends Activity {
         if (now < 0) { rcKey(Remote.MUTE); return; }   // the level is not known: the TV's own mute key
         if (now > 0) volPrev = now;
         final int target = Volume.muteTarget(now, volPrev, volMax);
-        if (rcSlider != null) rcSlider.setLevel(target, false);
+        rcVolShowLevel(target, false);
         rcVolSet(target);
     }
 
@@ -2966,82 +2996,11 @@ public class MainActivity extends Activity {
         if (last != null && rcState == RC_OK && (flow == null || !last.ip.equals(curIp))) rcState = RC_OFFLINE;   // never claim a link that is not there
         rcStatus(rcState, rcAttempt);
 
-        // six printed keys for the shortcuts, each in its well
-        Object[][] tiles = {
-            {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
-            {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
-        final LinearLayout[] shortcutTiles = new LinearLayout[6];
-        rcTiles = shortcutTiles;
-        for (int r = 0; r < 2; r++) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            for (int k = 0; k < 3; k++) {
-                final int i = r * 3 + k;
-                LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, Fit.tileHeight(screenH(), 80), Keycap.tile(density, 12), GOLD, null);
-                LinearLayout cell = rcWell(tile, 16, 3);
-                shortcutTiles[i] = tile;
-                LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
-                tp.setMargins(dp(4), dp(r == 0 ? 14 : 2), dp(4), dp(2));
-                rcTap(tile, () -> {
-                    switch (i) {
-                        case 0: rcOpen(Remote.Target.LISTEN); break;
-                        case 1: rcOpen(Remote.Target.CHANNELS); break;
-                        case 2: rcAppsDialog(); break;
-                        case 3: rcOpen(Remote.Target.SAVER); break;
-                        case 4: rcTextDialog(); break;
-                        default: rcRun(() -> flow.shell().run(Remote.settings()));
-                    }
-                });
-                row.addView(cell, tp);
-            }
-            panel.addView(row);
-        }
-
-        // the shortcuts of an app the TV does not have are dimmed (a touch still explains it and offers to install)
-        if (last != null) rcDimMissing();
-
-        // the pad: four wedges around OK
-        RcRing ring = new RcRing(this, display);
-        ring.setListener(code -> rcKey(code));
-        ring.setNames(t("rc_a_up"), t("rc_a_right"), t("rc_a_down"), t("rc_a_left"), t("rc_a_ok"));
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
-        rp.topMargin = dp(12);
-        rp.gravity = Gravity.CENTER_HORIZONTAL;
-        ring.setMaxSidePx(dp(340));
-        panel.addView(ring, rp);
-        rcFitRing(ring, panel);
-
-        // Back, Home, Mute: round keys with their word printed under
-        LinearLayout round = new LinearLayout(this);
-        round.setOrientation(LinearLayout.HORIZONTAL);
-        round.setGravity(Gravity.CENTER);
-        LinearLayout back = rcRoundWithWord(RcIcon.BACK, t("rc_back"), Fit.roundSize(screenH(), 60), () -> rcKey(Remote.BACK));
-        LinearLayout home = rcRoundWithWord(RcIcon.HOME, t("rc_home"), Fit.roundSize(screenH(), 60), () -> rcKey(Remote.HOME));
-        LinearLayout mute = rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), Fit.roundSize(screenH(), 60), this::rcMuteToggle);
-        for (LinearLayout col : new LinearLayout[] {back, home, mute}) round.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
-        panel.addView(round, lp(0, 10, 0, 0));
-
-        // volume: a - key, the slider (it shows the level the TV reports), a + key
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setClipChildren(false);
-        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, 66, 66, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
-        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, 66, 66, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
-        rcSlider = new RcSlider(this, display);
-        rcSlider.setWords(t("rc_vol_w"), t("rc_vol_read"), t("rc_vol_release"), t("rc_vol_a11y"));
-        volShowScale();
-        rcSlider.setListener(level -> rcVolSet(level));
-        rcHoldStep(vd, false);
-        rcHoldStep(vu, true);
-        bar.addView(vd, new LinearLayout.LayoutParams(dp(66), dp(69)));
-        bar.addView(rcSlider, new LinearLayout.LayoutParams(0, -2, 1f));
-        bar.addView(vu, new LinearLayout.LayoutParams(dp(66), dp(69)));
-        bar.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout volWell = rcWell(bar, 34, 4);
-        volWell.setClipChildren(false);
-        panel.setClipChildren(false);
-        panel.addView(volWell, lp(0, 8, 0, 0));
+        rcVolNums.clear();
+        rcSlider = null;
+        rcTiles = new LinearLayout[6];
+        panel.addView(rcGrid(rcLayout(), last, display, density));
+        if (last != null) rcDimMissing();   // the shortcuts of an app the TV does not have are dimmed (a touch still explains it and offers to install)
         rcVolRefresh();
 
         // with no TV the whole remote is a demo: every key is shown, dimmed, and explains itself when touched
@@ -3081,6 +3040,386 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    // ---- the remote drawn from its layout: a grid of 12 columns, every key where the layout puts it ----
+    private RemoteLayout rcLayout() {
+        return RemoteLayout.orClassic(prefs().get("rc_layout"));
+    }
+
+    /** The unit of the grid in px: the panel's width split in 12, or smaller so that the rows fit what the screen leaves (never below 18 dp: then the page scrolls). */
+    private int rcUnitPx(int rows) {
+        int side = Fit.sidePaddingDp(screenW(), 22, 560);
+        int innerDp = screenW() - 2 * side - 40;
+        float byWidth = dp(innerDp) / (float) RemoteLayout.COLS;
+        float byHeight = rows <= 0 ? byWidth : dp(Math.max(0, screenH() - 285)) / (float) rows;
+        return Math.max(dp(18), Math.round(Math.min(byWidth, byHeight)));
+    }
+
+
+    // ---- the layout of the remote: the choice of a template (32) and the editor (33) ----
+    private RemoteLayout edLayout;          // the layout being arranged (kept only when «Done» is touched)
+    private RemoteLayout.Kind edSelected;
+
+    private static final RemoteLayout.Template[] TEMPLATES = {
+        RemoteLayout.Template.CLASSIC, RemoteLayout.Template.RIGHT, RemoteLayout.Template.LEFT, RemoteLayout.Template.ELDER, RemoteLayout.Template.COMPACT};
+    private static final String[] TEMPLATE_KEYS = {"lay_classic", "lay_right", "lay_left", "lay_elder", "lay_compact"};
+
+    /** What a key is called on the layout (the words of the remote itself where there are). */
+    private java.util.Map<RemoteLayout.Kind, String> layoutLabels() {
+        java.util.Map<RemoteLayout.Kind, String> l = new java.util.EnumMap<>(RemoteLayout.Kind.class);
+        l.put(RemoteLayout.Kind.PAD, t("lay_k_pad"));
+        l.put(RemoteLayout.Kind.BACK, t("rc_back"));
+        l.put(RemoteLayout.Kind.HOME, t("rc_home"));
+        l.put(RemoteLayout.Kind.MUTE, t("rc_mute"));
+        l.put(RemoteLayout.Kind.POWER, t("lay_k_power"));
+        l.put(RemoteLayout.Kind.VOL_ROCKER, t("lay_k_vol"));
+        l.put(RemoteLayout.Kind.VOL_BAR, t("lay_k_vol"));
+        l.put(RemoteLayout.Kind.VOL_PILL, t("lay_k_vol"));
+        l.put(RemoteLayout.Kind.LISTEN, t("rc_listen"));
+        l.put(RemoteLayout.Kind.CHANNELS, t("rc_channels"));
+        l.put(RemoteLayout.Kind.APPS, t("rc_apps"));
+        l.put(RemoteLayout.Kind.SAVER, t("rc_saver"));
+        l.put(RemoteLayout.Kind.WRITE, t("rc_write"));
+        l.put(RemoteLayout.Kind.TVSET, t("rc_tvset"));
+        l.put(RemoteLayout.Kind.CH_ROCKER, t("lay_k_ch"));
+        l.put(RemoteLayout.Kind.YOUTUBE, t("lay_k_yt"));
+        l.put(RemoteLayout.Kind.NETFLIX, t("lay_k_nf"));
+        l.put(RemoteLayout.Kind.KEYBOARD, t("lay_k_kb"));
+        return l;
+    }
+
+    /** The keys this version of the remote draws (the others are planned). */
+    private static boolean layoutDraws(RemoteLayout.Kind k) {
+        switch (k) {
+            case POWER: case CH_ROCKER: case YOUTUBE: case NETFLIX: case KEYBOARD: return false;
+            default: return true;
+        }
+    }
+
+    private void layoutsScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("lay_title"), t("lay_sub"));
+        final String current = rcLayout().encode();
+        boolean known = false;
+        for (int i = 0; i < TEMPLATES.length; i++) {
+            final RemoteLayout tpl = RemoteLayout.template(TEMPLATES[i]);
+            final RemoteLayout.Template which = TEMPLATES[i];
+            boolean on = tpl.encode().equals(current);
+            known |= on;
+            body.addView(layoutCard(tpl, t(TEMPLATE_KEYS[i]), t(TEMPLATE_KEYS[i] + "_d"), on, () -> {
+                prefs().put("rc_layout", tpl.encode());
+                prefs().put("rc_template", which.name());
+                show(25);
+            }), lp(0, 8, 0, 0));
+        }
+        if (!known) body.addView(layoutCard(rcLayout(), t("lay_mine"), t("lay_mine_d"), true, () -> show(25)), lp(0, 8, 0, 0));
+        TextView custom = text(t("lay_custom"), medium, 16, DARK);
+        custom.setGravity(Gravity.CENTER);
+        custom.setBackground(rcShape(GOLD, 16, true));
+        custom.setClickable(true);
+        custom.setOnClickListener(v -> { edLayout = rcLayout(); edSelected = null; show(33); });
+        LinearLayout.LayoutParams cp = lp(0, 16, 0, 8);
+        cp.height = dp(56);
+        body.addView(custom, cp);
+    }
+
+    private LinearLayout layoutCard(RemoteLayout layout, String title, String desc, boolean on, Runnable pick) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackground(rcStates(on ? 0xFF1F4A38 : TILE_FILL, 16, true));
+        row.setPadding(dp(12), dp(12), dp(12), dp(12));
+        row.setClickable(true);
+        RcLayoutView mini = new RcLayoutView(this);
+        mini.setLayout(layout);
+        row.addView(mini, new LinearLayout.LayoutParams(dp(84), -2));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(text(title, medium, 17, SAND));
+        col.addView(text(desc, regular, 13, MUTED));
+        if (on) col.addView(text(t("lay_current"), medium, 12, GOLD), lp(0, 4, 0, 0));
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+        cp.setMarginStart(dp(14));
+        row.addView(col, cp);
+        row.setOnClickListener(v -> pick.run());
+        return row;
+    }
+
+    private String refusal(RemoteLayout.Why why) {
+        switch (why) {
+            case OVERLAP: return t("lay_w_overlap");
+            case OFF_GRID: return t("lay_w_off");
+            case TOO_TALL: return t("lay_w_tall");
+            case REQUIRED: return t("lay_w_required");
+            case BAD_SIZE: return t("lay_w_size");
+            default: return t("lay_w_noroom");
+        }
+    }
+
+    private TextView layoutChip(String label, Runnable act) {
+        TextView c = text(label, medium, 14, SAND);
+        c.setGravity(Gravity.CENTER);
+        c.setBackground(rcStates(TILE_FILL, 16, true));
+        c.setPadding(dp(12), dp(8), dp(12), dp(8));
+        c.setMinHeight(dp(44));
+        c.setClickable(true);
+        c.setOnClickListener(v -> act.run());
+        return c;
+    }
+
+    private void layoutEditor(final LinearLayout body, TextView button) {
+        if (edLayout == null) edLayout = rcLayout();
+        titleBlock(body, t("lay_ed_title"), t("lay_ed_hint"));
+        final int side = Fit.sidePaddingDp(screenW(), 22, 560);
+        final int widthDp = Math.min(screenW() - 2 * side, 420);
+        final int rows = edLayout.rows() + 3;   // a little room below to drop a key
+        final RcLayoutView view = new RcLayoutView(this);
+        view.setEditable(true);
+        view.setLabels(layoutLabels());
+        view.setMaxRows(rows);
+        view.setLayout(edLayout);
+        view.setSelected(edSelected);
+        final LinearLayout tools = new LinearLayout(this);
+        tools.setOrientation(LinearLayout.VERTICAL);
+        final Runnable refreshTools = new Runnable() {
+            @Override public void run() {
+                tools.removeAllViews();
+                LinearLayout row1 = new LinearLayout(this_());
+                row1.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+                cp.setMargins(dp(3), 0, dp(3), 0);
+                final RemoteLayout.Kind k = edSelected;
+                if (k != null && edLayout.has(k)) {
+                    TextView name = text(layoutLabels().get(k), medium, 14, GOLD);
+                    name.setGravity(Gravity.CENTER);
+                    tools.addView(name, lp(0, 0, 0, 6));
+                    if (!RemoteLayout.required(k)) row1.addView(layoutChip(t("lay_remove"), () -> {
+                        RemoteLayout.Edit e = edLayout.remove(k);
+                        if (e.ok()) { edLayout = e.layout; edSelected = null; view.setLayout(edLayout); view.setSelected(null); this.run(); }
+                        else Toast.makeText(MainActivity.this, refusal(e.why), Toast.LENGTH_SHORT).show();
+                    }), cp);
+                    if (RemoteLayout.isVolume(k)) row1.addView(layoutChip(t("lay_vol_form"), () -> {
+                        RemoteLayout.Kind next = k == RemoteLayout.Kind.VOL_ROCKER ? RemoteLayout.Kind.VOL_BAR : k == RemoteLayout.Kind.VOL_BAR ? RemoteLayout.Kind.VOL_PILL : RemoteLayout.Kind.VOL_ROCKER;
+                        RemoteLayout.Edit e = edLayout.swapVolume(next, view.maxRowsShown());
+                        if (e.ok()) { edLayout = e.layout; edSelected = next; view.setLayout(edLayout); view.setSelected(next); this.run(); }
+                        else Toast.makeText(MainActivity.this, refusal(e.why), Toast.LENGTH_SHORT).show();
+                    }), cp);
+                    else if (RemoteLayout.sizes(k).length > 1) row1.addView(layoutChip(t("lay_bigger"), () -> {
+                        int[][] sz = RemoteLayout.sizes(k);
+                        RemoteLayout.Block b = edLayout.get(k);
+                        int at = 0;
+                        for (int i = 0; i < sz.length; i++) if (sz[i][0] == b.w && sz[i][1] == b.h) at = i;
+                        int[] n = sz[(at + 1) % sz.length];
+                        RemoteLayout.Edit e = edLayout.resize(k, n[0], n[1], view.maxRowsShown());
+                        if (e.ok()) { edLayout = e.layout; view.setLayout(edLayout); this.run(); }
+                        else Toast.makeText(MainActivity.this, refusal(e.why), Toast.LENGTH_SHORT).show();
+                    }), cp);
+                    tools.addView(row1);
+                }
+                LinearLayout row2 = new LinearLayout(this_());
+                row2.setOrientation(LinearLayout.HORIZONTAL);
+                row2.addView(layoutChip(t("lay_add"), () -> layoutAddDialog(view, this)), cp);
+                row2.addView(layoutChip(t("lay_reset"), () -> {
+                    String name = prefs().get("rc_template");
+                    RemoteLayout.Template tpl = RemoteLayout.Template.CLASSIC;
+                    for (RemoteLayout.Template x : TEMPLATES) if (x.name().equals(name)) tpl = x;
+                    edLayout = RemoteLayout.template(tpl); edSelected = null;
+                    view.setLayout(edLayout); view.setSelected(null); this.run();
+                }), cp);
+                tools.addView(row2, lp(0, 6, 0, 0));
+            }
+            private MainActivity this_() { return MainActivity.this; }
+        };
+        view.setListener(new RcLayoutView.Listener() {
+            @Override public void onChanged(RemoteLayout l) { edLayout = l; refreshTools.run(); }
+            @Override public void onRefused(RemoteLayout.Why why) { Toast.makeText(MainActivity.this, refusal(why), Toast.LENGTH_SHORT).show(); }
+            @Override public void onSelected(RemoteLayout.Kind k) { edSelected = k; refreshTools.run(); }
+        });
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(dp(widthDp), -2);
+        vp.gravity = Gravity.CENTER_HORIZONTAL;
+        body.addView(view, vp);
+        body.addView(tools, lp(0, 10, 0, 0));
+        refreshTools.run();
+        TextView done = text(t("lay_done"), medium, 17, DARK);
+        done.setGravity(Gravity.CENTER);
+        done.setBackground(rcShape(GOLD, 16, true));
+        done.setClickable(true);
+        done.setOnClickListener(v -> {
+            if (edLayout.problem(60) == null) { prefs().put("rc_layout", edLayout.encode()); }
+            edLayout = null; edSelected = null;
+            show(25);
+        });
+        LinearLayout.LayoutParams dp0 = lp(0, 14, 0, 8);
+        dp0.height = dp(56);
+        body.addView(done, dp0);
+    }
+
+    private void layoutAddDialog(final RcLayoutView view, final Runnable after) {
+        final java.util.List<RemoteLayout.Kind> kinds = new java.util.ArrayList<>();
+        for (RemoteLayout.Kind k : RemoteLayout.Kind.values()) if (!edLayout.has(k) && !RemoteLayout.isVolume(k) && layoutDraws(k) && k != RemoteLayout.Kind.PAD && k != RemoteLayout.Kind.BACK) kinds.add(k);
+        if (kinds.isEmpty()) { Toast.makeText(this, t("lay_add_none"), Toast.LENGTH_SHORT).show(); return; }
+        String[] names = new String[kinds.size()];
+        for (int i = 0; i < names.length; i++) names[i] = layoutLabels().get(kinds.get(i));
+        new AlertDialog.Builder(this).setTitle(t("lay_add")).setItems(names, (d, which) -> {
+            RemoteLayout.Kind k = kinds.get(which);
+            RemoteLayout.Edit e = edLayout.add(k, view.maxRowsShown());
+            if (e.ok()) { edLayout = e.layout; edSelected = k; view.setLayout(edLayout); view.setSelected(k); after.run(); }
+            else Toast.makeText(this, refusal(e.why), Toast.LENGTH_SHORT).show();
+        }).show();
+    }
+
+    private FrameLayout rcGrid(RemoteLayout layout, final LastTv last, Typeface display, float density) {
+        int u = rcUnitPx(layout.rows());
+        FrameLayout grid = new FrameLayout(this);
+        grid.setClipChildren(false);
+        for (RemoteLayout.Block b : layout.blocks()) {
+            View v = rcBlockView(b, u, last, display, density);
+            if (v == null) continue;
+            FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(b.w * u, b.h * u, Gravity.TOP | Gravity.LEFT);
+            fp.leftMargin = b.col * u;
+            fp.topMargin = b.row * u;
+            grid.addView(v, fp);
+        }
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(RemoteLayout.COLS * u, layout.rows() * u);
+        gp.gravity = Gravity.CENTER_HORIZONTAL;
+        gp.topMargin = dp(10);
+        grid.setLayoutParams(gp);
+        return grid;
+    }
+
+    /** The view of one key of the layout, sized to its cell (null for a key this version does not draw yet). */
+    private View rcBlockView(final RemoteLayout.Block b, int u, LastTv last, Typeface display, float density) {
+        int cellW = Math.round(b.w * u / density), cellH = Math.round(b.h * u / density);   // dp
+        final int fontSp = 14;
+        switch (b.kind) {
+            case PAD: {
+                RcRing ring = new RcRing(this, display);
+                ring.setListener(code -> rcKey(code));
+                ring.setNames(t("rc_a_up"), t("rc_a_right"), t("rc_a_down"), t("rc_a_left"), t("rc_a_ok"));
+                ring.setMaxSidePx(b.w * u);
+                return ring;
+            }
+            case BACK: return rcRoundWithWord(RcIcon.BACK, t("rc_back"), Math.max(36, Math.min(64, cellH - 30)), () -> rcKey(Remote.BACK));
+            case HOME: return rcRoundWithWord(RcIcon.HOME, t("rc_home"), Math.max(36, Math.min(64, cellH - 30)), () -> rcKey(Remote.HOME));
+            case MUTE: return rcRoundWithWord(RcIcon.MUTE, t("rc_mute"), Math.max(36, Math.min(64, cellH - 30)), this::rcMuteToggle);
+            case LISTEN: case CHANNELS: case APPS: case SAVER: case WRITE: case TVSET: return rcShortcut(b.kind, cellW, cellH);
+            case VOL_BAR: return rcVolumeBar(display, cellH);
+            case VOL_ROCKER: return rcVolumeRocker(display, cellW, cellH);
+            case VOL_PILL: return rcVolumePill(display, cellW, cellH);
+            default: return null;
+        }
+    }
+
+    private LinearLayout rcShortcut(RemoteLayout.Kind kind, int cellW, int cellH) {
+        final float density = getResources().getDisplayMetrics().density;
+        int i = kind == RemoteLayout.Kind.LISTEN ? 0 : kind == RemoteLayout.Kind.CHANNELS ? 1 : kind == RemoteLayout.Kind.APPS ? 2
+            : kind == RemoteLayout.Kind.SAVER ? 3 : kind == RemoteLayout.Kind.WRITE ? 4 : 5;
+        Object[][] tiles = {
+            {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
+            {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
+        final int idx = i;
+        LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 10, Keycap.tile(density, 12), GOLD, null);
+        tile.setMinimumHeight(0);
+        LinearLayout cell = rcWell(tile, 16, 3);
+        tile.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+        rcTiles[i] = tile;
+        rcTap(tile, () -> {
+            switch (idx) {
+                case 0: rcOpen(Remote.Target.LISTEN); break;
+                case 1: rcOpen(Remote.Target.CHANNELS); break;
+                case 2: rcAppsDialog(); break;
+                case 3: rcOpen(Remote.Target.SAVER); break;
+                case 4: rcTextDialog(); break;
+                default: rcRun(() -> flow.shell().run(Remote.settings()));
+            }
+        });
+        FrameLayout.LayoutParams unused = null;
+        cell.setPadding(dp(3), dp(3), dp(3), dp(3));
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.addView(cell, new LinearLayout.LayoutParams(-1, -1));
+        wrap.setPadding(dp(2), dp(1), dp(2), dp(1));
+        return wrap;
+    }
+
+    private View rcVolumeBar(Typeface display, int cellH) {
+        int key = Math.max(40, cellH - 6);
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setClipChildren(false);
+        final float density = getResources().getDisplayMetrics().density;
+        LinearLayout vd = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
+        LinearLayout vu = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        rcSlider = new RcSlider(this, display);
+        rcSlider.setWords(t("rc_vol_w"), t("rc_vol_read"), t("rc_vol_release"), t("rc_vol_a11y"));
+        volShowScale();
+        rcSlider.setListener(level -> rcVolSet(level));
+        rcHoldStep(vd, false);
+        rcHoldStep(vu, true);
+        bar.addView(vd, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
+        bar.addView(rcSlider, new LinearLayout.LayoutParams(0, -2, 1f));
+        bar.addView(vu, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
+        LinearLayout well = rcWell(bar, 34, 4);
+        well.setClipChildren(false);
+        bar.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.addView(well, new LinearLayout.LayoutParams(-1, -1));
+        return wrap;
+    }
+
+    /** A number between the two keys: the level of the TV; a touch on it opens the sound settings. */
+    private TextView rcVolNumber(Typeface display) {
+        TextView n = text("?", display, 18, GOLD);
+        n.setGravity(Gravity.CENTER);
+        n.setClickable(true);
+        rcTap(n, this::rcVolumeSettings);
+        rcVolNums.add(n);
+        return n;
+    }
+
+    private View rcVolumeRocker(Typeface display, int cellW, int cellH) {
+        final float density = getResources().getDisplayMetrics().density;
+        int key = Math.max(40, Math.min(cellW - 14, 60));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER);
+        LinearLayout up = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        LinearLayout down = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
+        rcHoldStep(up, true);
+        rcHoldStep(down, false);
+        col.addView(up, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
+        col.addView(rcVolNumber(display), new LinearLayout.LayoutParams(dp(key), 0, 1f));
+        col.addView(down, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
+        LinearLayout well = rcWell(col, cellW / 2, 3);
+        col.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.addView(well, new LinearLayout.LayoutParams(-1, -1));
+        volShowScale();
+        return wrap;
+    }
+
+    private View rcVolumePill(Typeface display, int cellW, int cellH) {
+        final float density = getResources().getDisplayMetrics().density;
+        int key = Math.max(40, cellH - 6);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout down = rcCapBtn(RcIcon.VOL_DOWN, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vdown"));
+        LinearLayout up = rcCapBtn(RcIcon.VOL_UP, null, key, key, Keycap.hard(density, 100), 0xFFE9D9A6, t("rc_vup"));
+        rcHoldStep(down, false);
+        rcHoldStep(up, true);
+        row.addView(down, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
+        row.addView(rcVolNumber(display), new LinearLayout.LayoutParams(0, -2, 1f));
+        row.addView(up, new LinearLayout.LayoutParams(dp(key), dp(key + 3)));
+        LinearLayout well = rcWell(row, 34, 4);
+        row.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.addView(well, new LinearLayout.LayoutParams(-1, -1));
+        return wrap;
+    }
+
+    /** The sound settings (the scale, the step, the family's limit): what a touch on the level opens. */
+    private void rcVolumeSettings() { rcLimitDialog(); }
+
     /** Dims the shortcuts of an app the connected TV does not have (a touch still explains it and offers to install). */
     private void rcDimMissing() {
         final LinearLayout[] tiles = rcTiles;
@@ -3089,8 +3428,8 @@ public class MainActivity extends Activity {
             try {
                 final String out = flow.shell().run("pm list packages");
                 runOnUiThread(() -> {
-                    if (Remote.missing(out, Remote.Target.LISTEN)) tiles[0].setAlpha(0.4f);
-                    if (Remote.missing(out, Remote.Target.CHANNELS)) tiles[1].setAlpha(0.4f);
+                    if (tiles[0] != null && Remote.missing(out, Remote.Target.LISTEN)) tiles[0].setAlpha(0.4f);
+                    if (tiles[1] != null && Remote.missing(out, Remote.Target.CHANNELS)) tiles[1].setAlpha(0.4f);
                 });
             } catch (Exception ignored) { }
         });
