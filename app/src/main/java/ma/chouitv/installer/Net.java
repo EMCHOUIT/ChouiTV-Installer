@@ -120,16 +120,16 @@ final class Net {
         List<String> found = Collections.synchronizedList(new ArrayList<String>());
         String base = null, self = null;
         try {
+            List<String[]> ifaces = new ArrayList<>();
             for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements(); ) {
                 NetworkInterface ni = e.nextElement();
                 if (!ni.isUp() || ni.isLoopback()) continue;
                 for (InetAddress a : Collections.list(ni.getInetAddresses())) {
-                    String h = a.getHostAddress();
-                    if (a instanceof java.net.Inet4Address && a.isSiteLocalAddress()) {
-                        self = h; base = h.substring(0, h.lastIndexOf('.') + 1);
-                    }
+                    if (a instanceof java.net.Inet4Address) ifaces.add(new String[] {ni.getName(), a.getHostAddress()});
                 }
             }
+            String[] pick = Subnet.pick(ifaces);   // the Wi-Fi of the home, never the mobile data that has a private address too
+            if (pick != null) { self = pick[0]; base = pick[1]; }
         } catch (Exception ignored) { }
         if (base == null) return found;
         ExecutorService ex = Executors.newFixedThreadPool(48);
