@@ -18,6 +18,7 @@ final class Nav {
             case 12: return 27;   // a TV's page goes back to «My TVs»
             case 27: return 25;   // «My TVs» and «Options» go back to the remote
             case 26: return 25;
+            case 31: return 25;   // the preview of a set-up goes back to the remote
             case 18: return 12;   // the old mode screen is no longer reachable; if it ever shows, it goes back to the TV's page
             case 29: case 30: return 12;   // the journal and the fix screen
             case 19: return 12;

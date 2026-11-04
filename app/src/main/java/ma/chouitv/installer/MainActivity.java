@@ -151,6 +151,7 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         int to = Nav.backTarget(step, busy, guide != null, cleanFromDone);
+        if (step == 17 && profilesFromMore) to = 26;
         if (to == Nav.BLOCKED) return;
         if (to == Nav.EXIT) {
             // the end of the line: a second press within two seconds leaves, the first one only says so
@@ -256,6 +257,7 @@ public class MainActivity extends Activity {
             case 28: splashScreen(body, button); break;
             case 29: journalScreen(body, button); break;
             case 30: fixScreen(body, button); break;
+            case 31: equipPreview(body, button); break;
             default: done(body, button); break;
         }
         if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
@@ -340,10 +342,13 @@ public class MainActivity extends Activity {
     }
 
     /** Options of the phone app (never of the TV: the word «Settings» always means the TV): language, volume, help, about. */
+    /** The saved settings were opened from «More»: their way back is «More», not a TV's page. */
+    private boolean profilesFromMore;
+
     private void moreScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("more_title"), t("more_sub"));
         Object[][] rows = {
-            {RcIcon.BOOK, "more_lang"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.HOME, "more_about_row"}};
+            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.HOME, "more_about_row"}};
         for (int i = 0; i < rows.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
@@ -360,9 +365,10 @@ public class MainActivity extends Activity {
             row.setOnClickListener(v -> {
                 switch (which) {
                     case 0: show(0); break;
-                    case 1: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
-                    case 2: rcLimitDialog(); break;
-                    case 3: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
+                    case 1: profilesFromMore = true; show(17); break;
+                    case 2: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
+                    case 3: rcLimitDialog(); break;
+                    case 4: clearGuide(); space = SPACE_REMOTE; show(1); break;   // the three steps with the network debugging, then the connection
                     default: aboutDialog(); break;
                 }
             });
@@ -1671,6 +1677,7 @@ public class MainActivity extends Activity {
 
     /** The page of a TV: its name, a way back to its remote, and what can be done with it (no steps and no «new» tags: nothing here is a sequence). */
     private void hub(LinearLayout body, TextView button) {
+        profilesFromMore = false;
         cleanedHere = false;
         cleanFromDone = false;
         titleBlock(body, curName(), t("hub_sub"));
@@ -1689,7 +1696,7 @@ public class MainActivity extends Activity {
             eq.setOrientation(LinearLayout.VERTICAL);
             eq.addView(text(t("eq_t"), display, 21, GOLD));
             eq.addView(text(t("eq_d"), regular, 13, MUTED), lp(0, 2, 0, 0));
-            eq.setOnClickListener(v -> { if (!busy) startEquip(); });
+            eq.setOnClickListener(v -> { if (!busy) { eqClean = true; show(31); } });
             body.addView(eq, lp(0, 12, 0, 0));
         }
         Object[][] cards = {
@@ -1827,7 +1834,7 @@ public class MainActivity extends Activity {
             b.addView(new RcIcon(this, icon, iconColor), new LinearLayout.LayoutParams(dp(isz), dp(isz)));
         }
         if (label != null) {
-            TextView tv1 = text(label, medium, 14, SAND);
+            TextView tv1 = text(label, medium, getResources().getConfiguration().screenWidthDp < 380 ? 11 : 14, SAND);   // a small phone: the longest word still fits on one line
             tv1.setGravity(Gravity.CENTER);
             tv1.setMaxLines(2);
             b.addView(tv1, lp(4, 3, 4, 0));
@@ -3349,7 +3356,7 @@ public class MainActivity extends Activity {
         } else {
             button.setText(t("cl_home"));
             secondaryStyle(button);   // each saved setting has its own «send»: the way back must not compete with them
-            button.setOnClickListener(v -> show(12));
+            button.setOnClickListener(v -> show(profilesFromMore ? 26 : 12));
         }
     }
 
@@ -3423,6 +3430,7 @@ public class MainActivity extends Activity {
     /** Asks the TV what an import would change; nothing is applied. */
     private void startSend(final Profile p, final TextView trigger) {
         if (busy) return;
+        if (flow == null || LastTv.load(prefs()) == null) { needTvDialog(); return; }   // sending needs a TV; renaming and deleting do not
         busy = true;
         trigger.setAlpha(0.6f);
         bg.execute(() -> {
@@ -3543,19 +3551,57 @@ public class MainActivity extends Activity {
     /** Writes a line in the journal of the TV the app talks to. */
     private void logTv(String code, String detail) { TvLog.add(prefs(), curIp, System.currentTimeMillis(), code, detail); }
 
+    private boolean eqClean = true;
+
+    /** The set-up path starts at the clean-up, or (the person left it out) at the install. */
     private void startEquip() {
         guide = new Guide(Guide.Path.EQUIP);
+        guide.step = EquipPlan.startStep(eqClean);
         saveGuide();
         goGuided();
+    }
+
+    /** «Set up Salon»: the three steps, how long it takes, what is optional, and where the settings come from, before anything starts. */
+    private void equipPreview(LinearLayout body, TextView button) {
+        titleBlock(body, t("eq_title", curName()), t("eq_sub", EquipPlan.minutes(eqClean)));
+        LinearLayout c1 = card(false);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text("1  " + t("eq_s_clean"), medium, 18, SAND), new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView sw = text(t(eqClean ? "eq_yes" : "eq_no"), medium, 16, eqClean ? GOLD : MUTED);
+        sw.setPadding(dp(14), dp(8), dp(14), dp(8));
+        sw.setBackground(rcShape(eqClean ? 0x33D6AF6B : 0x22FFFFFF, 14, false));
+        head.addView(sw);
+        c1.addView(head);
+        c1.addView(text(t("eq_s_clean_d"), regular, 13, MUTED), lp(0, 4, 0, 0));
+        c1.setOnClickListener(v -> { eqClean = !eqClean; show(31); });
+        body.addView(c1, lp(0, 4, 0, 8));
+        LinearLayout c2 = card(false);
+        c2.addView(text("2  " + t("eq_s_install"), medium, 18, SAND));
+        c2.addView(text(t("eq_s_install_d"), regular, 13, MUTED), lp(0, 4, 0, 0));
+        body.addView(c2, lp(0, 0, 0, 8));
+        LinearLayout c3 = card(false);
+        c3.addView(text("3  " + t("eq_s_set"), medium, 18, SAND));
+        java.util.List<Profile> saved = store().list();
+        TextView d3 = text(saved.isEmpty() ? t("eq_s_set_later") : t("eq_s_set_saved", saved.get(0).name), regular, 13, MUTED);
+        d3.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+        c3.addView(d3, lp(0, 4, 0, 0));
+        body.addView(c3, lp(0, 0, 0, 8));
+        TextView only = ghostButton(t("eq_ask_no"), GOLD);
+        only.setOnClickListener(v -> show(25));
+        body.addView(only, lp(0, 8, 0, 0));
+        button.setText(t("eq_start"));
+        ready(button, true);
+        button.setOnClickListener(v -> { if (!busy) startEquip(); });
     }
 
     /** The first time a TV answers: what to do with it? The answer is asked once. */
     private void askWhatToDo() {
         final String ip = curIp;
         Equip.markAsked(prefs(), ip);
-        new AlertDialog.Builder(this).setTitle(t("eq_ask_q")).setMessage(t("eq_ask_msg"))
-            .setPositiveButton(t("eq_ask_do"), (d, w) -> startEquip())
-            .setNegativeButton(t("eq_ask_no"), null).show();
+        eqClean = true;
+        show(31);   // the preview of the set-up, instead of a system window
     }
 
     private void goGuided() {
