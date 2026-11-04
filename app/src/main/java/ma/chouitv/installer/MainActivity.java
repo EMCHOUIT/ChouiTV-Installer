@@ -3353,7 +3353,7 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 out = "error: " + e;
             }
-            final Preview pv = Preview.parse(out);
+            final Preview pv = Preview.parse(ZoneDisplay.show(out, p.settingsJson));
             runOnUiThread(() -> { busy = false; sendProfile = p; sendPreview = pv; show(15); });
         });
     }
@@ -3963,7 +3963,7 @@ public class MainActivity extends Activity {
                 while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
                 if (o.size() > 200000) throw new java.io.IOException(t("file_big"));
                 final String b64 = Base64.encodeToString(o.toByteArray(), Base64.NO_WRAP);
-                final String preview = flow.importSettings(b64, false);   // nothing is applied yet: what would change
+                final String preview = ZoneDisplay.show(flow.importSettings(b64, false), new String(o.toByteArray(), "UTF-8"));   // nothing is applied yet: what would change
                 runOnUiThread(() -> new AlertDialog.Builder(this).setTitle(t("will_change"))
                     .setMessage(preview.isEmpty() ? t("no_change") : preview)
                     .setPositiveButton(t("use_file"), (d, w) -> { importedB64 = b64; if (importV != null) importV.setText(t("import_ready")); })
