@@ -38,4 +38,23 @@ public class HomeStateTest {
         assertEquals("a known TV without an open link is offline", HomeState.Link.OFFLINE, HomeState.linkOf(true, false));
         assertEquals("no TV: nothing to be offline from", HomeState.Link.ONLINE, HomeState.linkOf(false, false));
     }
+
+    @Test public void aTvThatAsksForTheKeyHasItsOwnBannerWhileItWaits() {
+        assertEquals(HomeState.Banner.AUTH, HomeState.banner(true, HomeState.Link.ASKING, false, 0));
+    }
+
+    @Test public void theOfflineBannerSaysTheCause() {
+        assertEquals(HomeState.Offline.NO_WIFI, HomeState.offline(Cause.NO_WIFI, 0));
+        assertEquals(HomeState.Offline.OTHER_NETWORK, HomeState.offline(Cause.OTHER_NETWORK, 0));
+        assertEquals(HomeState.Offline.SILENT, HomeState.offline(Cause.SILENT, 90_000));
+        assertEquals(HomeState.Offline.AUTH, HomeState.offline(Cause.AUTH, 0));
+        assertEquals("no cause known: the TV simply does not answer", HomeState.Offline.SILENT, HomeState.offline(null, 0));
+    }
+
+    @Test public void aRefusalIsAStartingTvFirstAndDebuggingOffAfterHalfAMinute() {
+        assertEquals(HomeState.Offline.BOOTING, HomeState.offline(Cause.REFUSED, 0));
+        assertEquals(HomeState.Offline.BOOTING, HomeState.offline(Cause.REFUSED, 29_999));
+        assertEquals(HomeState.Offline.DEBUG_OFF, HomeState.offline(Cause.REFUSED, 30_000));
+        assertEquals(HomeState.Offline.DEBUG_OFF, HomeState.offline(Cause.REFUSED, 600_000));
+    }
 }

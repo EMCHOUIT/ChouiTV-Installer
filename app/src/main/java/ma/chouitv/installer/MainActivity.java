@@ -55,6 +55,7 @@ import ma.chouitv.installer.profiles.Profile;
 import ma.chouitv.installer.profiles.ProfileStore;
 import ma.chouitv.installer.cleanup.Restore;
 import ma.chouitv.installer.cleanup.Shell;
+import ma.chouitv.installer.remote.Cause;
 import ma.chouitv.installer.remote.HomeState;
 import ma.chouitv.installer.remote.Remote;
 import ma.chouitv.installer.remote.AppSlots;
@@ -1559,7 +1560,7 @@ public class MainActivity extends Activity {
 
     // ---------- the remote control ----------
 
-    private static final int RC_OK = 0, RC_RECONNECTING = 1, RC_OFFLINE = 2;
+    private static final int RC_OK = 0, RC_RECONNECTING = 1, RC_OFFLINE = 2, RC_ASKING = 3;
     private static final int KEY_FILL = 0xFF1F4A33, KEY_PRESSED = 0xFF2C6445, TILE_FILL = 0xFF16382A, KEY_LINE = 0x88D6AF6B;
     private TextView rcPillName, rcPillSub;
     private View rcPillDot;
@@ -1678,11 +1679,11 @@ public class MainActivity extends Activity {
             if (rcPillSub == null) return;
             LastTv last = LastTv.load(prefs());
             String ip = last == null ? "" : last.ip;
-            String s = state == RC_OK ? t("rc_st_ok") : state == RC_RECONNECTING ? (attempt < 1 ? t("last_wait") : t("rc_st_re", attempt, Reconnect.MAX_TRIES)) : t("rc_st_off");
+            String s = state == RC_OK ? t("rc_st_ok") : state == RC_RECONNECTING ? t("last_wait") : state == RC_ASKING ? t("rc_st_ask") : t("rc_st_off");
             if (last == null) { rcPillSub.setText(t("rc_st_none")); rcPillDot.setBackground(rcShape(0xFF8A9189, 8, false)); }
             else {
                 rcPillSub.setText(ip.isEmpty() ? s : ip + " · " + s);
-                rcPillDot.setBackground(rcShape(state == RC_OK ? 0xFF4CD37F : state == RC_RECONNECTING ? 0xFFD6AF6B : 0xFFE8896B, 8, false));
+                rcPillDot.setBackground(rcShape(state == RC_OK ? 0xFF4CD37F : state == RC_OFFLINE ? 0xFFE8896B : 0xFFD6AF6B, 8, false));
             }
             rcBannerRefresh();
         });
@@ -1693,44 +1694,123 @@ public class MainActivity extends Activity {
         if (rcBlocked()) return;
         bg.execute(() -> {
             try {
-                if (flow == null && !rcReconnect()) return;
+                if (flow == null && !rcReconnect(4000)) return;
                 op.run();
                 if (rcState != RC_OK) rcStatus(RC_OK, 0);
             } catch (Exception e) {
                 if (!Reconnect.worthRetrying(e)) { rcFail(e); return; }
-                if (rcReconnect()) {
+                if (rcReconnect(4000)) {
                     try { op.run(); } catch (Exception e2) { rcFail(e2); }
                 }
             }
         });
     }
 
-    /** Reconnects to the remembered TV (on the background thread). False when it does not answer after the tries. */
-    private boolean rcReconnect() {
-        LastTv last = LastTv.load(prefs());
+    private volatile Cause rcCause;
+    private volatile long rcFailSince;
+    private volatile boolean rcAsked;
+    private volatile boolean rcVisible;
+    private final java.util.concurrent.atomic.AtomicBoolean rcTrying = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicBoolean rcAuto = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private android.net.ConnectivityManager.NetworkCallback rcNetCb;
+
+    /** The phone is on a Wi-Fi network (any of its networks, even when the mobile data is the one used for the internet). */
+    private boolean wifiActive() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            for (android.net.Network n : cm.getAllNetworks()) {
+                android.net.NetworkCapabilities c = cm.getNetworkCapabilities(n);
+                if (c != null && c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)) return true;
+            }
+            return false;
+        } catch (Exception e) { return true; }   // cannot tell: do not blame the Wi-Fi
+    }
+
+    /**
+     * One try to reach the remembered TV (on the background thread). It says why when it fails: the state and the cause drive the banner. {@code quiet} keeps
+     * the banner as it is while the try runs (the tries in the background must not make it blink).
+     */
+    private boolean rcAttempt(int reachMs, boolean quiet) {
+        final LastTv last = LastTv.load(prefs());
         if (last == null) { rcStatus(RC_OFFLINE, 0); return false; }
-        for (int a = 1; !Reconnect.giveUp(a); a++) {
-            rcAttempt = a;
-            rcStatus(RC_RECONNECTING, a);
-            try {
-                if (a > 1) Thread.sleep(Reconnect.delayMs(a - 1));
-                Adb n = Adb.connect(last.ip, 5555, new File(getFilesDir(), "keys"));
-                if (tv != null && tv != n) tv.close();
-                tv = n;
-                curIp = last.ip;
-                flow = new Flow(n, getCacheDir());
-                flow.ask = this::askRemoval;
-                identifyTv();
-                rcStatus(RC_OK, 0);
-                runOnUiThread(() -> { if (step == 25) { rcVolRefresh(); rcDimMissing(); } });
-                return true;
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                return false;
-            } catch (Exception ignored) { }
+        if (!rcTrying.compareAndSet(false, true)) return rcState == RC_OK;   // another try is running: it will say
+        try {
+            rcAsked = false;
+            if (!quiet) rcStatus(RC_RECONNECTING, 0);
+            Adb n = Adb.connect(last.ip, 5555, new File(getFilesDir(), "keys"), reachMs, () -> { rcAsked = true; rcStatus(RC_ASKING, 0); });
+            if (tv != null && tv != n) tv.close();
+            tv = n;
+            curIp = last.ip;
+            flow = new Flow(n, getCacheDir());
+            flow.ask = this::askRemoval;
+            identifyTv();
+            rcFailSince = 0;
+            rcCause = null;
+            rcStatus(RC_OK, 0);
+            runOnUiThread(() -> { if (step == 25) { rcVolRefresh(); rcDimMissing(); } });
+            return true;
+        } catch (Exception e) {
+            if (rcFailSince == 0) rcFailSince = android.os.SystemClock.elapsedRealtime();
+            rcCause = Cause.of(e, wifiActive(), Net.ifaces().isEmpty() || Subnet.sameNetwork(last.ip, Net.ifaces()), rcAsked);
+            rcStatus(RC_OFFLINE, 0);
+            return false;
+        } finally {
+            rcTrying.set(false);
         }
-        rcStatus(RC_OFFLINE, 0);
+    }
+
+    /** Reconnects now (a short try first, then the quiet tries in the background when it fails). False when the TV does not answer. */
+    private boolean rcReconnect() { return rcReconnect(rcFailSince == 0 ? 1500 : 4000); }
+
+    private boolean rcReconnect(int reachMs) {
+        if (rcAttempt(reachMs, false)) return true;
+        rcAutoStart();
         return false;
+    }
+
+    /** While the app is open and the TV does not answer: a quiet try every 3 s, then less often (Reconnect.backgroundDelayMs). Stops when the TV is back or the app is left. */
+    private void rcAutoStart() {
+        if (!rcAuto.compareAndSet(false, true)) return;
+        Thread t = new Thread(() -> {
+            long t0 = android.os.SystemClock.elapsedRealtime();
+            try {
+                while (rcVisible && rcState != RC_OK && LastTv.load(prefs()) != null) {
+                    Thread.sleep(Reconnect.backgroundDelayMs(android.os.SystemClock.elapsedRealtime() - t0));
+                    if (!rcVisible || rcState == RC_OK || rcState == RC_ASKING) continue;
+                    if (rcAttempt(2500, true)) break;
+                }
+            } catch (InterruptedException ignored) {
+            } finally {
+                rcAuto.set(false);
+            }
+        }, "rc-auto");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        rcVisible = true;
+        if (rcState == RC_OFFLINE && LastTv.load(prefs()) != null) { new Thread(() -> rcReconnect(2500)).start(); }
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            rcNetCb = new android.net.ConnectivityManager.NetworkCallback() {
+                @Override public void onAvailable(android.net.Network network) {
+                    // the Wi-Fi came back: try at once, without waiting for the next quiet try
+                    if (rcVisible && rcState == RC_OFFLINE && LastTv.load(prefs()) != null) new Thread(() -> { if (!rcAttempt(2500, true)) rcAutoStart(); }).start();
+                }
+            };
+            cm.registerDefaultNetworkCallback(rcNetCb);
+        } catch (Exception ignored) { rcNetCb = null; }
+    }
+
+    @Override protected void onStop() {
+        super.onStop();
+        rcVisible = false;
+        try {
+            if (rcNetCb != null) ((android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE)).unregisterNetworkCallback(rcNetCb);
+        } catch (Exception ignored) { }
+        rcNetCb = null;
     }
 
     private void rcKey(final int code) { rcRun(() -> flow.shell().run(Remote.key(code))); }
@@ -2144,30 +2224,48 @@ public class MainActivity extends Activity {
             if (rcBanner == null || step != 25) return;
             rcBanner.removeAllViews();
             final LastTv last = LastTv.load(prefs());
-            HomeState.Link link = rcState == RC_OFFLINE ? HomeState.Link.OFFLINE : rcState == RC_RECONNECTING ? HomeState.Link.RECONNECTING : HomeState.Link.ONLINE;
+            HomeState.Link link = rcState == RC_OFFLINE ? HomeState.Link.OFFLINE : rcState == RC_RECONNECTING ? HomeState.Link.RECONNECTING
+                : rcState == RC_ASKING ? HomeState.Link.ASKING : HomeState.Link.ONLINE;
             HomeState.Banner b = HomeState.banner(last != null, link, rcSearching, rcFound);
             if (b == HomeState.Banner.HIDDEN) { rcBanner.setVisibility(View.GONE); return; }
             rcBanner.setVisibility(View.VISIBLE);
-            String msg = b == HomeState.Banner.SEARCHING ? t("bn_searching") : b == HomeState.Banner.FOUND ? t("bn_found", rcFound)
-                : b == HomeState.Banner.OFFLINE ? t("off_q2", curName()) : t("bn_none");
+            final long failing = rcFailSince == 0 ? 0 : android.os.SystemClock.elapsedRealtime() - rcFailSince;
+            final HomeState.Offline why = b == HomeState.Banner.OFFLINE ? HomeState.offline(rcCause, failing) : null;
+            String msg, sub = null, go = null, linkLabel;
+            if (b == HomeState.Banner.SEARCHING) { msg = t("bn_searching"); go = null; linkLabel = t("bn_help"); }
+            else if (b == HomeState.Banner.FOUND) { msg = t("bn_found", rcFound); go = t("bn_see"); linkLabel = t("bn_help"); }
+            else if (b == HomeState.Banner.NONE_FOUND) { msg = t("bn_none"); go = t("nt_search"); linkLabel = t("bn_help"); }
+            else if (b == HomeState.Banner.AUTH) { msg = t("bn_ask"); sub = t("bn_ask_sub"); linkLabel = t("tvs_title"); }
+            else switch (why) {
+                case NO_WIFI: msg = t("bn_nowifi"); go = t("bn_openwifi"); linkLabel = t("tvs_title"); break;
+                case OTHER_NETWORK: msg = t("bn_otherwifi", curName()); go = t("bn_openwifi"); linkLabel = t("bn_here"); break;
+                case BOOTING: msg = t("bn_boot", curName()); sub = t("bn_boot_sub"); linkLabel = t("tvs_title"); break;
+                case DEBUG_OFF: msg = t("bn_dbg", curName()); go = t("bn_dbg_do"); linkLabel = t("bn_help"); break;
+                case AUTH: msg = t("bn_ask"); sub = t("bn_ask_sub"); go = t("bn_retry_now"); linkLabel = t("tvs_title"); break;
+                default: msg = t("off_q2", curName()); sub = t("bn_off_sub"); go = t("bn_retry_now"); linkLabel = t("tvs_title"); break;
+            }
             rcBanner.addView(text(msg, medium, 16, SAND));
-            if (b == HomeState.Banner.OFFLINE) rcBanner.addView(text(t("off_msg"), regular, 13, MUTED), lp(0, 2, 0, 0));
-            if (b == HomeState.Banner.FOUND || b == HomeState.Banner.NONE_FOUND || b == HomeState.Banner.OFFLINE) {
-                TextView go = button(t(b == HomeState.Banner.FOUND ? "bn_see" : b == HomeState.Banner.NONE_FOUND ? "nt_search" : "off_retry"));
-                go.setOnClickListener(v -> {
-                    if (b == HomeState.Banner.OFFLINE) bg.execute(this::rcReconnect);
+            if (sub != null) rcBanner.addView(text(sub, regular, 13, MUTED), lp(0, 2, 0, 0));
+            if (go != null) {
+                TextView goB = button(go);
+                goB.setOnClickListener(v -> {
+                    if (b == HomeState.Banner.OFFLINE && (why == HomeState.Offline.NO_WIFI || why == HomeState.Offline.OTHER_NETWORK)) startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));
+                    else if (b == HomeState.Banner.OFFLINE) new Thread(() -> rcReconnect(4000)).start();
                     else { clearGuide(); space = SPACE_REMOTE; show(2); }
                 });
                 LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, dp(48));
                 gp.topMargin = dp(10);
-                rcBanner.addView(go, gp);
+                rcBanner.addView(goB, gp);
             }
-            String linkLabel = b == HomeState.Banner.OFFLINE ? t("tvs_title") : t("bn_help");
             TextView help = text(linkLabel, medium, 14, LINK);
             help.setPadding(0, dp(10), 0, dp(4));
             help.setMinHeight(dp(44));
             help.setGravity(Gravity.CENTER_VERTICAL);
-            help.setOnClickListener(v -> { if (b == HomeState.Banner.OFFLINE) show(27); else { clearGuide(); space = SPACE_REMOTE; show(1); } });
+            help.setOnClickListener(v -> {
+                if (linkLabel.equals(t("tvs_title"))) show(27);
+                else if (b == HomeState.Banner.OFFLINE && why == HomeState.Offline.OTHER_NETWORK) { clearGuide(); space = SPACE_REMOTE; show(2); }
+                else { clearGuide(); space = SPACE_REMOTE; show(1); }
+            });
             rcBanner.addView(help);
         });
     }

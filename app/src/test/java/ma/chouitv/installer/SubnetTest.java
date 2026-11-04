@@ -43,4 +43,13 @@ public class SubnetTest {
     @Test public void anAddressThatIsNotWellFormedIsIgnored() {
         assertEquals("192.168.1.", Subnet.pick(ifaces("wlan0", "bad", "wlan1", "192.168.1.9"))[1]);
     }
+
+    @Test public void aTvIsOnTheSameNetworkWhenItsAddressSharesTheNetworkOfTheWifi() {
+        List<String[]> l = ifaces("rmnet_data3", "10.188.167.47", "wlan0", "192.168.1.60");
+        assertEquals(true, Subnet.sameNetwork("192.168.1.50", l));
+        assertEquals("another Wi-Fi (a visit, the office)", false, Subnet.sameNetwork("192.168.0.50", l));
+        assertEquals("the mobile data network is not the home", false, Subnet.sameNetwork("10.188.167.5", l));
+        assertEquals("no network at all", false, Subnet.sameNetwork("192.168.1.50", new ArrayList<String[]>()));
+        assertEquals(false, Subnet.sameNetwork(null, l));
+    }
 }

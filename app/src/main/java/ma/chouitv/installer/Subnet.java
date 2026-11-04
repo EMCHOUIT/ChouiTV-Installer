@@ -46,4 +46,10 @@ final class Subnet {
         }
         return fallback;
     }
+
+    /** The TV is on the network of the phone's Wi-Fi: its address starts with the same three numbers. */
+    static boolean sameNetwork(String tvIp, List<String[]> ifaces) {
+        String[] mine = pick(ifaces);
+        return mine != null && tvIp != null && tvIp.startsWith(mine[1]);
+    }
 }

@@ -53,18 +53,21 @@ final class Adb implements AutoCloseable {
     }
 
     /** Connects and authorises. The first time, the TV shows «Allow USB debugging?»: this waits up to 2 minutes for the answer. */
-    static Adb connect(String host, int port, File keyDir) throws Exception {
+    static Adb connect(String host, int port, File keyDir) throws Exception { return connect(host, port, keyDir, 4000, null); }
+
+    /** Same, with the time to reach the TV, and a call made the moment the TV asks the person to accept this phone (so the screen can say «look at the TV»). */
+    static Adb connect(String host, int port, File keyDir, int reachMs, Runnable onAsked) throws Exception {
         Socket s = new Socket();
         try {
-            return connected(s, host, port, keyDir);
+            return connected(s, host, port, keyDir, reachMs, onAsked);
         } catch (Exception e) {
             try { s.close(); } catch (IOException ignored) { }   // a refused or timed-out try must not keep its socket open
             throw e;
         }
     }
 
-    private static Adb connected(Socket s, String host, int port, File keyDir) throws Exception {
-        s.connect(new InetSocketAddress(host, port), 4000);
+    private static Adb connected(Socket s, String host, int port, File keyDir, int reachMs, Runnable onAsked) throws Exception {
+        s.connect(new InetSocketAddress(host, port), reachMs);
         s.setTcpNoDelay(true);
         s.setSoTimeout(125000);
         Adb a = new Adb(s);
@@ -85,6 +88,7 @@ final class Adb implements AutoCloseable {
                 a.send(A_AUTH, 2, 0, sign(kp.getPrivate(), p.data));   // a key the TV already knows needs no question
             } else {
                 a.send(A_AUTH, 3, 0, publicKeyText(kp));   // the TV asks the person to accept it
+                if (!sentKey && onAsked != null) onAsked.run();
                 sentKey = true;
             }
         }

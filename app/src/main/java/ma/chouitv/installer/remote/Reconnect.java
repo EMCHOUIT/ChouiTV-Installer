@@ -17,6 +17,13 @@ public final class Reconnect {
 
     public static boolean giveUp(int attempt) { return attempt > MAX_TRIES; }
 
+    /** The quiet tries while the app is open and the TV does not answer: every 3 s for 30 s, then every 10 s up to 2 minutes, then every 30 s. */
+    public static long backgroundDelayMs(long sinceStartMs) {
+        if (sinceStartMs < 30_000) return 3_000;
+        if (sinceStartMs < 120_000) return 10_000;
+        return 30_000;
+    }
+
     /** A broken link or a timeout is worth a new connection; a refused command or a bad key is not. */
     public static boolean worthRetrying(Exception e) {
         return e instanceof IOException;

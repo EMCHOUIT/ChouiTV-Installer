@@ -115,6 +115,21 @@ final class Net {
         }
     }
 
+    /** The IPv4 addresses of this phone, as pairs {interface name, address}. */
+    static List<String[]> ifaces() {
+        List<String[]> l = new ArrayList<>();
+        try {
+            for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements(); ) {
+                NetworkInterface ni = e.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (InetAddress a : Collections.list(ni.getInetAddresses())) {
+                    if (a instanceof java.net.Inet4Address) l.add(new String[] {ni.getName(), a.getHostAddress()});
+                }
+            }
+        } catch (Exception ignored) { }
+        return l;
+    }
+
     /** Hosts of this phone's Wi-Fi network (a /24) that answer on the ADB port, found in about two seconds. */
     static List<String> findTvs(int port) {
         List<String> found = Collections.synchronizedList(new ArrayList<String>());

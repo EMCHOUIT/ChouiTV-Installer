@@ -10,13 +10,30 @@ public final class HomeState {
     /** The short search for TVs when the app opens with none known: it never blocks and it is cut after this time. */
     public static final int SEARCH_BUDGET_MS = 4000;
 
-    public enum Link { ONLINE, RECONNECTING, OFFLINE }
+    public enum Link { ONLINE, RECONNECTING, OFFLINE, ASKING }
 
-    public enum Banner { HIDDEN, SEARCHING, FOUND, NONE_FOUND, OFFLINE }
+    /** What the banner says when the known TV does not answer. */
+    public enum Offline { NO_WIFI, OTHER_NETWORK, BOOTING, DEBUG_OFF, SILENT, AUTH }
+
+    /** A refusal that lasts less than this is a TV that is starting; after it, its network debugging is off. */
+    public static final long BOOT_WINDOW_MS = 30_000;
+
+    public static Offline offline(Cause c, long failingForMs) {
+        if (c == null) return Offline.SILENT;
+        switch (c) {
+            case NO_WIFI: return Offline.NO_WIFI;
+            case OTHER_NETWORK: return Offline.OTHER_NETWORK;
+            case AUTH: return Offline.AUTH;
+            case REFUSED: return failingForMs < BOOT_WINDOW_MS ? Offline.BOOTING : Offline.DEBUG_OFF;
+            default: return Offline.SILENT;
+        }
+    }
+
+    public enum Banner { HIDDEN, SEARCHING, FOUND, NONE_FOUND, OFFLINE, AUTH }
 
     /** The banner under the name: what the search is doing or found when there is no TV; only an unanswered TV when there is one. */
     public static Banner banner(boolean tvKnown, Link link, boolean searching, int found) {
-        if (tvKnown) return link == Link.OFFLINE ? Banner.OFFLINE : Banner.HIDDEN;
+        if (tvKnown) return link == Link.OFFLINE ? Banner.OFFLINE : link == Link.ASKING ? Banner.AUTH : Banner.HIDDEN;
         if (found > 0) return Banner.FOUND;
         return searching ? Banner.SEARCHING : Banner.NONE_FOUND;
     }
