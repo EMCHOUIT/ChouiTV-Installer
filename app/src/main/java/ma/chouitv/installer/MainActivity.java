@@ -379,6 +379,7 @@ public class MainActivity extends Activity {
     /** Makes this TV the current one and opens its page (the connection is made first, with the usual «not answering» window when it fails). */
     private void openTv(final TvList.Tv tv) {
         TvList.use(prefs(), tv.ip, tv.model);
+        if (!tv.ip.equals(curIp)) dropLink();   // the keys of the remote must not go to the TV that was used before
         Toast.makeText(this, t("last_wait"), Toast.LENGTH_SHORT).show();
         busy = true;
         bg.execute(() -> {
@@ -1867,7 +1868,7 @@ public class MainActivity extends Activity {
             return true;
         } catch (Exception e) {
             if (rcFailSince == 0) rcFailSince = android.os.SystemClock.elapsedRealtime();
-            rcAsleep = false;
+            dropLink();
             rcCause = Cause.of(e, wifiActive(), Net.ifaces().isEmpty() || Subnet.sameNetwork(last.ip, Net.ifaces()), rcAsked);
             rcStatus(RC_OFFLINE, 0);
             if (rcCause == Cause.SILENT || rcCause == Cause.REFUSED) movedNow = rcLookElsewhere(last);   // the box may have given it another address; another TV may answer
@@ -1878,6 +1879,16 @@ public class MainActivity extends Activity {
     }
 
     private volatile boolean rcAsleep;
+
+    /** Lets go of the link to a TV that is not the one wanted (or that stopped answering): its keys must never reach another TV, and a dead link must not hold the background thread for 30 s. */
+    private void dropLink() {
+        final Adb old = tv;
+        tv = null;
+        flow = null;
+        curIp = "";
+        rcAsleep = false;
+        if (old != null) new Thread(old::close, "rc-close").start();
+    }
 
     /** The TV answers: is its screen asleep (standby with the network on)? The banner then offers to wake it. */
     private void rcCheckAsleep() {
@@ -2375,6 +2386,7 @@ public class MainActivity extends Activity {
             return;
         }
         final boolean alive = flow != null && want.ip.equals(curIp);
+        if (!alive) dropLink();
         rcState = alive ? RC_OK : RC_RECONNECTING;
         show(25);
         bg.execute(() -> {
