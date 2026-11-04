@@ -67,6 +67,7 @@ import ma.chouitv.installer.remote.Socket;
 import ma.chouitv.installer.remote.RcRing;
 import ma.chouitv.installer.remote.RcSlider;
 import ma.chouitv.installer.remote.TvList;
+import ma.chouitv.installer.remote.TvLog;
 import ma.chouitv.installer.remote.Volume;
 import ma.chouitv.installer.remote.Reconnect;
 
@@ -249,9 +250,11 @@ public class MainActivity extends Activity {
             case 26: moreScreen(body, button); break;
             case 27: myTvsScreen(body, button); break;
             case 28: splashScreen(body, button); break;
+            case 29: journalScreen(body, button); break;
+            case 30: fixScreen(body, button); break;
             default: done(body, button); break;
         }
-        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
+        if (n == 25 || n == 26 || n == 27 || n == 28 || n == 12 || n == 29 || n == 30) col.removeView(button);   // no bottom button: the remote has the whole screen, the other four go back from the top
     }
 
     /** About: the version, and a button that asks GitHub whether a newer one exists (then offers to download it). */
@@ -1377,6 +1380,7 @@ public class MainActivity extends Activity {
                 Restore real = new Restore(tvModel, date, cleanResult.disabled).withServices(active);   // what was really turned off
                 saveRestore(real);
                 pushRestoreToTv(real);
+                logTv(TvLog.CLEANUP, String.valueOf(cleanResult == null ? 0 : cleanResult.disabled.size()));
                 runOnUiThread(() -> { busy = false; getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); show(10); });
             } catch (final Exception e) {
                 runOnUiThread(() -> {
@@ -1483,10 +1487,48 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
             cp.setMarginStart(dp(14));
             c.addView(col, cp);
-            c.setOnClickListener(v -> { if (!busy) { clearGuide(); startSpace(sp); } });   // choosing a task yourself leaves any guided path
+            c.setOnClickListener(v -> { if (busy) return; clearGuide(); if (sp == SPACE_REACT) show(30); else startSpace(sp); });   // choosing a task yourself leaves any guided path; «Fix» starts from the symptom
             body.addView(c, lp(0, 12, 0, 0));
         }
+        TextView jr = text(t("jr_open") + "  ›", medium, 15, LINK);
+        jr.setGravity(Gravity.CENTER);
+        jr.setMinHeight(dp(48));
+        jr.setOnClickListener(v -> show(29));
+        body.addView(jr, lp(0, 12, 0, 0));
         resumeCard(body);
+    }
+
+    /** What the app did to this TV, newest first (kept on the phone only). */
+    private void journalScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("jr_t"), t("jr_sub"));
+        java.util.List<TvLog.Entry> l = TvLog.load(prefs(), curIp);
+        if (l.isEmpty()) { body.addView(text(t("jr_empty"), regular, 15, MUTED), lp(0, 12, 0, 0)); return; }
+        java.text.DateFormat df = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, new java.util.Locale(Strings.lang));
+        for (TvLog.Entry e : l) {
+            LinearLayout c = card(false);
+            c.addView(text(t("jr_" + e.code, e.detail), medium, 16, SAND));
+            c.addView(text(df.format(new java.util.Date(e.time)), regular, 12, MUTED), lp(0, 2, 0, 0));
+            body.addView(c, lp(0, 8, 0, 0));
+        }
+    }
+
+    /** «Fix a problem» starts from what the family sees: an app disappeared (the apps that were turned off), the remote does not work (the network-debugging steps), something else after a clean-up (what to expect). */
+    private void fixScreen(LinearLayout body, TextView button) {
+        titleBlock(body, t("fx_t"), t("fx_sub"));
+        String[] rows = {"fx_app", "fx_remote", "fx_other"};
+        for (int i = 0; i < rows.length; i++) {
+            final int which = i;
+            LinearLayout c = card(i == 0);
+            c.setGravity(Gravity.CENTER_VERTICAL);
+            c.addView(text(t(rows[i]), display, 20, SAND));
+            c.setOnClickListener(v -> {
+                if (busy) return;
+                if (which == 0) { clearGuide(); startSpace(SPACE_REACT); }
+                else if (which == 1) { clearGuide(); space = SPACE_REMOTE; show(1); }
+                else new AlertDialog.Builder(this).setTitle(t("fx_other")).setMessage(t("fx_other_msg")).setPositiveButton(t("about_close"), null).show();
+            });
+            body.addView(c, lp(0, 10, 0, 0));
+        }
     }
 
 
@@ -2624,6 +2666,7 @@ public class MainActivity extends Activity {
                     }
                     reactBack = back;
                     reactAsked = asked.size();
+                    logTv(TvLog.REACTIVATE, String.valueOf(reactSel.size()));
                     runOnUiThread(() -> { busy = false; show(13); });
                 } catch (final Exception e) {
                     runOnUiThread(() -> { busy = false; button.setAlpha(1f); updateReactButton(button); Toast.makeText(this, t("cl_err", friendly(e, "", false)), Toast.LENGTH_LONG).show(); });
@@ -2937,6 +2980,9 @@ public class MainActivity extends Activity {
 
     /** Starts or resumes a guided path: each space begins with the connection to the TV, except the step that only asks to change TV. */
     /** The set-up of a TV, step by step (the existing guided path: clean up, install ChouiTV, set up). */
+    /** Writes a line in the journal of the TV the app talks to. */
+    private void logTv(String code, String detail) { TvLog.add(prefs(), curIp, System.currentTimeMillis(), code, detail); }
+
     private void startEquip() {
         guide = new Guide(Guide.Path.EQUIP);
         saveGuide();

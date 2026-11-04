@@ -9,9 +9,9 @@ import org.junit.Test;
 /** Where «back» goes from each screen, whether the visible Back control shows, and the double press that leaves the app. */
 public class NavTest {
     @Test public void theMappingIsTheOneTheSystemBackAlwaysHad() {
-        assertEquals(26, Nav.backTarget(18, false, false, false));
+        assertEquals(12, Nav.backTarget(18, false, false, false));
         assertEquals(27, Nav.backTarget(12, false, false, false));
-        assertEquals(18, Nav.backTarget(19, false, false, false));
+        assertEquals(12, Nav.backTarget(19, false, false, false));
         assertEquals(19, Nav.backTarget(20, false, false, false));
         assertEquals(19, Nav.backTarget(21, false, false, false));
         assertEquals(18, Nav.backTarget(22, false, false, false));
@@ -69,6 +69,13 @@ public class NavTest {
         assertFalse(Nav.startsDirect(false, false));  // first time: the usual path
         assertFalse(Nav.startsDirect(true, true));    // a guided path keeps its own steps
         assertFalse(Nav.startsDirect(true, false));
+    }
+
+    @Test public void theJournalAndTheFixScreenGoBackToThePageOfTheTv() {
+        assertEquals(12, Nav.backTarget(29, false, false, false));
+        assertEquals(12, Nav.backTarget(30, false, false, false));
+        assertTrue(Nav.showsBack(29, false, false, false));
+        assertTrue(Nav.showsBack(30, false, false, false));
     }
 
     @Test public void theRemoteIsTheHomeAndNothingHasATabBar() {
