@@ -2,15 +2,16 @@
 """Regenerates the drawn images of the READMEs (never the real phone screenshots).
 
     python docs/media/build_media.py            # everything
-    python docs/media/build_media.py whatsnew   # one kind: whatsnew, migration, hero, qr
+    python docs/media/build_media.py whatsnew   # one kind: whatsnew, migration, hero, tabs, qr
 
 What it makes
   whatsnew-{ar,fr,en}.png   the "what's new" card of the current version   (docs/media/src/whatsnew.html)
   migration-{ar,fr,en}.png  the 3.x -> 4.0 diagram                          (docs/media/src/migration.html)
   qr-download.png           the QR code of the STABLE link (releases/latest/download/ChouiTV-Installer.apk): it never needs redoing
                             for a new version. Needs the 'qrcode' package (pip install qrcode).
-  hero-{ar,fr,en}.png       only the version number in the pill is redrawn; the phone screenshot inside is a real
-                            screenshot and is left as it is. Idempotent: running it twice gives the same file.
+  hero-{ar,fr,en}.png       the top image of the READMEs (docs/media/src/hero.html); the phone inside is a real screenshot
+                            (docs/media/src/shots/<lang>-remote.png). The version number is in the pill of hero.html.
+  tabs-{ar,fr,en}.png       the three tabs side by side (docs/media/src/tabs.html), real screenshots in docs/media/src/shots/
 
 Needs: Python 3 with Pillow (pip install pillow), and Microsoft Edge or Google Chrome (set CHROME to its path if it is not found).
 Fonts are the ones in app/src/main/assets/fonts (licences: THIRD_PARTY_NOTICES.md). The HTML in docs/media/src is the source of truth:
@@ -24,9 +25,8 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONTS = os.path.join(HERE, "..", "..", "app", "src", "main", "assets", "fonts")
-VERSION = "1.6"
 LANGS = ("ar", "fr", "en")
-SIZES = {"whatsnew": (1800, 980), "migration": (1800, 780)}
+SIZES = {"whatsnew": (1800, 980), "migration": (1800, 780), "hero": (1800, 980), "tabs": (1800, 1300)}
 
 
 def browser():
@@ -60,27 +60,6 @@ def shot(kind, lang):
     print("wrote", out)
 
 
-def hero():
-    """Redraws the last digit of 'ChouiTV Installer · 1.x' in the pill. Position and colours measured on the 1800x980 images."""
-    from PIL import Image, ImageDraw, ImageFont
-    S = 8
-    font = ImageFont.truetype(os.path.join(FONTS, "Thmanyah-Medium.otf"), 26 * S)
-    boxes = {"fr": (398, 126, 414, 148), "en": (398, 126, 414, 148), "ar": (1632, 125, 1648, 148)}   # what is wiped
-    digit = VERSION[-1]
-    mask = Image.new("L", (40 * S, 40 * S), 0)
-    ImageDraw.Draw(mask).text((2 * S, 0), digit, font=font, fill=255)
-    mask = mask.crop(mask.getbbox()).resize((12, 18), Image.LANCZOS)   # the pill's own font is narrower than Thmanyah: squeezed to the old digit's size
-    for lang in LANGS:
-        path = os.path.join(HERE, "hero-%s.png" % lang)
-        im = Image.open(path).convert("RGB")
-        x0, y0, x1, y1 = boxes[lang]
-        fill = im.getpixel((x0 + 1, y0 + 1))                       # the pill is a flat colour
-        ImageDraw.Draw(im).rectangle((x0, y0, x1, y1), fill=fill)
-        im.paste(Image.new("RGB", mask.size, (209, 171, 104)), (x0 + 2, y0 + 3), mask)
-        im.save(path, optimize=True)
-        print("patched", path)
-
-
 def qr():
     import qrcode
     from PIL import Image, ImageDraw
@@ -106,11 +85,9 @@ def qr():
 
 
 if __name__ == "__main__":
-    what = sys.argv[1:] or ["whatsnew", "migration", "hero", "qr"]
+    what = sys.argv[1:] or ["whatsnew", "migration", "hero", "tabs", "qr"]
     for k in what:
-        if k == "hero":
-            hero()
-        elif k == "qr":
+        if k == "qr":
             qr()
         else:
             for lang in LANGS:

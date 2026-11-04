@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  body { height: 1300px; }
+  .stage { height: 1300px; padding: 60px 90px 0; }
+  .head { display: flex; align-items: baseline; gap: 26px; margin-bottom: 30px; }
+  h1 { font-size: 64px; }
+  .tag { font-size: 24px; }
+  .row { display: flex; gap: 90px; justify-content: center; }
+  .item { width: 420px; display: flex; flex-direction: column; align-items: center; }
+  .phone { width: 420px; height: 900px; border-radius: 52px; border: 4px solid rgba(214, 175, 107, .55); background: #050f09; padding: 12px; box-shadow: 0 0 70px rgba(32, 98, 60, .45); }
+  .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 40px; display: block; }
+  .item b { margin-top: 26px; font-size: 40px; color: var(--gold); font-weight: 700; }
+  .item span { margin-top: 6px; font-size: 28px; color: var(--cream); text-align: center; line-height: 1.3; }
+</style></head>
+<body>
+<div class="stage" id="root">
+  <div class="head"><h1 id="t"></h1></div>
+  <div class="row" id="row"></div>
+</div>
+<script src="common.js"></script>
+<script>
+const L = {
+  fr: { dir: "ltr", t: "Trois onglets, tout au même endroit",
+        items: [["Télécommande", "Elle s'ouvre toujours ici", "remote"], ["Mes télés", "Une carte par télé, avec son état", "tvs"], ["Équiper une télé", "Les étapes, la durée, vos réglages", "equip"]] },
+  en: { dir: "ltr", t: "Three tabs, everything in one place",
+        items: [["Remote", "It always opens here", "remote"], ["My TVs", "One card per TV, with its state", "tvs"], ["Set up a TV", "The steps, the time, your settings", "equip"]] },
+  ar: { dir: "rtl", t: "ثلاثة تبويبات وكل شيء في مكان واحد",
+        items: [["جهاز التحكم", "يفتح دائمًا هنا", "remote"], ["تلفازاتي", "بطاقة لكل تلفاز بحالته", "tvs"], ["تجهيز تلفاز", "الخطوات والمدة وإعداداتك", "equip"]] }
+};
+const c = pageLang(L);
+const lang = document.documentElement.lang;
+document.getElementById("t").innerHTML = c.t;
+document.getElementById("row").innerHTML = c.items.map(([h, p, k]) => `<div class="item"><div class="phone"><img src="shots/${lang}-${k}.png" alt=""></div><b>${h}</b><span>${p}</span></div>`).join("");
+</script>
+</body></html>

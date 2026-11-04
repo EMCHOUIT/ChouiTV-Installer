@@ -25,6 +25,8 @@ A small app on your phone (**ChouiTV Companion**) that finds your TV, drives it 
 
 <img src="docs/media/remote-en.png" alt="The ChouiTV Companion remote and its apps pop-up, on a phone connected to the TV" width="100%">
 
+<img src="docs/media/tabs-en.png" alt="The three tabs of ChouiTV Companion: the remote, My TVs and Set up a TV" width="100%">
+
 The app is now called **ChouiTV Companion** (it was ChouiTV Installer up to 1.7): it still installs and cleans, and **it also drives the TV**.
 
 - **A real remote in your pocket**: a pad of four wedges around a big OK, Back, Home, Mute, volume and power, with raised keys that sink under your finger. Hold an arrow or the volume to repeat.

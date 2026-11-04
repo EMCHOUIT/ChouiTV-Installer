@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  body { height: 980px; }
+  .stage { height: 980px; padding: 92px 90px 0; display: grid; grid-template-columns: 1fr 400px; column-gap: 70px; }
+  .col { display: flex; flex-direction: column; }
+  .pillrow { margin-bottom: 8px; }
+  .logo { font-family: "GreatVibes", cursive; font-size: 250px; line-height: 1.05; color: #F1E8D2; text-shadow: 0 0 60px rgba(214, 175, 107, .45); margin: 0 0 6px; }
+  .rule { height: 3px; width: 480px; background: linear-gradient(90deg, var(--gold), transparent); margin: 10px 0 36px; }
+  [dir=rtl] .rule { background: linear-gradient(270deg, var(--gold), transparent); }
+  h1 { font-size: 58px; line-height: 1.2; }
+  .sub { font-size: 36px; color: var(--muted); margin: 14px 0 44px; font-weight: 400; }
+  .chips { display: flex; gap: 14px; flex-wrap: nowrap; }
+  .chip { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 999px; border: 2px solid rgba(214, 175, 107, .85); background: #1B3325; color: var(--cream); font-size: 27px; font-weight: 500; white-space: nowrap; }
+  .chip svg { width: 26px; height: 26px; flex: none; }
+  .foot { margin-top: 30px; font-size: 30px; color: var(--muted); }
+  .phone { margin-top: -6px; width: 400px; height: 836px; border-radius: 56px; border: 4px solid rgba(214, 175, 107, .55); background: #050f09; padding: 14px; box-shadow: 0 0 90px rgba(32, 98, 60, .5); }
+  .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 42px; display: block; }
+</style></head>
+<body>
+<div class="stage" id="root">
+  <div class="col">
+    <div class="pillrow"><span class="pill"><svg class="star" viewBox="0 0 100 100"><use href="#st" fill="#D1AB68"/></svg><span dir="ltr">ChouiTV Companion · 2.2</span></span></div>
+    <div class="logo ltr">ChouiTV</div>
+    <div class="rule"></div>
+    <h1 id="t"></h1>
+    <p class="sub" id="s"></p>
+    <div class="chips" id="chips"></div>
+    <p class="foot" id="f"></p>
+  </div>
+  <div class="phone"><img id="shot" alt=""></div>
+</div>
+<script src="common.js"></script>
+<script>
+const L = {
+  fr: { dir: "ltr", t: "Installez ChouiTV sur votre télé<br>depuis votre téléphone", s: "Sans ordinateur · en environ quelques minutes",
+        chips: ["3 onglets", "Se reconnecte tout seul", "Tout est annulable"], f: "Gratuit · sans compte ni publicité" },
+  en: { dir: "ltr", t: "Install ChouiTV on your TV<br>from your phone", s: "No computer · in a few minutes",
+        chips: ["3 tabs", "Reconnects by itself", "Everything can be undone"], f: "Free · no account, no ads" },
+  ar: { dir: "rtl", t: "ثبّت ChouiTV على تلفازك<br>من هاتفك", s: "دون حاسوب · في دقائق قليلة",
+        chips: ["ثلاثة تبويبات", "يعيد الاتصال وحده", "كل شيء يمكن التراجع عنه"], f: "مجاني · دون حساب ولا إعلانات" }
+};
+const c = pageLang(L);
+const lang = document.documentElement.lang;
+document.getElementById("t").innerHTML = c.t; document.getElementById("s").innerHTML = c.s; document.getElementById("f").innerHTML = c.f;
+document.getElementById("chips").innerHTML = c.chips.map(x => `<span class="chip"><svg viewBox="0 0 100 100"><use href="#st" fill="#D1AB68"/></svg>${x}</span>`).join("");
+document.getElementById("shot").src = "shots/" + lang + "-remote.png";
+</script>
+</body></html>

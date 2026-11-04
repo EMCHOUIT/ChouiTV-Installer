@@ -3354,7 +3354,7 @@ public class MainActivity extends Activity {
         if (getMode) {
             secondaryBelow(button, t("cl_home"), () -> show(12));
         } else {
-            button.setText(t("cl_home"));
+            button.setText(t(profilesFromMore ? "back" : "cl_home"));   // from «More» it is plainly «Back»
             secondaryStyle(button);   // each saved setting has its own «send»: the way back must not compete with them
             button.setOnClickListener(v -> show(profilesFromMore ? 26 : 12));
         }

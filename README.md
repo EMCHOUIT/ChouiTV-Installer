@@ -29,6 +29,8 @@
 
 <img src="docs/media/remote-ar.png" alt="جهاز التحكم في ChouiTV Companion ونافذة التطبيقات، على هاتف متصل بالتلفزيون" width="100%">
 
+<img src="docs/media/tabs-ar.png" alt="التبويبات الثلاثة في ChouiTV Companion: جهاز التحكم وتلفازاتي وتجهيز تلفاز" width="100%">
+
 <div dir="rtl" align="right">
 
 أصبح اسم التطبيق **ChouiTV Companion** (كان ChouiTV Installer حتى الإصدار 1.7): ما زال يثبّت وينظّف، و**يتحكّم الآن في التلفزيون أيضًا**.

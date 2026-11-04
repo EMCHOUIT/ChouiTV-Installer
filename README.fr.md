@@ -25,6 +25,8 @@ Une petite appli sur votre téléphone (**ChouiTV Companion**) qui trouve votre 
 
 <img src="docs/media/remote-fr.png" alt="La télécommande de ChouiTV Companion et son pop-up d'applications, sur un téléphone connecté à la télé" width="100%">
 
+<img src="docs/media/tabs-fr.png" alt="Les trois onglets de ChouiTV Companion : la télécommande, Mes télés et Équiper une télé" width="100%">
+
 L'appli s'appelle désormais **ChouiTV Companion** (elle s'appelait ChouiTV Installer jusqu'à la 1.7) : elle installe et nettoie toujours, et **elle pilote aussi la télé**.
 
 - **Une vraie télécommande dans votre poche** : un pavé à quatre secteurs autour d'un grand OK, Retour, Accueil, Muet, volume et veille, avec des touches en relief qui s'enfoncent sous le doigt. Gardez le doigt sur une flèche ou sur le volume pour répéter.
