@@ -252,7 +252,7 @@ cd ChouiTV-Installer
 ./gradlew :app:testDebugUnitTest    # 181 tests sur la JVM
 ```
 
-Version actuelle : **2.2.2** (`versionCode 21`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **2.4** (`versionCode 22`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -262,6 +262,8 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **2.4** | Confort de la télécommande (Plus › Confort) : vitesse de répétition, taille des mots des touches, contraste élevé (noir et blanc, bords nets), mode une main qui descend la télécommande, case à cocher pour les boutons de volume du téléphone ; disposition « 5 touches » ; partager une disposition en texte et en coller une reçue |
+| **2.3** | La télécommande se dessine depuis une disposition : 6 modèles (Classique, Droitier, Gaucher, Simple et grand, Écran court, 5 touches), un éditeur pour déplacer, ajouter et retirer les touches (le cercle, Retour et le volume restent toujours), la bascule et la pilule de volume, les boutons de volume du téléphone qui commandent la TV |
 | **2.2.2** | L'affichage s'adapte à tous les écrans : la télécommande prend la place qui reste (le cercle rétrécit si l'écran est court), les touches grandissent avec la taille du texte et leurs mots se règlent sur la largeur, une tablette garde le contenu étroit et centré |
 | **2.2.1** | Les images des README sont refaites avec les trois onglets (en arabe, français et anglais, à partir de vraies captures) ; l'écran des réglages enregistrés dit « Retour » quand on y vient depuis Plus |
 | **2.2** | Jamais bloqué : l'appli s'ouvre toujours sur la télécommande, grisée en démonstration quand il n'y a aucune télé, avec « Connexion… » sous le nom d'une télé connue ; plus d'écran d'attente ni de fenêtre « ne répond pas » ; un bandeau dit la cause (pas de Wi-Fi, autre Wi-Fi, télé qui démarre, Débogage réseau coupé, télé éteinte, autorisation à donner sur la télé) et l'appli réessaie toute seule (toutes les 3 s, puis moins souvent) ; elle se reconnecte dès que le Wi-Fi revient ; la recherche de télés montre chaque télé dès qu'elle répond, avec son état, un verdict et « Il manque une télé ? » au bout de 4 s ; une télé qui a changé d'adresse est retrouvée par son numéro de série ; une autre télé qui répond est proposée ; « Équiper la suivante » ; la recherche prend le Wi-Fi de la maison et non les données mobiles (Android 16) ; les télés sont nommées par ce qu'elles annoncent sur le réseau (« Salon »), même avant l'autorisation ; une télé vue dont le débogage est coupé le dit (« Débogage réseau à activer ») ; « Allumer » pour une télé qui dort avec son réseau actif ; trois onglets (Télécommande, Mes télés, Plus) ; l'étape Réglages propose d'abord vos réglages enregistrés ; un écran de réussite dit ce qui a été fait et comment l'annuler (la demande d'étoile est dans Plus › À propos) ; « Heure du Maroc » au lieu d'Africa/Abidjan, et Africa/Casablanca pour un fichier de Casablanca ; un aperçu « Équiper Salon » (étapes, durée, nettoyage facultatif) à la place de la fenêtre de la première connexion ; « Mes réglages enregistrés » dans Plus |
