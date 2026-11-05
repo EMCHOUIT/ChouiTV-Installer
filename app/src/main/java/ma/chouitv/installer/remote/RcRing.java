@@ -39,13 +39,21 @@ public final class RcRing extends View {
     private Listener listener;
     private int pressed = RingGeometry.NONE;
     private float scale = 1f;
+    private boolean contrast;
+    private int firstMs = 400, repeatMs = 120;
+
+    /** High contrast: black wedges with bright white edges and chevrons, a white OK. */
+    public void setContrast(boolean on) { contrast = on; invalidate(); }
+
+    /** How a held arrow repeats: the first wait, then the wait between two. */
+    public void setRepeat(int first, int every) { firstMs = first; repeatMs = every; }
 
     private final Runnable again = new Runnable() {
         @Override public void run() {
             Integer k = RingGeometry.keyOf(pressed);
             if (k != null && pressed != RingGeometry.OK && listener != null) {
                 listener.onKey(k);
-                ui.postDelayed(this, 120);
+                ui.postDelayed(this, repeatMs);
             }
         }
     };
@@ -79,10 +87,9 @@ public final class RcRing extends View {
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 pressed = zone;
-                if (zone != RingGeometry.NONE) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                 if (zone != RingGeometry.NONE && zone != RingGeometry.OK && listener != null) {
                     listener.onKey(RingGeometry.keyOf(zone));
-                    ui.postDelayed(again, 400);
+                    ui.postDelayed(again, firstMs);
                 }
                 invalidate();
                 return true;
@@ -142,19 +149,19 @@ public final class RcRing extends View {
         // the face, which sinks when pressed
         c.save();
         if (down) c.translate(0f, SINK);
-        fill.setShader(down ? null : new LinearGradient(0f, bounds.top, 0f, bounds.bottom, 0xFF31634C, 0xFF193F2E, Shader.TileMode.CLAMP));
-        fill.setColor(0xFF173A2B);
+        fill.setShader(down || contrast ? null : new LinearGradient(0f, bounds.top, 0f, bounds.bottom, 0xFF31634C, 0xFF193F2E, Shader.TileMode.CLAMP));
+        fill.setColor(contrast ? (down ? 0xFF3A3A3A : 0xFF000000) : 0xFF173A2B);
         c.drawPath(path, fill);
         fill.setShader(null);
         line.setStyle(Paint.Style.STROKE);
-        line.setStrokeWidth(1.2f);
-        line.setColor(0x38E9D9A6);
+        line.setStrokeWidth(contrast ? 4f : 1.2f);
+        line.setColor(contrast ? 0xFFFFFFFF : 0x38E9D9A6);
         c.drawPath(path, line);
         // chevron
-        line.setStrokeWidth(3.6f);
+        line.setStrokeWidth(contrast ? 6f : 3.6f);
         line.setStrokeCap(Paint.Cap.ROUND);
         line.setStrokeJoin(Paint.Join.ROUND);
-        line.setColor(CHEVRON);
+        line.setColor(contrast ? 0xFFFFFFFF : CHEVRON);
         float cx = px(106f, angle), cy = py(106f, angle);
         double a = Math.toRadians(angle + 90);
         float s = 10.4f;
@@ -175,11 +182,11 @@ public final class RcRing extends View {
         // the plate
         fill.setStyle(Paint.Style.FILL);
         fill.setShader(null);
-        fill.setColor(PLATE);
+        fill.setColor(contrast ? 0xFF000000 : PLATE);
         c.drawCircle(150f, 150f, 149f, fill);
         line.setStyle(Paint.Style.STROKE);
-        line.setStrokeWidth(1.2f);
-        line.setColor(0x73C9A44C);
+        line.setStrokeWidth(contrast ? 5f : 1.2f);
+        line.setColor(contrast ? 0xFFFFFFFF : 0x73C9A44C);
         c.drawCircle(150f, 150f, 148.4f, line);
         line.setStrokeWidth(3.6f);
         line.setColor(0x99000000);
@@ -198,14 +205,17 @@ public final class RcRing extends View {
         c.drawCircle(150f, 150f + LIP, 56.5f, fill);
         c.save();
         if (down) c.translate(0f, SINK);
-        fill.setShader(new LinearGradient(0f, 93.5f, 0f, 206.5f, down ? 0xFF9A7832 : 0xFFF0DC9E, down ? 0xFFC9A44C : 0xFFA5822F, Shader.TileMode.CLAMP));
+        fill.setShader(contrast ? null : new LinearGradient(0f, 93.5f, 0f, 206.5f, down ? 0xFF9A7832 : 0xFFF0DC9E, down ? 0xFFC9A44C : 0xFFA5822F, Shader.TileMode.CLAMP));
+        if (contrast) fill.setColor(down ? 0xFFBBBBBB : 0xFFFFFFFF);
         c.drawCircle(150f, 150f, 56.5f, fill);
         line.setStrokeWidth(1.2f);
         line.setColor(0x992A1D05);
         c.drawCircle(150f, 150f, 56.5f, line);
-        fill.setShader(new LinearGradient(0f, 105f, 0f, 195f, new int[] {0xFFA8853A, 0xFFC9A44C, 0xFFE2C77A}, new float[] {0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        fill.setShader(contrast ? null : new LinearGradient(0f, 105f, 0f, 195f, new int[] {0xFFA8853A, 0xFFC9A44C, 0xFFE2C77A}, new float[] {0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        if (contrast) fill.setColor(down ? 0xFFDDDDDD : 0xFFFFFFFF);
         c.drawCircle(150f, 150f, 45f, fill);
         fill.setShader(null);
+        label.setColor(contrast ? 0xFF000000 : 0xFF241A04);
         c.drawText("OK", 150f, 160.5f, label);
         c.restore();
         c.restore();

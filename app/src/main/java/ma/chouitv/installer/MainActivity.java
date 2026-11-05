@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
     public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
         // the volume buttons of the phone drive the TV while the remote is on screen and a TV answers (a setting in «More», on by default)
         if ((keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)
-                && step == 25 && rcState == RC_OK && !"0".equals(prefs().get("vol_phone")) && LastTv.load(prefs()) != null) {
+                && step == 25 && rcState == RC_OK && cfPhoneVolume() && LastTv.load(prefs()) != null) {
             rcVolStep(keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP);
             return true;
         }
@@ -366,7 +366,7 @@ public class MainActivity extends Activity {
     private void moreScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("more_title"), t("more_sub"));
         Object[][] rows = {
-            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.TV, "more_layout"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.MUTE, "more_physvol"}, {RcIcon.GEAR, "more_comfort"}, {RcIcon.HOME, "more_about_row"}};
+            {RcIcon.BOOK, "more_lang"}, {RcIcon.APPS, "more_saved"}, {RcIcon.TV, "more_layout"}, {RcIcon.GEAR, "more_vol"}, {RcIcon.MUTE, "rc_vol_limit"}, {RcIcon.KEYBOARD, "more_debug"}, {RcIcon.GEAR, "more_comfort"}, {RcIcon.HOME, "more_about_row"}};
         for (int i = 0; i < rows.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
@@ -388,13 +388,7 @@ public class MainActivity extends Activity {
                     case 3: if (LastTv.load(prefs()) != null) rcVolumeDialog(); else needTvDialog(); break;
                     case 4: rcLimitDialog(); break;
                     case 5: clearGuide(); space = SPACE_REMOTE; show(1); break;
-                    case 7: show(34); break;
-                    case 6: {
-                        boolean on = !"0".equals(prefs().get("vol_phone"));
-                        prefs().put("vol_phone", on ? "0" : "1");
-                        Toast.makeText(this, t(on ? "more_physvol_off" : "more_physvol_on"), Toast.LENGTH_SHORT).show();
-                        break;
-                    }   // the three steps with the network debugging, then the connection
+                    case 6: show(34); break;
                     default: aboutDialog(); break;
                 }
             });
@@ -1882,7 +1876,6 @@ public class MainActivity extends Activity {
             switch (e.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     x.setPressed(true);
-                    buzz(x);
                     rcKey(code);
                     ui.postDelayed(again[0], Comfort.FIRST_REPEAT_MS);
                     return true;
@@ -1899,45 +1892,28 @@ public class MainActivity extends Activity {
 
 
     // ---- comfort settings of the remote: the buzz of a press, the repeat speed, high contrast, the size of the words, the remote lowered for one hand ----
-    private int cfHaptic() { return Comfort.level(prefs().get("rc_haptic"), Comfort.DEFAULT_HAPTIC, Comfort.HAPTIC_LEVELS); }
     private int cfRepeat() { return Comfort.level(prefs().get("rc_repeat"), Comfort.DEFAULT_REPEAT, Comfort.REPEAT_LEVELS); }
     private int cfText() { return Comfort.level(prefs().get("rc_text"), Comfort.DEFAULT_TEXT, Comfort.TEXT_LEVELS); }
     private boolean cfContrast() { return "1".equals(prefs().get("rc_contrast")); }
     private boolean cfLowered() { return "1".equals(prefs().get("rc_lowered")); }
+    private boolean cfPhoneVolume() { return !"0".equals(prefs().get("vol_phone")); }
     /** The colour of the icons and printed words of the keys. */
     private int rcIcon() { return cfContrast() ? 0xFFFFFFFF : 0xFFE9D9A6; }
 
-    /** The buzz of a press, at the strength chosen in the comfort settings (none when it is off). */
-    private void buzz(View v) {
-        int lv = cfHaptic();
-        if (lv == 0) return;
-        try {
-            android.os.Vibrator vb = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
-            if (vb != null && vb.hasVibrator()) {
-                int amp = vb.hasAmplitudeControl() ? Comfort.hapticAmplitude(lv) : android.os.VibrationEffect.DEFAULT_AMPLITUDE;
-                vb.vibrate(android.os.VibrationEffect.createOneShot(Comfort.hapticMs(lv), amp));
-                return;
-            }
-        } catch (Exception ignored) { }
-        v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
-    }
-
-    private static final String[][] COMFORT_ROWS = {
-        {"rc_haptic", "cf_haptic"}, {"rc_repeat", "cf_repeat"}, {"rc_text", "cf_text"}, {"rc_contrast", "cf_contrast"}, {"rc_lowered", "cf_lowered"}};
+    private static final String[] COMFORT_KEYS = {"cf_repeat", "cf_text", "cf_phonevol", "cf_contrast", "cf_lowered"};
 
     private String comfortValue(int row) {
         switch (row) {
-            case 0: return t(new String[] {"cf_off", "cf_light", "cf_strong"}[cfHaptic()]);
-            case 1: return t(new String[] {"cf_slow", "cf_normal", "cf_fast"}[cfRepeat()]);
-            case 2: return t(new String[] {"cf_text0", "cf_text1", "cf_text2"}[cfText()]);
-            case 3: return t(cfContrast() ? "cf_on" : "cf_dis");
-            default: return t(cfLowered() ? "cf_on" : "cf_dis");
+            case 0: return t(new String[] {"cf_slow", "cf_normal", "cf_fast"}[cfRepeat()]);
+            default: return t(new String[] {"cf_text0", "cf_text1", "cf_text2"}[cfText()]);
         }
     }
 
+    private boolean comfortChecked(int row) { return row == 2 ? cfPhoneVolume() : row == 3 ? cfContrast() : cfLowered(); }
+
     private void comfortScreen(LinearLayout body, TextView button) {
         titleBlock(body, t("cf_title"), t("cf_sub"));
-        for (int i = 0; i < COMFORT_ROWS.length; i++) {
+        for (int i = 0; i < COMFORT_KEYS.length; i++) {
             final int which = i;
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -1947,24 +1923,29 @@ public class MainActivity extends Activity {
             row.setClickable(true);
             LinearLayout col = new LinearLayout(this);
             col.setOrientation(LinearLayout.VERTICAL);
-            col.addView(text(t(COMFORT_ROWS[i][1]), medium, 16, SAND));
-            col.addView(text(t(COMFORT_ROWS[i][1] + "_d"), regular, 13, MUTED));
+            col.addView(text(t(COMFORT_KEYS[i]), medium, 16, SAND));
+            col.addView(text(t(COMFORT_KEYS[i] + "_d"), regular, 13, MUTED));
             row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView val = text(comfortValue(i), medium, 15, GOLD);
-            val.setGravity(Gravity.END);
-            row.addView(val, new LinearLayout.LayoutParams(-2, -2));
+            if (i < 2) {   // a choice among three: a touch goes to the next
+                TextView val = text(comfortValue(i), medium, 15, GOLD);
+                val.setGravity(Gravity.END);
+                row.addView(val, new LinearLayout.LayoutParams(-2, -2));
+            } else {       // on or off: a check box
+                android.widget.CheckBox cb = new android.widget.CheckBox(this);
+                cb.setChecked(comfortChecked(i));
+                cb.setClickable(false);
+                cb.setFocusable(false);
+                cb.setButtonTintList(android.content.res.ColorStateList.valueOf(GOLD));
+                row.addView(cb, new LinearLayout.LayoutParams(-2, -2));
+            }
             row.setOnClickListener(v -> {
-                String key = COMFORT_ROWS[which][0], cur = prefs().get(key);
-                String next;
                 switch (which) {
-                    case 0: next = String.valueOf(Comfort.next(cfHaptic(), Comfort.HAPTIC_LEVELS)); break;
-                    case 1: next = String.valueOf(Comfort.next(cfRepeat(), Comfort.REPEAT_LEVELS)); break;
-                    case 2: next = String.valueOf(Comfort.next(cfText(), Comfort.TEXT_LEVELS)); break;
-                    case 3: next = cfContrast() ? "0" : "1"; break;
-                    default: next = cfLowered() ? "0" : "1"; break;
+                    case 0: prefs().put("rc_repeat", String.valueOf(Comfort.next(cfRepeat(), Comfort.REPEAT_LEVELS))); break;
+                    case 1: prefs().put("rc_text", String.valueOf(Comfort.next(cfText(), Comfort.TEXT_LEVELS))); break;
+                    case 2: prefs().put("vol_phone", cfPhoneVolume() ? "0" : "1"); break;
+                    case 3: prefs().put("rc_contrast", cfContrast() ? "0" : "1"); break;
+                    default: prefs().put("rc_lowered", cfLowered() ? "0" : "1"); break;
                 }
-                prefs().put(key, next);
-                if (which == 0) buzz(v);
                 show(34);
             });
             body.addView(row, lp(0, 8, 0, 0));
@@ -1992,7 +1973,7 @@ public class MainActivity extends Activity {
     }
 
     private void rcTap(View v, final Runnable act) {
-        v.setOnClickListener(x -> { buzz(x); act.run(); });
+        v.setOnClickListener(x -> act.run());
     }
 
     private void rcFail(final Exception e) {
@@ -2852,7 +2833,6 @@ public class MainActivity extends Activity {
             switch (e.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     x.setPressed(true);
-                    buzz(x);
                     rcVolStep(up);
                     ui.postDelayed(again, Comfort.FIRST_REPEAT_MS);
                     return true;
@@ -2991,9 +2971,26 @@ public class MainActivity extends Activity {
     /** A key with the layered look of a real one (lip, gradient, light edge); {@code cap} is its look, 3 dp at the bottom are kept for the lip. */
     private LinearLayout rcCapBtn(int icon, String label, int w, int h, Keycap cap, int iconColor, String spoken) {
         LinearLayout b = rcKeyBtn(icon, label, w, h + 3, KEY_FILL, 12, iconColor, spoken);
-        b.setBackground(cap);
+        b.setBackground(cfContrast() ? rcContrastKey(w > 0 && w == h) : cap);
         b.setPadding(0, 0, 0, dp(3));
         return b;
+    }
+
+    /** High contrast: a black key with a white edge (a lighter face while it is pressed). */
+    private android.graphics.drawable.Drawable rcContrastKey(boolean round) {
+        float r = round ? dp(60) : dp(12);
+        GradientDrawable up = new GradientDrawable();
+        up.setColor(0xFF000000);
+        up.setStroke(dp(2), 0xFFFFFFFF);
+        up.setCornerRadius(r);
+        GradientDrawable down = new GradientDrawable();
+        down.setColor(0xFF4A4A4A);
+        down.setStroke(dp(2), 0xFFFFFFFF);
+        down.setCornerRadius(r);
+        android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
+        sl.addState(new int[] {android.R.attr.state_pressed}, down);
+        sl.addState(new int[] {}, up);
+        return sl;
     }
 
     /** The word printed under a key, in small spaced capitals as on a real remote. */
@@ -3054,7 +3051,13 @@ public class MainActivity extends Activity {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         final float density = getResources().getDisplayMetrics().density;
-        panel.setBackground(new RemoteBody(density));
+        if (cfContrast()) {
+            GradientDrawable body0 = new GradientDrawable();
+            body0.setColor(0xFF000000);
+            body0.setStroke(dp(3), 0xFFFFFFFF);
+            body0.setCornerRadius(dp(28));
+            panel.setBackground(body0);
+        } else panel.setBackground(new RemoteBody(density));
         panel.setPadding(dp(20), dp(20), dp(20), dp(18));
 
         // top: the red power key, the connection light and the name of the TV, more
@@ -3072,10 +3075,10 @@ public class MainActivity extends Activity {
         status.addView(rcPillDot, new LinearLayout.LayoutParams(dp(10), dp(10)));
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
-        rcPillName = text((last == null ? t("rc_name_none") : last.name).toUpperCase(java.util.Locale.ROOT), medium, 14, SAND);
+        rcPillName = text((last == null ? t("rc_name_none") : last.name).toUpperCase(java.util.Locale.ROOT), medium, 14, cfContrast() ? 0xFFFFFFFF : SAND);
         rcPillName.setMaxLines(1);
         rcPillName.setLetterSpacing(0.06f);
-        rcPillSub = text("", regular, 12, MUTED);
+        rcPillSub = text("", regular, 12, cfContrast() ? 0xFFFFFFFF : MUTED);
         rcPillSub.setMaxLines(1);
         names.addView(rcPillName);
         names.addView(rcPillSub);
@@ -3435,6 +3438,8 @@ public class MainActivity extends Activity {
                 ring.setListener(code -> rcKey(code));
                 ring.setNames(t("rc_a_up"), t("rc_a_right"), t("rc_a_down"), t("rc_a_left"), t("rc_a_ok"));
                 ring.setMaxSidePx(b.w * u);
+                ring.setContrast(cfContrast());
+                ring.setRepeat(Comfort.FIRST_REPEAT_MS, Comfort.repeatMs(cfRepeat()));
                 return ring;
             }
             case BACK: return rcRoundWithWord(RcIcon.BACK, t("rc_back"), Math.max(36, Math.min(64, cellH - 30)), () -> rcKey(Remote.BACK));
@@ -3456,7 +3461,7 @@ public class MainActivity extends Activity {
             {RcIcon.BOOK, "rc_listen"}, {RcIcon.TV, "rc_channels"}, {RcIcon.APPS, "rc_apps"},
             {RcIcon.MOON, "rc_saver"}, {RcIcon.KEYBOARD, "rc_write"}, {RcIcon.GEAR, "rc_tvset"}};
         final int idx = i;
-        LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 10, Keycap.tile(density, 12), GOLD, null);
+        LinearLayout tile = rcCapBtn((Integer) tiles[i][0], t((String) tiles[i][1]), 0, 10, Keycap.tile(density, 12), cfContrast() ? 0xFFFFFFFF : GOLD, null);
         tile.setMinimumHeight(0);
         LinearLayout cell = rcWell(tile, 16, 3);
         tile.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
@@ -3481,7 +3486,7 @@ public class MainActivity extends Activity {
     }
 
     private View rcVolumeBar(Typeface display, int cellH) {
-        int key = Math.max(40, cellH - 6);
+        int key = Math.max(36, cellH - 12);   // the key and its lip stay inside the bar
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);

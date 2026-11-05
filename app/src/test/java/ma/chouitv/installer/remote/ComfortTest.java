@@ -6,7 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/** The comfort settings of the remote: the buzz of a press, the speed of a held key, the size of the words. Pure, so what is stored is never trusted blindly. */
+/** The comfort settings of the remote: the speed of a held key, the size of the words. Pure, so what is stored is never trusted blindly. */
 public class ComfortTest {
     @Test public void aSavedLevelIsReadOrElseTheUsualOne() {
         assertEquals(1, Comfort.level(null, 1, 3));
@@ -21,14 +21,6 @@ public class ComfortTest {
         assertEquals(1, Comfort.next(0, 3));
         assertEquals(2, Comfort.next(1, 3));
         assertEquals(0, Comfort.next(2, 3));
-    }
-
-    @Test public void theBuzzOfAPressGrowsWithItsLevelAndIsOffAtZero() {
-        assertEquals(0, Comfort.hapticMs(0));
-        assertTrue(Comfort.hapticMs(1) > 0);
-        assertTrue(Comfort.hapticMs(2) > Comfort.hapticMs(1));
-        assertTrue(Comfort.hapticAmplitude(2) > Comfort.hapticAmplitude(1));
-        assertTrue(Comfort.hapticAmplitude(2) <= 255);
     }
 
     @Test public void aHeldKeyRepeatsFasterOrSlowerButNeverFasterThanTheTvFollows() {
@@ -50,7 +42,6 @@ public class ComfortTest {
     }
 
     @Test public void theDefaultsAreTheRemoteAsItHasAlwaysBeen() {
-        assertEquals(1, Comfort.DEFAULT_HAPTIC);
         assertEquals(1, Comfort.DEFAULT_REPEAT);
         assertEquals(0, Comfort.DEFAULT_TEXT);
     }

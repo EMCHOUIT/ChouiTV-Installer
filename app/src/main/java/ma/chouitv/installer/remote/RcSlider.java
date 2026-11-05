@@ -109,14 +109,13 @@ public final class RcSlider extends View {
                 dragging = true;
                 shown = levelAt(e.getX());
                 lastTick = tickOf(shown);
-                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                 invalidate();
                 return true;
             case MotionEvent.ACTION_MOVE:
                 if (dragging) {
                     int v = levelAt(e.getX());
                     int tick = tickOf(v);
-                    if (tick != lastTick) { lastTick = tick; performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); }
+                    if (tick != lastTick) lastTick = tick;
                     shown = v;
                     invalidate();
                 }

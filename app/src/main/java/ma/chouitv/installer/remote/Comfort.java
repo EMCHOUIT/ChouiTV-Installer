@@ -1,11 +1,11 @@
 package ma.chouitv.installer.remote;
 
-/** The comfort settings of the remote (vibration of a press, repeat speed of a held key, size of the words on the keys). Pure, tested on the JVM (ComfortTest). */
+/** The comfort settings of the remote (repeat speed of a held key, size of the words on the keys). Pure, tested on the JVM (ComfortTest). */
 public final class Comfort {
     private Comfort() {}
 
-    public static final int DEFAULT_HAPTIC = 1, DEFAULT_REPEAT = 1, DEFAULT_TEXT = 0;
-    public static final int HAPTIC_LEVELS = 3, REPEAT_LEVELS = 3, TEXT_LEVELS = 3;
+    public static final int DEFAULT_REPEAT = 1, DEFAULT_TEXT = 0;
+    public static final int REPEAT_LEVELS = 3, TEXT_LEVELS = 3;
     /** A held key sends its first repeat after this long. */
     public static final int FIRST_REPEAT_MS = 400;
 
@@ -19,12 +19,6 @@ public final class Comfort {
     }
 
     public static int next(int level, int count) { return (level + 1) % count; }
-
-    /** The length of the buzz of a press in ms (0: none). */
-    public static int hapticMs(int level) { return level == 1 ? 12 : level == 2 ? 30 : 0; }
-
-    /** Its strength, 1..255. */
-    public static int hapticAmplitude(int level) { return level == 1 ? 70 : level == 2 ? 180 : 0; }
 
     /** The wait between two repeats of a held key. */
     public static int repeatMs(int level) { return level == 0 ? 200 : level == 2 ? 80 : 120; }
