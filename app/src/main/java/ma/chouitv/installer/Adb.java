@@ -177,6 +177,63 @@ final class Adb implements AutoCloseable {
         return service("shell:" + cmd, null, -1, null);
     }
 
+    /**
+     * Starts a command that keeps running and talks line by line ({@code shell:command}), on THIS connection, which must then be used for nothing
+     * else: the remote's key link has a connection of its own, so it never waits behind another command (this class does one stream at a time).
+     */
+    KeysStream openLines(String command) throws IOException {
+        int local = nextLocal++;
+        send(A_OPEN, local, 0, ("shell:" + command + "\0").getBytes("UTF-8"));
+        Packet p = readFor(local);
+        while (p.cmd != A_OKAY) {
+            if (p.cmd == A_CLSE) throw new IOException("the TV refused " + command);
+            p = readFor(local);
+        }
+        return new KeysStream(local, p.arg0);
+    }
+
+    /** The two-way stream of {@link #openLines}: a write, and a read of one line; a read that waits longer than the timeout throws. Closing it closes the connection. */
+    final class KeysStream implements ma.chouitv.installer.remote.KeyLink.Duplex {
+        private final int local, remote;
+        private final StringBuilder inbox = new StringBuilder();
+        private boolean waitingOkay;   // the TV acknowledges every write before it sends its answer
+
+        KeysStream(int local, int remote) { this.local = local; this.remote = remote; }
+
+        /** How long a read may wait for the TV before it throws (the first answer, «ready», needs longer than the later ones). */
+        void setReadTimeout(int ms) throws IOException { socket.setSoTimeout(ms); }
+
+        @Override public void write(String s) throws IOException {
+            while (waitingOkay) pump();
+            send(A_WRTE, local, remote, s.getBytes("UTF-8"));
+            waitingOkay = true;
+        }
+
+        @Override public String readLine() throws IOException {
+            while (true) {
+                int i = inbox.indexOf("\n");
+                if (i >= 0) {
+                    String line = inbox.substring(0, i).replace("\r", "");
+                    inbox.delete(0, i + 1);
+                    return line;
+                }
+                pump();
+            }
+        }
+
+        private void pump() throws IOException {
+            Packet q = readFor(local);
+            if (q.cmd == A_OKAY) waitingOkay = false;
+            else if (q.cmd == A_WRTE) { inbox.append(new String(q.data, "UTF-8")); send(A_OKAY, local, remote, new byte[0]); }
+            else if (q.cmd == A_CLSE) throw new IOException("the TV closed the link");
+        }
+
+        @Override public void close() {
+            try { send(A_CLSE, local, remote, new byte[0]); } catch (IOException ignored) { }
+            Adb.this.close();
+        }
+    }
+
     /** Streams a file into «cmd package install -S size -r»; returns pm's answer («Success» when it worked). */
     String install(File apk, Progress progress) throws IOException {
         try {

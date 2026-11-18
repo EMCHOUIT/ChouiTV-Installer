@@ -60,6 +60,9 @@ import ma.chouitv.installer.remote.Others;
 import ma.chouitv.installer.remote.Adoption;
 import ma.chouitv.installer.remote.Cause;
 import ma.chouitv.installer.remote.HomeState;
+import ma.chouitv.installer.remote.KeyLink;
+import ma.chouitv.installer.remote.KeyProtocol;
+import ma.chouitv.installer.remote.KeyRoute;
 import ma.chouitv.installer.remote.Remote;
 import ma.chouitv.installer.remote.AppSlots;
 import ma.chouitv.installer.remote.Equip;
@@ -147,6 +150,8 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         stopTicker();
+        keyRoute.stop();
+        keyLinkClose();
         if (tv != null) tv.close();
         bg.shutdownNow();
     }
@@ -2048,6 +2053,7 @@ public class MainActivity extends Activity {
             if (!quiet) rcStatus(RC_RECONNECTING, 0);
             Adb n = Adb.connect(last.ip, 5555, new File(getFilesDir(), "keys"), reachMs, () -> { rcAsked = true; rcStatus(RC_ASKING, 0); });
             if (tv != null && tv != n) tv.close();
+            if (!last.ip.equals(keyLinkIp)) keyLinkClose();
             tv = n;
             curIp = last.ip;
             flow = new Flow(n, getCacheDir());
@@ -2059,6 +2065,7 @@ public class MainActivity extends Activity {
             rcStatus(RC_OK, 0);
             runOnUiThread(() -> { if (step == 25) { rcVolRefresh(); rcDimMissing(); } });
             rcCheckAsleep();
+            keyLinkOpen();   // ready before the first key
             return true;
         } catch (Exception e) {
             if (rcFailSince == 0) rcFailSince = android.os.SystemClock.elapsedRealtime();
@@ -2076,6 +2083,7 @@ public class MainActivity extends Activity {
 
     /** Lets go of the link to a TV that is not the one wanted (or that stopped answering): its keys must never reach another TV, and a dead link must not hold the background thread for 30 s. */
     private void dropLink() {
+        keyLinkClose();   // its keys must never reach another TV either
         final Adb old = tv;
         tv = null;
         flow = null;
@@ -2179,8 +2187,9 @@ public class MainActivity extends Activity {
     @Override protected void onStart() {
         super.onStart();
         rcVisible = true;
+        keyRoute.resume();
         if (rcState == RC_OFFLINE && LastTv.load(prefs()) != null) { new Thread(() -> rcReconnect(2500)).start(); }
-        else if (rcState == RC_OK && flow != null) new Thread(this::rcCheckAsleep).start();
+        else if (rcState == RC_OK && flow != null) { new Thread(this::rcCheckAsleep).start(); keyLinkOpen(); }
         try {
             android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
             rcNetCb = new android.net.ConnectivityManager.NetworkCallback() {
@@ -2196,13 +2205,84 @@ public class MainActivity extends Activity {
     @Override protected void onStop() {
         super.onStop();
         rcVisible = false;
+        keyRoute.stop();      // the program on the TV ends by itself when the link closes
+        keyLinkClose();
         try {
             if (rcNetCb != null) ((android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE)).unregisterNetworkCallback(rcNetCb);
         } catch (Exception ignored) { }
         rcNetCb = null;
     }
 
-    private void rcKey(final int code) { rcRun(() -> flow.shell().run(Remote.key(code))); }
+    // ---- the fast link for the keys: a small program kept running on the TV (helper/Keys.java). A key then costs the network trip, not the second
+    // that «input keyevent» needs to start. «input keyevent» stays as the way that always works (the TV refuses the program, the link breaks, a TV
+    // from before this) and the link is tried again, not too often (KeyRoute). ----
+
+    private volatile KeyRoute keyRoute = new KeyRoute();
+    private volatile KeyLink keyLink;
+    private volatile String keyLinkIp = "";
+    private final java.util.concurrent.atomic.AtomicBoolean keyOpening = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    private void rcKey(final int code) {
+        if (rcBlocked()) return;
+        KeyLink kl = keyLink;
+        if (Remote.isFast(code) && kl != null && keyLinkIp.equals(curIp) && kl.offer(code)) return;   // the fast way: no thread, no program started on the TV
+        rcRun(() -> flow.shell().run(Remote.key(code)));   // the way that always works
+        keyLinkOpen();
+    }
+
+    /** Opens the fast link when there is none and it may be tried. The TV's one connection is used for the check of the helper, on the background thread with the other commands. */
+    private void keyLinkOpen() {
+        final KeyRoute route = keyRoute;
+        KeyLink cur = keyLink;
+        if (flow == null || rcState != RC_OK || (cur != null && cur.isUp()) || !route.mayTry(android.os.SystemClock.elapsedRealtime())) return;
+        if (!keyOpening.compareAndSet(false, true)) return;
+        final String ip = curIp;
+        bg.execute(() -> {
+            try {
+                rcEnsureHelper();
+            } catch (Exception e) {
+                route.down(android.os.SystemClock.elapsedRealtime());
+                keyOpening.set(false);
+                return;
+            }
+            Thread t = new Thread(() -> {
+                Adb own = null;
+                try {
+                    own = Adb.connect(ip, 5555, new File(getFilesDir(), "keys"), 2500, null);
+                    Adb.KeysStream s = own.openLines(KeyProtocol.command());
+                    s.setReadTimeout(8000);   // the program needs under a second to start
+                    String first = s.readLine();
+                    if (!KeyProtocol.ready(first)) throw new IOException("the TV's key program said: " + first);
+                    s.setReadTimeout(2500);   // from now, a TV that stays silent for 2.5 s is taken for dead
+                    if (route != keyRoute || !ip.equals(curIp) || !rcVisible) { s.close(); return; }
+                    final KeyLink[] me = new KeyLink[1];
+                    me[0] = new KeyLink(s, (code, mayHaveReachedTheTv, why) -> {
+                        route.down(android.os.SystemClock.elapsedRealtime());
+                        if (keyLink == me[0]) keyLink = null;
+                        if (code >= 0 && !mayHaveReachedTheTv && Remote.isKnown(code)) rcRun(() -> flow.shell().run(Remote.key(code)));   // never twice
+                    });
+                    keyLinkIp = ip;
+                    keyLink = me[0];
+                    if (me[0].isUp()) route.up();   // it may have failed already: then the listener has said so, and it is not «up»
+                    else if (keyLink == me[0]) keyLink = null;
+                } catch (Exception e) {
+                    if (own != null) own.close();
+                    route.down(android.os.SystemClock.elapsedRealtime());
+                } finally {
+                    keyOpening.set(false);
+                }
+            }, "rc-keys-open");
+            t.setDaemon(true);
+            t.start();
+        });
+    }
+
+    private void keyLinkClose() {
+        KeyLink l = keyLink;
+        keyLink = null;
+        keyLinkIp = "";
+        if (l != null) new Thread(l::close, "rc-keys-close").start();
+    }
 
     private void rcOpen(final Remote.Target target) {
         rcRun(() -> {

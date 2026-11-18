@@ -47,8 +47,22 @@ public final class Remote {
         return Started.OK;
     }
 
+    private static final int[] FAST = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU};
+
+    /** The keys that go through the fast link kept open to the TV: the navigation ones (checked on a TV: the screen is the same as with «input keyevent»). The others keep the slow way. */
+    public static boolean isFast(int code) {
+        for (int k : FAST) if (k == code) return true;
+        return false;
+    }
+
+    /** True for the keys of the remote (the only ones the phone sends). */
+    public static boolean isKnown(int code) {
+        for (int k : KNOWN) if (k == code) return true;
+        return false;
+    }
+
     public static String key(int code) {
-        for (int k : KNOWN) if (k == code) return "input keyevent " + code;
+        if (isKnown(code)) return "input keyevent " + code;
         throw new IllegalArgumentException("not a remote key: " + code);
     }
 
