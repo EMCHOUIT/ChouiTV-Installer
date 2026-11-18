@@ -249,10 +249,10 @@ JDK 17 and the Android SDK (platform 34):
 git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease      # the file is in app/build/outputs/apk/release
-./gradlew :app:testDebugUnitTest    # 181 tests on the JVM
+./gradlew :app:testDebugUnitTest    # 390 tests on the JVM
 ```
 
-Current version: **2.4** (`versionCode 22`), for Android 8 or newer (`minSdk 26`).
+Current version: **2.5** (`versionCode 23`), for Android 8 or newer (`minSdk 26`).
 
 The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram, the version number on the banner, the QR code) are rebuilt with `python docs/media/build_media.py` (needs Pillow and Edge or Chrome); the phone screenshots are real and are not generated.
 
@@ -262,6 +262,7 @@ The drawn images in `docs/media` (the "What's new" card, the 3.x to 4.0 diagram,
 
 | Version | What changed |
 |---|---|
+| **2.5** | A fast remote: the keys go through a small program kept running on the TV (about 13 ms instead of a second), and a held arrow stops as soon as you let go; a **live keyboard**: "Write on the TV" types straight into the TV's text field as you type on the phone (Arabic too), the text stays on the phone, and the former Send is the slow mode when the link drops |
 | **2.4** | Remote comfort (More › Comfort): repeat speed, size of the key words, high contrast (black and white, sharp edges), a one-hand mode that lowers the remote, a check box for the phone volume buttons; a "5 keys" layout; share a layout as text and paste one you received |
 | **2.3** | The remote is drawn from a layout: 6 templates (Classic, Right hand, Left hand, Simple and big, Short screen, 5 keys), an editor to move, add and remove keys (the pad, Back and the volume always stay), the volume rocker and pill, the phone volume buttons driving the TV |
 | **2.2.2** | The display fits every screen: the remote takes the room that is left (the pad shrinks on a short screen), the keys grow with the text size and their words scale to the width, a tablet keeps the content narrow and centred |

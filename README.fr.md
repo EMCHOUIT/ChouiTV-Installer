@@ -249,10 +249,10 @@ JDK 17 et Android SDK (plateforme 34) :
 git clone https://github.com/EMCHOUIT/ChouiTV-Installer
 cd ChouiTV-Installer
 ./gradlew :app:assembleRelease      # le fichier est dans app/build/outputs/apk/release
-./gradlew :app:testDebugUnitTest    # 181 tests sur la JVM
+./gradlew :app:testDebugUnitTest    # 390 tests sur la JVM
 ```
 
-Version actuelle : **2.4** (`versionCode 22`), pour Android 8 ou plus (`minSdk 26`).
+Version actuelle : **2.5** (`versionCode 23`), pour Android 8 ou plus (`minSdk 26`).
 
 Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage à la 4.0, numéro de version de la bannière, QR code) se refont avec `python docs/media/build_media.py` (Pillow et Edge ou Chrome requis) ; les captures du téléphone, elles, sont réelles et ne sont pas générées.
 
@@ -262,6 +262,7 @@ Les images dessinées de `docs/media` (carte « Nouveau », schéma de passage �
 
 | Version | Ce qui change |
 |---|---|
+| **2.5** | Une télécommande rapide : les touches passent par un petit programme gardé actif sur la télé (environ 13 ms au lieu d'une seconde), et une flèche maintenue s'arrête dès que vous lâchez ; un **clavier en direct** : « Écrire sur la télé » écrit directement dans le champ de texte de la télé pendant que vous tapez sur le téléphone (l'arabe aussi), le texte reste sur le téléphone, et l'ancien Envoyer devient le mode lent quand la liaison tombe |
 | **2.4** | Confort de la télécommande (Plus › Confort) : vitesse de répétition, taille des mots des touches, contraste élevé (noir et blanc, bords nets), mode une main qui descend la télécommande, case à cocher pour les boutons de volume du téléphone ; disposition « 5 touches » ; partager une disposition en texte et en coller une reçue |
 | **2.3** | La télécommande se dessine depuis une disposition : 6 modèles (Classique, Droitier, Gaucher, Simple et grand, Écran court, 5 touches), un éditeur pour déplacer, ajouter et retirer les touches (le cercle, Retour et le volume restent toujours), la bascule et la pilule de volume, les boutons de volume du téléphone qui commandent la TV |
 | **2.2.2** | L'affichage s'adapte à tous les écrans : la télécommande prend la place qui reste (le cercle rétrécit si l'écran est court), les touches grandissent avec la taille du texte et leurs mots se règlent sur la largeur, une tablette garde le contenu étroit et centré |
