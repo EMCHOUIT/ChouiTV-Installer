@@ -14,11 +14,36 @@ public final class KeyProtocol {
         return code + "\n";
     }
 
+    /** The most characters of text in one line: long pastes go in pieces, in order. */
+    public static final int CHUNK = 200;
+
+    /** The line that makes the TV type {@code text}: «T», then the text in base64 (so it is one line whatever it holds). The program puts it on the clipboard and presses Paste. */
+    public static String textLine(String text) {
+        return "T " + java.util.Base64.getEncoder().encodeToString(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) + "\n";
+    }
+
+    /** {@code text} in pieces of at most {@link #CHUNK} characters; a character made of two UTF-16 units is never cut. */
+    public static java.util.List<String> chunks(String text) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        int i = 0;
+        while (i < text.length()) {
+            int end = text.offsetByCodePoints(i, Math.min(CHUNK, text.codePointCount(i, text.length())));
+            out.add(text.substring(i, end));
+            i = end;
+        }
+        return out;
+    }
+
     /** True for «ok» alone or followed by details («ok 3ms»); not for «okay», nor for an error. */
     public static boolean ok(String answer) {
         if (answer == null) return false;
         String a = answer.trim();
         return a.equals("ok") || a.startsWith("ok ");
+    }
+
+    /** True for an answer that says the TV did not do it («err …»); any other line that is not «ok» is the sign of a broken link. */
+    public static boolean isError(String answer) {
+        return answer != null && answer.trim().startsWith("err");
     }
 
     /** True when the program says it can inject keys. */

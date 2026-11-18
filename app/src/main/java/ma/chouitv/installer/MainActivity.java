@@ -63,6 +63,8 @@ import ma.chouitv.installer.remote.HomeState;
 import ma.chouitv.installer.remote.KeyLink;
 import ma.chouitv.installer.remote.KeyProtocol;
 import ma.chouitv.installer.remote.KeyRoute;
+import ma.chouitv.installer.remote.LiveKeyboard;
+import ma.chouitv.installer.remote.LiveText;
 import ma.chouitv.installer.remote.Remote;
 import ma.chouitv.installer.remote.AppSlots;
 import ma.chouitv.installer.remote.Equip;
@@ -2259,6 +2261,8 @@ public class MainActivity extends Activity {
                     me[0] = new KeyLink(s, (code, mayHaveReachedTheTv, why) -> {
                         route.down(android.os.SystemClock.elapsedRealtime());
                         if (keyLink == me[0]) keyLink = null;
+                        LiveKeyboard kb = liveKb;
+                        if (kb != null) { if (why instanceof KeyLink.Refused) kb.linkRefused(); else kb.linkLost(); }
                         if (code >= 0 && !mayHaveReachedTheTv && Remote.isKnown(code)) rcRun(() -> flow.shell().run(Remote.key(code)));   // never twice
                     });
                     keyLinkIp = ip;
@@ -2366,57 +2370,223 @@ public class MainActivity extends Activity {
         }).show();
     }
 
-    private void rcTextDialog() {
+    // ---- the live keyboard: the phone is the TV's keyboard. Every change of the field goes to the TV as it is typed (through the fast link,
+    // see LiveKeyboard); the text stays on the phone. The former pop-up (type, then Send) is the slow mode, the way out when the link is not there. ----
+
+    private volatile LiveKeyboard liveKb;
+
+    private LiveKeyboard.Link liveLink() {
+        return new LiveKeyboard.Link() {
+            private KeyLink live() { KeyLink l = keyLink; return l != null && l.isUp() && keyLinkIp.equals(curIp) ? l : null; }
+            @Override public boolean up() { return live() != null; }
+            @Override public boolean del(int n, Runnable ok) {
+                KeyLink l = live();
+                if (l == null) return false;
+                for (int i = 0; i < n; i++) if (!l.offerLine(KeyProtocol.line(Remote.DEL), i == n - 1 ? ok : null)) return false;
+                return true;
+            }
+            @Override public boolean text(String s, Runnable ok) { KeyLink l = live(); return l != null && l.offerLine(KeyProtocol.textLine(s), ok); }
+            @Override public boolean enter() { KeyLink l = live(); return l != null && l.offer(Remote.ENTER); }
+        };
+    }
+
+    private void rcKeyboard() {
         if (rcBlocked()) return;
+        keyRoute.resume();
+        keyLinkOpen();
+        final LiveKeyboard kb = new LiveKeyboard(liveLink());
+        liveKb = kb;
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
         final android.app.Dialog d = rcDialog(c);
-        c.addView(rcDialogHead(t("rc_write"), null, d));
+        final Runnable[] refresh = new Runnable[1];
+
+        // the head: the title, the help (shows the tip again), close
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text(t("kb_title"), display, 21, SAND), new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView help = text("?", medium, 20, GOLD);
+        help.setGravity(Gravity.CENTER);
+        help.setContentDescription(t("kb_help"));
+        head.addView(help, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        TextView x = text("✕", medium, 20, GOLD);
+        x.setGravity(Gravity.CENTER);
+        x.setContentDescription(t("rc_close"));
+        x.setOnClickListener(v -> d.dismiss());
+        head.addView(x, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        c.addView(head);
+
+        final boolean[] tipShown = {false};
+        final TextView tip = text(t("kb_tip"), regular, 15, SAND);
+        tip.setBackground(rcShape(TILE_FILL, 16, true));
+        tip.setPadding(dp(14), dp(10), dp(14), dp(10));
+        c.addView(tip, lp(0, 8, 0, 0));
+        help.setOnClickListener(v -> { tipShown[0] = !tipShown[0]; if (refresh[0] != null) refresh[0].run(); });
+
+        // the band that says what is wrong (reconnecting, slow mode, the TV refused), with its way out
+        final TextView band = text("", medium, 15, SAND);
+        band.setPadding(dp(14), dp(10), dp(14), dp(10));
+        c.addView(band, lp(0, 8, 0, 0));
+        final TextView retry = text(t("kb_retry_fast"), medium, 15, SAND);
+        retry.setGravity(Gravity.CENTER);
+        retry.setBackground(rcStates(KEY_FILL, 18, true));
+        retry.setClickable(true);
+        c.addView(retry, lp(0, 6, 0, 0));
+        ((LinearLayout.LayoutParams) retry.getLayoutParams()).height = dp(48);
+
+        // the field: what the TV gets
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(rcShape(TILE_FILL, 18, true));
+        box.setPadding(dp(14), dp(10), dp(14), dp(10));
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        final TextView chip = text("", medium, 15, GOLD);
+        top.addView(chip, new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView count = text("", regular, 14, MUTED);
+        top.addView(count, new LinearLayout.LayoutParams(-2, -2));
+        box.addView(top);
         final android.widget.EditText et = new android.widget.EditText(this);
-        et.setHint(t("rc_text_hint"));
-        et.setHintTextColor(0xFF7A7567);
-        et.setTextColor(0xFF1B1B1B);
-        et.setTextSize(19);
-        et.setMinLines(3);
+        et.setHint(t("kb_hint"));
+        et.setHintTextColor(MUTED);
+        et.setTextColor(SAND);
+        et.setTextSize(22);
+        et.setBackground(null);
+        et.setPadding(0, dp(6), 0, dp(6));
+        et.setMinLines(2);
+        et.setMaxLines(5);
         et.setGravity(Gravity.TOP | Gravity.START);
-        et.setBackground(rcShape(0xFFF6EFE0, 14, true));
-        et.setPadding(dp(14), dp(12), dp(14), dp(12));
-        c.addView(et, lp(0, 10, 0, 0));
-        c.addView(text(t("rc_text_tip"), regular, 12, MUTED), lp(2, 6, 2, 0));
+        // one logical line that wraps, with a search/enter key on the keyboard; no suggestions, so a word is never replaced behind the TV's back
+        et.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        et.setHorizontallyScrolling(false);
+        et.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        et.setContentDescription(t("kb_mirror"));
+        box.addView(et);
+        c.addView(box, lp(0, 8, 0, 0));
+
+        // the three buttons
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        TextView clear = text(t("rc_clear"), medium, 17, SAND);
-        clear.setGravity(Gravity.CENTER);
-        clear.setBackground(rcStates(KEY_FILL, 22, true));
-        clear.setClickable(true);
-        clear.setOnClickListener(v -> et.setText(""));
-        TextView send = text(t("rc_send"), medium, 17, DARK);
-        send.setGravity(Gravity.CENTER);
-        send.setBackground(rcShape(GOLD, 22, false));
-        send.setClickable(true);
-        send.setOnClickListener(v -> {
-            final String s = et.getText().toString();
-            if (s.trim().isEmpty()) { Toast.makeText(this, t("rc_empty"), Toast.LENGTH_SHORT).show(); return; }
-            rcRun(() -> {
-                try {
-                    rcEnsureHelper();
-                    Remote.sendText(flow.shell(), s);
-                    runOnUiThread(() -> { et.setText(""); Toast.makeText(this, t("rc_sent"), Toast.LENGTH_SHORT).show(); });
-                } catch (IllegalArgumentException e) {
-                    runOnUiThread(() -> Toast.makeText(this, t("rc_too_long", Remote.MAX_TEXT), Toast.LENGTH_SHORT).show());
-                } catch (IOException e) {
-                    if (Reconnect.worthRetrying(e) && !String.valueOf(e.getMessage()).startsWith("the TV did not take")) throw e;
-                    runOnUiThread(() -> Toast.makeText(this, t("rc_text_fail", friendly(e, "", false)), Toast.LENGTH_LONG).show());
-                }
-            });
+        final TextView primary = text("", medium, 16, DARK);
+        primary.setGravity(Gravity.CENTER);
+        primary.setClickable(true);
+        final TextView second = text("", medium, 15, SAND);
+        second.setGravity(Gravity.CENTER);
+        second.setBackground(rcStates(KEY_FILL, 22, true));
+        second.setClickable(true);
+        TextView done = text("✓ " + t("kb_done"), medium, 15, SAND);
+        done.setGravity(Gravity.CENTER);
+        done.setBackground(rcStates(KEY_FILL, 22, true));
+        done.setClickable(true);
+        done.setOnClickListener(v -> d.dismiss());
+        row.addView(primary, new LinearLayout.LayoutParams(0, dp(52), 1.3f));
+        LinearLayout.LayoutParams p2 = new LinearLayout.LayoutParams(0, dp(52), 1f);
+        p2.setMarginStart(dp(8));
+        row.addView(second, p2);
+        LinearLayout.LayoutParams p3 = new LinearLayout.LayoutParams(0, dp(52), 1f);
+        p3.setMarginStart(dp(8));
+        row.addView(done, p3);
+        c.addView(row, lp(0, 10, 0, 0));
+
+        refresh[0] = () -> {
+            LiveKeyboard.Mode m = kb.mode();
+            int n = kb.chars();
+            count.setText(n == 1 ? t("kb_count1", n) : t("kb_countn", n));
+            tip.setVisibility(n == 0 || tipShown[0] ? View.VISIBLE : View.GONE);
+            band.setVisibility(View.GONE);
+            retry.setVisibility(View.GONE);
+            int line = GOLD, green = 0xFF7ADCA0;
+            switch (m) {
+                case DIRECT:
+                    chip.setText("⚡ " + t("kb_live")); chip.setTextColor(green);
+                    primary.setText("↵ " + t("kb_enter")); break;
+                case RECONNECTING:
+                    chip.setText("↻ " + t("kb_reco")); chip.setTextColor(GOLD);
+                    band.setVisibility(View.VISIBLE);
+                    band.setText(t("kb_reco_d") + (kb.waiting() > 0 ? "\n" + t("kb_wait", kb.waiting()) : ""));
+                    band.setBackground(rcShape(TILE_FILL, 16, true));
+                    primary.setText("↵ " + t("kb_enter")); break;
+                case SLOW:
+                    chip.setText("🕓 " + t("kb_unsent")); chip.setTextColor(MUTED);
+                    band.setVisibility(View.VISIBLE);
+                    band.setText(t("kb_slow"));
+                    band.setBackground(rcShape(TILE_FILL, 16, true));
+                    retry.setVisibility(View.VISIBLE);
+                    primary.setText("➤ " + t("kb_send")); break;
+                case ERROR:
+                    chip.setText("⚠ " + t("kb_err_tag")); chip.setTextColor(0xFFF2A092);
+                    band.setVisibility(View.VISIBLE);
+                    band.setText(t("kb_fail_h") + "\n" + t("kb_fail_d"));
+                    band.setBackground(rcShape(0xFF3A2A25, 16, true));
+                    primary.setText("↻ " + t("kb_retry")); break;
+                default:   // READY
+                    chip.setText("✓ " + t("kb_ready")); chip.setTextColor(GOLD);
+                    primary.setText("↵ " + t("kb_enter")); break;
+            }
+            boolean enterOk = m == LiveKeyboard.Mode.DIRECT || m == LiveKeyboard.Mode.READY || m == LiveKeyboard.Mode.SLOW || m == LiveKeyboard.Mode.ERROR;
+            primary.setBackground(rcShape(GOLD, 22, false));
+            primary.setAlpha(enterOk ? 1f : 0.45f);
+            second.setText(m == LiveKeyboard.Mode.ERROR ? "🕓 " + t("kb_to_slow") : "🗑 " + t("kb_clear"));
+        };
+
+        et.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence a, int b, int cc, int dd) { }
+            @Override public void onTextChanged(CharSequence a, int b, int cc, int dd) { }
+            @Override public void afterTextChanged(android.text.Editable e) { kb.typed(e.toString()); refresh[0].run(); }
         });
-        row.addView(clear, new LinearLayout.LayoutParams(0, dp(52), 1f));
-        LinearLayout.LayoutParams sp1 = new LinearLayout.LayoutParams(0, dp(52), 1.4f);
-        sp1.setMarginStart(dp(10));
-        row.addView(send, sp1);
-        c.addView(row, lp(0, 12, 0, 0));
+        et.setOnEditorActionListener((v, id, ev) -> { liveEnter(kb, et, refresh[0]); return true; });
+        primary.setOnClickListener(v -> liveEnter(kb, et, refresh[0]));
+        second.setOnClickListener(v -> {
+            if (kb.mode() == LiveKeyboard.Mode.ERROR) { kb.chooseSlow(); refresh[0].run(); }
+            else et.setText("");   // the change goes to the TV like any other: it deletes what was typed
+        });
+        retry.setOnClickListener(v -> { keyRoute.resume(); keyLinkOpen(); kb.retryLive(android.os.SystemClock.elapsedRealtime()); refresh[0].run(); });
+
+        final Runnable[] tick = new Runnable[1];
+        tick[0] = () -> {
+            if (!d.isShowing()) return;
+            kb.tick(android.os.SystemClock.elapsedRealtime());
+            if (kb.mode() == LiveKeyboard.Mode.RECONNECTING) keyLinkOpen();
+            refresh[0].run();
+            ui.postDelayed(tick[0], 500);
+        };
+        d.setOnDismissListener(v -> { if (liveKb == kb) liveKb = null; ui.removeCallbacks(tick[0]); });
+        d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        refresh[0].run();
         d.show();
         et.requestFocus();
+        ui.postDelayed(tick[0], 500);
+    }
+
+    /** The Enter key (live), or Send (slow mode), or Try again (after an error). */
+    private void liveEnter(final LiveKeyboard kb, final android.widget.EditText et, final Runnable refresh) {
+        switch (kb.mode()) {
+            case SLOW: liveSlowSend(kb, refresh); break;
+            case ERROR: keyRoute.resume(); keyLinkOpen(); kb.retryLive(android.os.SystemClock.elapsedRealtime()); refresh.run(); break;
+            default: kb.enter(); break;
+        }
+    }
+
+    /** The slow mode's Send: what the TV does not have yet goes the way the pop-up always did (the helper puts it on the clipboard, then Paste). */
+    private void liveSlowSend(final LiveKeyboard kb, final Runnable refresh) {
+        final LiveText.Op op = kb.pendingForSlowSend();
+        if (op == null) { Toast.makeText(this, t("rc_empty"), Toast.LENGTH_SHORT).show(); return; }
+        rcRun(() -> {
+            try {
+                rcEnsureHelper();
+                for (int left = op.dels; left > 0; left -= 50) flow.shell().run(Remote.keys(Remote.DEL, Math.min(50, left)));
+                for (String part : KeyProtocol.chunks(op.text)) Remote.sendText(flow.shell(), part);
+                kb.slowSent();
+                runOnUiThread(() -> { Toast.makeText(this, t("rc_sent"), Toast.LENGTH_SHORT).show(); refresh.run(); });
+            } catch (IllegalArgumentException e) {
+                runOnUiThread(() -> Toast.makeText(this, t("rc_empty"), Toast.LENGTH_SHORT).show());
+            } catch (IOException e) {
+                if (Reconnect.worthRetrying(e) && !String.valueOf(e.getMessage()).startsWith("the TV did not take")) throw e;
+                runOnUiThread(() -> Toast.makeText(this, t("rc_text_fail", friendly(e, "", false)), Toast.LENGTH_LONG).show());
+            }
+        });
     }
 
     private void rcAppsDialog() {
@@ -3553,7 +3723,7 @@ public class MainActivity extends Activity {
                 case 1: rcOpen(Remote.Target.CHANNELS); break;
                 case 2: rcAppsDialog(); break;
                 case 3: rcOpen(Remote.Target.SAVER); break;
-                case 4: rcTextDialog(); break;
+                case 4: rcKeyboard(); break;
                 default: rcRun(() -> flow.shell().run(Remote.settings()));
             }
         });

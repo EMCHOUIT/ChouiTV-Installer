@@ -5,6 +5,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
+
 import org.junit.Test;
 
 /** What the phone and the small program kept running on the TV (helper/Keys.java) say to each other: a key code per line, «ok» or «err …» back. */
@@ -30,6 +34,52 @@ public class KeyProtocolTest {
             assertFalse("not a fast key: " + k, Remote.isFast(k));
     }
 
+    @Test public void aTextIsOneLineOfBase64() {
+        String l = KeyProtocol.textLine("héllo مرحبا");
+        assertTrue(l.startsWith("T ") && l.endsWith("\n"));
+        String b64 = l.substring(2, l.length() - 1);
+        assertEquals("héllo مرحبا", new String(Base64.getDecoder().decode(b64), StandardCharsets.UTF_8));
+        assertFalse("one line: no newline inside", b64.contains("\n"));
+    }
+
+    @Test public void aTextWithANewlineStaysOneLine() {
+        String l = KeyProtocol.textLine("a\nb");
+        assertEquals(1, l.split("\n").length);
+    }
+
+    @Test public void aLongTextIsCutInPiecesOfAtMost200CharactersWithoutBreakingACharacter() {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < 199; i++) b.append('x');
+        b.append("\uD83D\uDE00");   // an emoji at the cut: two units, one character
+        b.append("yz");
+        List<String> parts = KeyProtocol.chunks(b.toString());
+        assertEquals(2, parts.size());
+        assertEquals(199 + 2, parts.get(0).length());   // the emoji stays whole in the first piece (200 characters)
+        assertEquals("yz", parts.get(1));
+        assertEquals(b.toString(), String.join("", parts));
+    }
+
+    @Test public void aShortTextIsOnePiece() {
+        assertEquals(1, KeyProtocol.chunks("hello").size());
+        assertEquals(0, KeyProtocol.chunks("").size());
+    }
+
+    @Test public void deleteAndEnterAreKeysOfTheFastLink() {
+        assertEquals(67, Remote.DEL);
+        assertEquals(66, Remote.ENTER);
+        assertTrue(Remote.isKnown(Remote.DEL) && Remote.isKnown(Remote.ENTER));
+        assertTrue(Remote.isFast(Remote.DEL) && Remote.isFast(Remote.ENTER));
+        assertEquals("67\n", KeyProtocol.line(Remote.DEL));
+        assertEquals("66\n", KeyProtocol.line(Remote.ENTER));
+    }
+
+    @Test public void theSlowWayDeletesSeveralCharactersWithOneCommand() {
+        assertEquals("input keyevent 67 67 67", Remote.keys(Remote.DEL, 3));
+        assertEquals("input keyevent 67", Remote.keys(Remote.DEL, 1));
+        try { Remote.keys(9999, 2); fail("an unknown key must be refused"); } catch (IllegalArgumentException expected) { }
+        try { Remote.keys(Remote.DEL, 0); fail("at least one key"); } catch (IllegalArgumentException expected) { }
+    }
+
     @Test public void theAnswerOkMeansTheKeyWasInjected() {
         assertTrue(KeyProtocol.ok("ok"));
         assertTrue(KeyProtocol.ok("ok\r"));
@@ -38,6 +88,14 @@ public class KeyProtocolTest {
         assertFalse(KeyProtocol.ok("okay then"));   // not the same word
         assertFalse(KeyProtocol.ok(""));
         assertFalse(KeyProtocol.ok(null));
+    }
+
+    @Test public void onlyAnErrorLineIsARefusal() {
+        assertTrue(KeyProtocol.isError("err refused"));
+        assertTrue(KeyProtocol.isError("err no clipboard\r"));
+        assertFalse(KeyProtocol.isError("Terminated"));
+        assertFalse(KeyProtocol.isError("ok"));
+        assertFalse(KeyProtocol.isError(null));
     }
 
     @Test public void theProgramSaysReadyWhenItCanInject() {

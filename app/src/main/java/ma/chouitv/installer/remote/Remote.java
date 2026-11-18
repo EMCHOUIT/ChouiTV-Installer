@@ -17,8 +17,8 @@ public final class Remote {
     private Remote() {}
 
     public static final int UP = 19, DOWN = 20, LEFT = 21, RIGHT = 22, OK = 23, BACK = 4, HOME = 3, MENU = 82, MUTE = 164,
-        VOLUME_UP = 24, VOLUME_DOWN = 25, POWER = 26, PASTE = 279, WAKEUP = 224;
-    private static final int[] KNOWN = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, MUTE, VOLUME_UP, VOLUME_DOWN, POWER, PASTE};
+        VOLUME_UP = 24, VOLUME_DOWN = 25, POWER = 26, PASTE = 279, WAKEUP = 224, DEL = 67, ENTER = 66;
+    private static final int[] KNOWN = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, MUTE, VOLUME_UP, VOLUME_DOWN, POWER, PASTE, DEL, ENTER};
 
     /** Where the helper is put on the TV, and what it is called inside the phone app. */
     public static final String HELPER_REMOTE = "/data/local/tmp/chouitv-clip.jar";
@@ -47,7 +47,7 @@ public final class Remote {
         return Started.OK;
     }
 
-    private static final int[] FAST = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU};
+    private static final int[] FAST = {UP, DOWN, LEFT, RIGHT, OK, BACK, HOME, MENU, DEL, ENTER};
 
     /** The keys that go through the fast link kept open to the TV: the navigation ones (checked on a TV: the screen is the same as with «input keyevent»). The others keep the slow way. */
     public static boolean isFast(int code) {
@@ -59,6 +59,14 @@ public final class Remote {
     public static boolean isKnown(int code) {
         for (int k : KNOWN) if (k == code) return true;
         return false;
+    }
+
+    /** The same key {@code n} times in one command (one program started for all of them: the slow way's way to delete several characters). */
+    public static String keys(int code, int n) {
+        if (n < 1) throw new IllegalArgumentException("at least one key");
+        StringBuilder b = new StringBuilder(key(code));
+        for (int i = 1; i < n; i++) b.append(' ').append(code);
+        return b.toString();
     }
 
     public static String key(int code) {
