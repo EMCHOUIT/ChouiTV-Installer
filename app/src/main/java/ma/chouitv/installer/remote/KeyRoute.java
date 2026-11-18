@@ -35,6 +35,14 @@ public final class KeyRoute {
     /** True when a new link may be tried: none works, none was tried too recently, and the app is not closed. */
     public synchronized boolean mayTry(long now) { return !up && !stopped && now >= retryAt; }
 
+    /** The app let go of the link on purpose (another TV, the app left): it is not a working link any more, and nothing failed. */
+    public synchronized void closed() { up = false; }
+
+    /** True when a link is held for another TV than the one the app talks to now (or for none): it must be let go. */
+    public static boolean stale(boolean haveLink, String linkIp, String curIp) {
+        return haveLink && (linkIp == null || !linkIp.equals(curIp));
+    }
+
     /** The app is left: no more tries. */
     public synchronized void stop() { stopped = true; up = false; }
 

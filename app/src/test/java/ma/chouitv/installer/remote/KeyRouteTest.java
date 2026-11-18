@@ -57,6 +57,25 @@ public class KeyRouteTest {
         assertEquals("the failures before leaving are forgotten", 5_000, r.waitMs());
     }
 
+    @Test public void aLinkThatWasClosedOnPurposeIsNotAWorkingLinkAnyMore() {
+        KeyRoute r = new KeyRoute();
+        r.up();
+        assertFalse("a link works: no second one", r.mayTry(0));
+        r.closed();                          // the app let go of it (another TV, the app left)
+        assertEquals(KeyRoute.Via.SHELL, r.via());
+        assertTrue("a new link may be tried at once: this is not a failure", r.mayTry(0));
+        r.down(0);
+        assertEquals("no failure was counted", 5_000, r.waitMs());
+    }
+
+    @Test public void aLinkToAnotherTvIsStale() {
+        assertTrue(KeyRoute.stale(true, "192.168.1.50", "192.168.1.51"));   // the link of TV1 while the app talks to TV2
+        assertTrue("the TV was lost: its link goes too", KeyRoute.stale(true, "192.168.1.50", ""));
+        assertTrue(KeyRoute.stale(true, null, "192.168.1.51"));
+        assertFalse(KeyRoute.stale(true, "192.168.1.51", "192.168.1.51"));
+        assertFalse("no link, nothing to close", KeyRoute.stale(false, "", "192.168.1.51"));
+    }
+
     @Test public void closingTheAppStopsTheTries() {
         KeyRoute r = new KeyRoute();
         r.stop();

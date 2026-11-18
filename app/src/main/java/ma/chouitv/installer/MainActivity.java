@@ -754,6 +754,7 @@ public class MainActivity extends Activity {
                 String nm = announcedForConnect;
                 if (nm != null && !nm.trim().isEmpty()) for (TvList.Tv k : TvList.load(prefs())) if (k.ip.equals(ip) && k.own.isEmpty()) TvList.rename(prefs(), ip, nm.trim());
                 announcedForConnect = null;
+                if (!ip.equals(keyLinkIp)) keyLinkClose();   // the fast link of the TV used before: this is another TV
                 curIp = ip;
                 rememberSerial(ip);
                 runOnUiThread(() -> afterConnect(button, status));
@@ -2012,6 +2013,7 @@ public class MainActivity extends Activity {
                 if (flow == null && !rcReconnect(4000)) return;
                 op.run();
                 if (rcState != RC_OK) rcStatus(RC_OK, 0);
+                keyLinkOpen();   // a command has just worked: this is the moment to get the fast link, if there is none for this TV
             } catch (Exception e) {
                 if (!Reconnect.worthRetrying(e)) { rcFail(e); return; }
                 if (rcReconnect(4000)) {
@@ -2226,6 +2228,7 @@ public class MainActivity extends Activity {
 
     private void rcKey(final int code) {
         if (rcBlocked()) return;
+        if (KeyRoute.stale(keyLink != null, keyLinkIp, curIp)) keyLinkClose();   // the link of the TV used before is of no use for this one
         KeyLink kl = keyLink;
         if (Remote.isFast(code) && kl != null && keyLinkIp.equals(curIp) && kl.offer(code)) return;   // the fast way: no thread, no program started on the TV
         rcRun(() -> flow.shell().run(Remote.key(code)));   // the way that always works
@@ -2235,6 +2238,7 @@ public class MainActivity extends Activity {
     /** Opens the fast link when there is none and it may be tried. The TV's one connection is used for the check of the helper, on the background thread with the other commands. */
     private void keyLinkOpen() {
         final KeyRoute route = keyRoute;
+        if (KeyRoute.stale(keyLink != null, keyLinkIp, curIp)) keyLinkClose();
         KeyLink cur = keyLink;
         if (flow == null || rcState != RC_OK || (cur != null && cur.isUp()) || !route.mayTry(android.os.SystemClock.elapsedRealtime())) return;
         if (!keyOpening.compareAndSet(false, true)) return;
@@ -2282,6 +2286,7 @@ public class MainActivity extends Activity {
     }
 
     private void keyLinkClose() {
+        keyRoute.closed();   // not a failure, but no working link either: a new one may be tried at once
         KeyLink l = keyLink;
         keyLink = null;
         keyLinkIp = "";
@@ -2377,7 +2382,7 @@ public class MainActivity extends Activity {
 
     private LiveKeyboard.Link liveLink() {
         return new LiveKeyboard.Link() {
-            private KeyLink live() { KeyLink l = keyLink; return l != null && l.isUp() && keyLinkIp.equals(curIp) ? l : null; }
+            private KeyLink live() { KeyLink l = keyLink; return l != null && l.isUp() && !KeyRoute.stale(true, keyLinkIp, curIp) ? l : null; }
             @Override public boolean up() { return live() != null; }
             @Override public boolean del(int n, Runnable ok) {
                 KeyLink l = live();
