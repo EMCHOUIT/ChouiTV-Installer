@@ -42,6 +42,12 @@ public final class LiveText {
         return op;
     }
 
+    /** The whole field of the TV is emptied (Select all, Delete), whatever it held: nothing is left to delete later. */
+    public synchronized Op reset() {
+        sent = "";
+        return new Op(0, "", "");
+    }
+
     /** The TV confirmed this change (and every earlier one). */
     public synchronized void confirmed(Op op) { acked = op.result; }
 

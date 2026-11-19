@@ -129,6 +129,29 @@ public class KeyLinkTest {
         assertEquals("[67\n, T YQ==\n, 66\n]", tv.written.toString());
     }
 
+    @Test public void theAnswerToARequestIsGivenToWhoAskedAndNotWhenTheLinkFails() throws Exception {
+        FakeTv tv = new FakeTv();
+        link = new KeyLink(tv, new Failures());
+        final CountDownLatch answered = new CountDownLatch(1);
+        final String[] got = {null};
+        tv.answers.add("ok text YQ==");
+        assertTrue(link.offerQuery("R\n", a -> { got[0] = a; answered.countDown(); }));
+        assertTrue(answered.await(2, TimeUnit.SECONDS));
+        assertEquals("R\n", tv.written.get(0));
+        assertEquals("ok text YQ==", got[0]);
+
+        FakeTv tv2 = new FakeTv();
+        Failures f2 = new Failures();
+        KeyLink dying = new KeyLink(tv2, f2);
+        final boolean[] called = {false};
+        tv2.answers.add("err broken");
+        dying.offerQuery("R\n", a -> called[0] = true);
+        assertTrue(f2.first.await(2, TimeUnit.SECONDS));
+        assertFalse("no answer is given by a link that failed", called[0]);
+        assertFalse(dying.offerQuery("R\n", a -> { }));
+        dying.close();
+    }
+
     @Test public void aLineThatFailsIsReportedWithoutAKeyCodeAndIsNotConfirmed() throws Exception {
         FakeTv tv = new FakeTv();
         Failures f = new Failures();

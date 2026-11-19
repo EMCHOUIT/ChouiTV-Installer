@@ -17,6 +17,12 @@ public final class LiveKeyboard {
         boolean del(int n, Runnable ok);
         boolean text(String s, Runnable ok);
         boolean enter();
+        /** Select all, then Delete: the whole field of the TV is emptied, whoever typed what is in it. */
+        boolean clearAll(Runnable ok);
+        /** The End key: the TV's cursor goes to the end of the field. */
+        boolean moveToEnd();
+        /** Asks the text of the field that has the input focus on the TV; {@code onText} gets it («» for an empty field, null when there is none). */
+        boolean readField(java.util.function.Consumer<String> onText);
     }
 
     /** How long the keyboard waits for the link before it offers the slow way. */
@@ -52,6 +58,42 @@ public final class LiveKeyboard {
         if (!link.up()) { toReconnecting(); return; }
         if (mode == Mode.RECONNECTING) { flush(); return; }
         send();
+    }
+
+    /** «Clear all»: the whole field of the TV is emptied, also what was typed with the TV's own keyboard. */
+    public synchronized void clearAll() {
+        shown = "";
+        if ((mode != Mode.DIRECT && mode != Mode.READY) || !link.up()) return;   // without a live link what waits is simply emptied
+        LiveText.Op op = lt.reset();
+        final long e = epoch;
+        if (link.clearAll(() -> confirm(op, e))) mode = Mode.DIRECT;
+        else { lt.lost(); epoch++; mode = Mode.RECONNECTING; reconnectSince = -1; }
+    }
+
+    /** A backspace on the empty field of the phone: it deletes one character of the TV's field (text that was not typed on the phone). */
+    public synchronized void deleteOnTv() {
+        if (mode != Mode.DIRECT && mode != Mode.READY) return;
+        if (!link.up() || !link.del(1, null)) linkLost();
+    }
+
+    /**
+     * The TV's field already held {@code text} (typed with its own keyboard): it becomes the starting point, so that the phone shows it and what
+     * is typed or deleted on the phone is applied to it. Only while the phone's field is still empty and the link is live; false otherwise.
+     * The caller then puts the text in the phone's field.
+     */
+    public synchronized boolean preloaded(String text) {
+        if (text == null || text.isEmpty() || !shown.isEmpty()) return false;
+        if ((mode != Mode.DIRECT && mode != Mode.READY) || !link.up()) return false;
+        if (!link.moveToEnd()) { linkLost(); return false; }   // what is typed comes after it
+        lt.slowSent(text);
+        shown = text;
+        mode = Mode.DIRECT;
+        return true;
+    }
+
+    /** Asks the TV for the text its field already holds (about a tenth of a second); false when there is no live link. */
+    public synchronized boolean readExisting(java.util.function.Consumer<String> onText) {
+        return link.up() && link.readField(onText);
     }
 
     /** The Enter / Search key. Only in the live modes. */

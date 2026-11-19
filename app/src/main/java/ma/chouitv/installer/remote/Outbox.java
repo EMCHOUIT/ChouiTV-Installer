@@ -18,7 +18,11 @@ public final class Outbox {
         public final int code;
         /** What to do when the TV confirms it (may be null). */
         public final Runnable onConfirmed;
-        Item(String line, int code, Runnable onConfirmed) { this.line = line; this.code = code; this.onConfirmed = onConfirmed; }
+        /** What to do with the TV's whole answer, for a request (may be null). */
+        public final java.util.function.Consumer<String> onAnswer;
+        Item(String line, int code, Runnable onConfirmed, java.util.function.Consumer<String> onAnswer) {
+            this.line = line; this.code = code; this.onConfirmed = onConfirmed; this.onAnswer = onAnswer;
+        }
     }
 
     private final ArrayDeque<Item> items = new ArrayDeque<>();
@@ -34,12 +38,18 @@ public final class Outbox {
                 if (it.next().code >= 0) { it.remove(); break; }
             }
         }
-        items.addLast(new Item(line, code, null));
+        items.addLast(new Item(line, code, null, null));
         notifyAll();
     }
 
     public synchronized void offerLine(String line, Runnable onConfirmed) {
-        items.addLast(new Item(line, -1, onConfirmed));
+        items.addLast(new Item(line, -1, onConfirmed, null));
+        notifyAll();
+    }
+
+    /** A request: the answer line of the TV goes to {@code onAnswer}. Never dropped. */
+    public synchronized void offerQuery(String line, java.util.function.Consumer<String> onAnswer) {
+        items.addLast(new Item(line, -1, null, onAnswer));
         notifyAll();
     }
 

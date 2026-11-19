@@ -2,6 +2,7 @@ package ma.chouitv.installer.remote;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -78,6 +79,30 @@ public class KeyProtocolTest {
         assertEquals("input keyevent 67", Remote.keys(Remote.DEL, 1));
         try { Remote.keys(9999, 2); fail("an unknown key must be refused"); } catch (IllegalArgumentException expected) { }
         try { Remote.keys(Remote.DEL, 0); fail("at least one key"); } catch (IllegalArgumentException expected) { }
+    }
+
+    @Test public void clearingTheWholeFieldIsOneLineAndTheEndKeyIsAFastKey() {
+        assertEquals("A\n", KeyProtocol.clearLine());
+        assertEquals(123, Remote.MOVE_END);
+        assertTrue(Remote.isKnown(Remote.MOVE_END) && Remote.isFast(Remote.MOVE_END));
+        assertEquals("123\n", KeyProtocol.line(Remote.MOVE_END));
+    }
+
+    @Test public void theTextOfTheFocusedFieldIsAskedWithOneLine() {
+        assertEquals("R\n", KeyProtocol.fieldLine());
+    }
+
+    @Test public void theAnswerToAReadGivesTheTextOfTheField() {
+        String b64 = Base64.getEncoder().encodeToString("héllo مرحبا 12".getBytes(StandardCharsets.UTF_8));
+        assertEquals("héllo مرحبا 12", KeyProtocol.parseField("ok text " + b64));
+        assertEquals("an empty field is an empty text", "", KeyProtocol.parseField("ok text"));
+        assertEquals("", KeyProtocol.parseField("ok text \r"));
+        assertNull("no field with the input focus, or a password", KeyProtocol.parseField("ok none"));
+        assertNull(KeyProtocol.parseField("ok"));
+        assertNull(KeyProtocol.parseField("err no accessibility"));
+        assertNull(KeyProtocol.parseField("Terminated"));
+        assertNull(KeyProtocol.parseField(null));
+        assertNull("not base64", KeyProtocol.parseField("ok text !!!not base64!!!"));
     }
 
     @Test public void theAnswerOkMeansTheKeyWasInjected() {

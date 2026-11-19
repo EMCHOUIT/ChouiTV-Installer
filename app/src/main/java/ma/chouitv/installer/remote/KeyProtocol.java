@@ -14,6 +14,28 @@ public final class KeyProtocol {
         return code + "\n";
     }
 
+    /** The line that asks for the text of the field that has the input focus on the TV. */
+    public static String fieldLine() { return "R\n"; }
+
+    /**
+     * The text in the answer to {@link #fieldLine()}: «ok text BASE64» (the field's text; «ok text» alone for an empty field), «ok none» when no field
+     * has the input focus or it is a password. Null for anything else.
+     */
+    public static String parseField(String answer) {
+        if (answer == null) return null;
+        String a = answer.trim();
+        if (a.equals("ok text")) return "";
+        if (!a.startsWith("ok text ")) return null;
+        try {
+            return new String(java.util.Base64.getDecoder().decode(a.substring(8).trim()), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException notBase64) {
+            return null;
+        }
+    }
+
+    /** The line that empties the whole field that has the focus, whatever it holds (Select all, then Delete). */
+    public static String clearLine() { return "A\n"; }
+
     /** The most characters of text in one line: long pastes go in pieces, in order. */
     public static final int CHUNK = 200;
 

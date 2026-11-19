@@ -93,6 +93,24 @@ public class LiveTextTest {
         assertOp(t.edit("abcd"), 0, "d");
     }
 
+    @Test public void clearingTheWholeFieldLeavesNothingToDeleteLater() {
+        LiveText t = new LiveText();
+        t.confirmed(t.edit("abc"));
+        LiveText.Op op = t.reset();          // the TV's field is emptied by Select all + Delete, whatever it held
+        assertEquals("", op.result);
+        t.confirmed(op);
+        assertEquals("", t.onTv());
+        assertOp(t.edit("x"), 0, "x");      // nothing to delete first
+    }
+
+    @Test public void aTextThatWasAlreadyThereIsTheStartingPoint() {
+        LiveText t = new LiveText();
+        t.slowSent("from the TV");           // what the TV's field holds before the first key
+        assertNull(t.pending("from the TV"));
+        assertOp(t.edit("from the TV!"), 0, "!");
+        assertOp(t.edit("from the T"), 2, "");
+    }
+
     @Test public void theCountOfCharactersIsByCodePoint() {
         assertEquals(0, LiveText.chars(""));
         assertEquals(3, LiveText.chars("abc"));

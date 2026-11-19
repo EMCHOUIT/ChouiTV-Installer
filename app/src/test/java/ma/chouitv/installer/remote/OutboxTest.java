@@ -76,6 +76,19 @@ public class OutboxTest {
         assertEquals("a key has its code, for the report of a failure", Remote.UP, q.poll().code);
     }
 
+    @Test public void aRequestKeepsWhatToDoWithItsAnswerAndIsNeverDropped() {
+        Outbox q = new Outbox();
+        final String[] got = {null};
+        q.offerQuery("R\n", a -> got[0] = a);
+        for (int i = 0; i < 10; i++) q.offerKey(Remote.DOWN);
+        Outbox.Item i = q.poll();
+        assertEquals("R\n", i.line);
+        assertEquals(-1, i.code);
+        i.onAnswer.accept("ok text");
+        assertEquals("ok text", got[0]);
+        assertEquals(Outbox.MAX_KEYS, q.size());
+    }
+
     @Test public void clearEmptiesIt() {
         Outbox q = new Outbox();
         q.offerKey(Remote.UP); q.offerLine("T YQ==\n", null);

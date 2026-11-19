@@ -2392,6 +2392,12 @@ public class MainActivity extends Activity {
             }
             @Override public boolean text(String s, Runnable ok) { KeyLink l = live(); return l != null && l.offerLine(KeyProtocol.textLine(s), ok); }
             @Override public boolean enter() { KeyLink l = live(); return l != null && l.offer(Remote.ENTER); }
+            @Override public boolean clearAll(Runnable ok) { KeyLink l = live(); return l != null && l.offerLine(KeyProtocol.clearLine(), ok); }
+            @Override public boolean moveToEnd() { KeyLink l = live(); return l != null && l.offer(Remote.MOVE_END); }
+            @Override public boolean readField(java.util.function.Consumer<String> onText) {
+                KeyLink l = live();
+                return l != null && l.offerQuery(KeyProtocol.fieldLine(), answer -> onText.accept(KeyProtocol.parseField(answer)));
+            }
         };
     }
 
@@ -2405,6 +2411,9 @@ public class MainActivity extends Activity {
         c.setOrientation(LinearLayout.VERTICAL);
         final android.app.Dialog d = rcDialog(c);
         final Runnable[] refresh = new Runnable[1];
+        final boolean[] reading = {true};            // the TV's field is being read (about a tenth of a second): what is already in it will appear
+        final boolean[] asked = {false};
+        final long openedAt = android.os.SystemClock.elapsedRealtime();
 
         // the head: the title, the help (shows the tip again), close
         LinearLayout head = new LinearLayout(this);
@@ -2453,7 +2462,26 @@ public class MainActivity extends Activity {
         final TextView count = text("", regular, 14, MUTED);
         top.addView(count, new LinearLayout.LayoutParams(-2, -2));
         box.addView(top);
-        final android.widget.EditText et = new android.widget.EditText(this);
+        // a backspace on the empty field of the phone deletes on the TV: text typed there with its own keyboard can be deleted from here
+        final android.widget.EditText et = new android.widget.EditText(this) {
+            @Override public android.view.inputmethod.InputConnection onCreateInputConnection(android.view.inputmethod.EditorInfo outAttrs) {
+                android.view.inputmethod.InputConnection ic = super.onCreateInputConnection(outAttrs);
+                if (ic == null) return null;
+                return new android.view.inputmethod.InputConnectionWrapper(ic, true) {
+                    @Override public boolean deleteSurroundingText(int before, int after) {
+                        if (before > 0 && getText().length() == 0) { for (int i = 0; i < before; i++) kb.deleteOnTv(); return true; }
+                        return super.deleteSurroundingText(before, after);
+                    }
+                    @Override public boolean sendKeyEvent(android.view.KeyEvent ev) {
+                        if (ev.getKeyCode() == android.view.KeyEvent.KEYCODE_DEL && getText().length() == 0) {
+                            if (ev.getAction() == android.view.KeyEvent.ACTION_DOWN) kb.deleteOnTv();
+                            return true;
+                        }
+                        return super.sendKeyEvent(ev);
+                    }
+                };
+            }
+        };
         et.setHint(t("kb_hint"));
         et.setHintTextColor(MUTED);
         et.setTextColor(SAND);
@@ -2506,6 +2534,7 @@ public class MainActivity extends Activity {
             switch (m) {
                 case DIRECT:
                     chip.setText("⚡ " + t("kb_live")); chip.setTextColor(green);
+                    if (reading[0]) { band.setVisibility(View.VISIBLE); band.setText("⏳ " + t("kb_reading")); band.setBackground(rcShape(TILE_FILL, 16, true)); }
                     primary.setText("↵ " + t("kb_enter")); break;
                 case RECONNECTING:
                     chip.setText("↻ " + t("kb_reco")); chip.setTextColor(GOLD);
@@ -2528,6 +2557,7 @@ public class MainActivity extends Activity {
                     primary.setText("↻ " + t("kb_retry")); break;
                 default:   // READY
                     chip.setText("✓ " + t("kb_ready")); chip.setTextColor(GOLD);
+                    if (reading[0]) { band.setVisibility(View.VISIBLE); band.setText("⏳ " + t("kb_reading")); band.setBackground(rcShape(TILE_FILL, 16, true)); }
                     primary.setText("↵ " + t("kb_enter")); break;
             }
             boolean enterOk = m == LiveKeyboard.Mode.DIRECT || m == LiveKeyboard.Mode.READY || m == LiveKeyboard.Mode.SLOW || m == LiveKeyboard.Mode.ERROR;
@@ -2545,14 +2575,23 @@ public class MainActivity extends Activity {
         primary.setOnClickListener(v -> liveEnter(kb, et, refresh[0]));
         second.setOnClickListener(v -> {
             if (kb.mode() == LiveKeyboard.Mode.ERROR) { kb.chooseSlow(); refresh[0].run(); }
-            else et.setText("");   // the change goes to the TV like any other: it deletes what was typed
+            else { kb.clearAll(); et.setText(""); }   // Select all + Delete on the TV: also what was typed there with its own keyboard
         });
         retry.setOnClickListener(v -> { keyRoute.resume(); keyLinkOpen(); kb.retryLive(android.os.SystemClock.elapsedRealtime()); refresh[0].run(); });
 
+        // what is already in the TV's field (typed with its own keyboard) is read once, through the fast link; if the person has not typed yet, it fills
+        // the phone's field, and what is typed or deleted here is applied to it
+        final Runnable askField = () -> asked[0] = kb.readExisting(text -> runOnUiThread(() -> {
+            reading[0] = false;
+            if (d.isShowing() && text != null && !text.isEmpty() && kb.preloaded(text)) { et.setText(text); et.setSelection(text.length()); }
+            refresh[0].run();
+        }));
         final Runnable[] tick = new Runnable[1];
         tick[0] = () -> {
             if (!d.isShowing()) return;
             kb.tick(android.os.SystemClock.elapsedRealtime());
+            if (reading[0] && !asked[0]) askField.run();
+            if (reading[0] && android.os.SystemClock.elapsedRealtime() - openedAt > 3000) reading[0] = false;   // nothing came: no field read
             if (kb.mode() == LiveKeyboard.Mode.RECONNECTING) keyLinkOpen();
             refresh[0].run();
             ui.postDelayed(tick[0], 500);
@@ -2563,6 +2602,7 @@ public class MainActivity extends Activity {
         d.show();
         et.requestFocus();
         ui.postDelayed(tick[0], 500);
+        askField.run();
     }
 
     /** The Enter key (live), or Send (slow mode), or Try again (after an error). */

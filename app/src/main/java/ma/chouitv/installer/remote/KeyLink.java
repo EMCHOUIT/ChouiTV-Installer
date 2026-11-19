@@ -63,6 +63,13 @@ public final class KeyLink implements AutoCloseable {
         return true;
     }
 
+    /** Queues a request; the TV's answer line is given to {@code onAnswer} (not at all when the link fails). False when the link is down. Never blocks. */
+    public boolean offerQuery(String line, java.util.function.Consumer<String> onAnswer) {
+        if (!up) return false;
+        outbox.offerQuery(line, onAnswer);
+        return true;
+    }
+
     private void loop() {
         int code = -1;
         boolean sent = false;
@@ -80,6 +87,7 @@ public final class KeyLink implements AutoCloseable {
                 }
                 code = -1;
                 if (item.onConfirmed != null) item.onConfirmed.run();
+                if (item.onAnswer != null) item.onAnswer.accept(answer);
             }
         } catch (InterruptedException closed) {
             // close(): nothing to report

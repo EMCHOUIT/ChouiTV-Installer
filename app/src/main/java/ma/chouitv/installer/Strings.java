@@ -492,6 +492,7 @@ final class Strings {
         k("kb_count1",  "%d حرف", "%d caractère", "%d character");
         k("kb_countn",  "%d حرفًا", "%d caractères", "%d characters");
         k("kb_err_tag", "خطأ", "Erreur", "Error");
+        k("kb_reading", "جارٍ قراءة حقل التلفاز…", "Lecture du champ de la télé…", "Reading the TV’s field…");
         k("rc_nochan_q", "Channels غير مثبّتة", "Channels n\u2019est pas installée", "Channels is not installed");
         k("rc_nochan_msg", "ليس في هذا التلفزيون تطبيق Channels. هل تثبّته الآن من هذا التطبيق؟", "Cette télé n\u2019a pas Channels. L\u2019installer maintenant depuis cette appli ?", "This TV does not have Channels. Install it now from this app?");
         k("rc_nohome_q", "ChouiTV غير مثبّت", "ChouiTV n\u2019est pas installé", "ChouiTV is not installed");

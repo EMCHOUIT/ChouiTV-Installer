@@ -21,6 +21,10 @@ public class LiveKeyboardTest {
         @Override public boolean del(int n, Runnable ok) { if (!up) return false; sent.add("del" + n); done(ok); return true; }
         @Override public boolean text(String s, Runnable ok) { if (!up) return false; sent.add("text:" + s); done(ok); return true; }
         @Override public boolean enter() { if (!up) return false; sent.add("enter"); return true; }
+        @Override public boolean clearAll(Runnable ok) { if (!up) return false; sent.add("clearAll"); done(ok); return true; }
+        @Override public boolean moveToEnd() { if (!up) return false; sent.add("end"); return true; }
+        @Override public boolean readField(java.util.function.Consumer<String> onText) { if (!up) return false; sent.add("read"); onText.accept(fieldOfTheTv); return true; }
+        String fieldOfTheTv = "";
         private void done(Runnable ok) { if (ok == null) return; if (acks) ok.run(); else unconfirmed.add(ok); }
     }
 
@@ -178,6 +182,93 @@ public class LiveKeyboardTest {
         k.linkRefused();
         k.chooseSlow();
         assertEquals(LiveKeyboard.Mode.SLOW, k.mode());
+    }
+
+    @Test public void clearAllEmptiesTheWholeFieldOfTheTvNotOnlyWhatWasTyped() {
+        FakeLink l = new FakeLink();
+        LiveKeyboard k = new LiveKeyboard(l);
+        k.typed("abc");
+        l.sent.clear();
+        k.clearAll();
+        assertEquals("[clearAll]", l.sent.toString());
+        k.typed("");                         // the phone's field is emptied too: nothing more to send
+        assertEquals("[clearAll]", l.sent.toString());
+        k.typed("x");
+        assertEquals("[clearAll, text:x]", l.sent.toString());   // typed on an empty field: no delete first
+        assertEquals(0, k.waiting());
+    }
+
+    @Test public void clearAllWorksOnATextThatWasNeverTypedOnThePhone() {
+        FakeLink l = new FakeLink();
+        LiveKeyboard k = new LiveKeyboard(l);
+        k.clearAll();                        // the field was filled with the TV's own keyboard
+        assertEquals("[clearAll]", l.sent.toString());
+    }
+
+    @Test public void clearAllWithoutALinkJustEmptiesTheWaitingText() {
+        FakeLink l = new FakeLink(); l.up = false;
+        LiveKeyboard k = new LiveKeyboard(l);
+        k.typed("abc");
+        k.clearAll();
+        assertTrue(l.sent.isEmpty());
+        assertEquals(0, k.waiting());
+        assertEquals(LiveKeyboard.Mode.RECONNECTING, k.mode());
+    }
+
+    @Test public void aBackspaceOnAnEmptyFieldOfThePhoneDeletesOneCharacterOnTheTv() {
+        FakeLink l = new FakeLink();
+        LiveKeyboard k = new LiveKeyboard(l);
+        k.deleteOnTv();
+        k.deleteOnTv();
+        assertEquals("[del1, del1]", l.sent.toString());
+        assertEquals("the phone's field is not changed by it", 0, k.chars());
+    }
+
+    @Test public void aBackspaceOnTheTvDoesNothingWithoutALiveLink() {
+        FakeLink l = new FakeLink(); l.up = false;
+        LiveKeyboard k = new LiveKeyboard(l);
+        k.deleteOnTv();
+        assertTrue(l.sent.isEmpty());
+    }
+
+    @Test public void theTextThatIsOnTheTvIsTakenAsTheStartingPointWhenTheFieldIsStillEmpty() {
+        FakeLink l = new FakeLink();
+        LiveKeyboard k = new LiveKeyboard(l);
+        assertTrue(k.preloaded("from the TV"));
+        assertEquals("[end]", l.sent.toString());          // the TV's cursor goes to the end: what is typed comes after
+        k.typed("from the TV");                              // the phone's field is filled with it: nothing to send
+        assertEquals("[end]", l.sent.toString());
+        k.typed("from the TV!");
+        k.typed("from the T");
+        assertEquals("[end, text:!, del2]", l.sent.toString());
+        assertEquals(0, k.waiting());
+    }
+
+    @Test public void theFieldOfTheTvCanBeAskedForWhileTheLinkIsLive() {
+        FakeLink l = new FakeLink(); l.fieldOfTheTv = "already there";
+        LiveKeyboard k = new LiveKeyboard(l);
+        final String[] got = {null};
+        assertTrue(k.readExisting(t -> got[0] = t));
+        assertEquals("already there", got[0]);
+        FakeLink down = new FakeLink(); down.up = false;
+        assertFalse("without a live link there is nothing to read", new LiveKeyboard(down).readExisting(t -> { }));
+    }
+
+    @Test public void theTextOfTheTvIsNotTakenOnceThePersonHasTyped() {
+        FakeLink l = new FakeLink();
+        LiveKeyboard k = new LiveKeyboard(l);
+        k.typed("hello");
+        l.sent.clear();
+        assertFalse(k.preloaded("from the TV"));
+        assertTrue(l.sent.isEmpty());
+    }
+
+    @Test public void nothingIsTakenFromAnEmptyFieldOrWithoutALink() {
+        FakeLink l = new FakeLink();
+        assertFalse(new LiveKeyboard(l).preloaded(""));
+        assertFalse(new LiveKeyboard(l).preloaded(null));
+        FakeLink down = new FakeLink(); down.up = false;
+        assertFalse(new LiveKeyboard(down).preloaded("x"));
     }
 
     @Test public void theCountIsTheNumberOfCharactersOfTheField() {
